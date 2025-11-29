@@ -249,6 +249,7 @@ namespace AsmResolver.DotNet
             {
                 0xB0, 0x3F, 0x5F, 0x7F, 0x11, 0xD5, 0x0A, 0x3A
             });
+
         /// <summary>
         /// References System.Runtime.dll, Version=11.0.0.0, PublicKeyToken=B03F5F7F11D50A3A. This is used by .NET
         /// assemblies targeting .NET 11.0.
@@ -258,6 +259,7 @@ namespace AsmResolver.DotNet
             {
                 0xB0, 0x3F, 0x5F, 0x7F, 0x11, 0xD5, 0x0A, 0x3A
             });
+
         /// <summary>
         /// References netstandard.dll, Version=2.0.0.0, PublicKeyToken=CC7B13FFCD2DDD51. This is used by .NET
         /// assemblies targeting .NET standard 2.0.
@@ -267,6 +269,7 @@ namespace AsmResolver.DotNet
             {
                 0xCC, 0x7B, 0x13, 0xFF, 0xCD, 0x2D, 0xDD, 0x51
             });
+
         /// <summary>
         /// References netstandard.dll, Version=2.1.0.0, PublicKeyToken=CC7B13FFCD2DDD51. This is used by .NET
         /// assemblies targeting .NET standard 2.1.
