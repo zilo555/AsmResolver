@@ -111,6 +111,16 @@ namespace AsmResolver.DotNet
             });
 
         /// <summary>
+        /// References System.Private.CoreLib.dll, Version=11.0.0.0, PublicKeyToken=7CEC85D7BEA7798E. This is used by .NET
+        /// assemblies targeting .NET 11.0.
+        /// </summary>
+        public static readonly AssemblyReference SystemPrivateCoreLib_v11_0_0_0 = new("System.Private.CoreLib",
+            new Version(11, 0, 0, 0), false, new byte[]
+            {
+                0x7C, 0xEC, 0x85, 0xD7, 0xBE, 0xA7, 0x79, 0x8E
+            });
+
+        /// <summary>
         /// References System.Runtime.dll, Version=4.0.0.0, PublicKeyToken=B03F5F7F11D50A3A. This is used by .NET
         /// assemblies targeting .NET standard 1.0 and 1.1.
         /// </summary>
@@ -241,6 +251,16 @@ namespace AsmResolver.DotNet
             });
 
         /// <summary>
+        /// References System.Runtime.dll, Version=11.0.0.0, PublicKeyToken=B03F5F7F11D50A3A. This is used by .NET
+        /// assemblies targeting .NET 11.0.
+        /// </summary>
+        public static readonly AssemblyReference SystemRuntime_v11_0_0_0 = new("System.Runtime",
+            new Version(11, 0, 0, 0), false, new byte[]
+            {
+                0xB0, 0x3F, 0x5F, 0x7F, 0x11, 0xD5, 0x0A, 0x3A
+            });
+
+        /// <summary>
         /// References netstandard.dll, Version=2.0.0.0, PublicKeyToken=CC7B13FFCD2DDD51. This is used by .NET
         /// assemblies targeting .NET standard 2.0.
         /// </summary>
@@ -281,6 +301,7 @@ namespace AsmResolver.DotNet
                 SystemRuntime_v8_0_0_0,
                 SystemRuntime_v9_0_0_0,
                 SystemRuntime_v10_0_0_0,
+                SystemRuntime_v11_0_0_0,
                 SystemPrivateCoreLib_v4_0_0_0,
                 SystemPrivateCoreLib_v5_0_0_0,
                 SystemPrivateCoreLib_v6_0_0_0,
@@ -288,6 +309,7 @@ namespace AsmResolver.DotNet
                 SystemPrivateCoreLib_v8_0_0_0,
                 SystemPrivateCoreLib_v9_0_0_0,
                 SystemPrivateCoreLib_v10_0_0_0,
+                SystemPrivateCoreLib_v11_0_0_0,
             };
 
             KnownCorLibNames = new HashSet<string>(KnownCorLibReferences.Select(r => r.Name!.Value));
@@ -368,6 +390,7 @@ namespace AsmResolver.DotNet
                 (8, 0) => SystemRuntime_v8_0_0_0,
                 (9, 0) => SystemRuntime_v9_0_0_0,
                 (10, 0) => SystemRuntime_v10_0_0_0,
+                (11, 0) => SystemRuntime_v11_0_0_0,
                 _ => throw new ArgumentException($"Invalid or unsupported .NET or .NET Core version {version}.")
             };
         }
@@ -383,6 +406,7 @@ namespace AsmResolver.DotNet
                 (8, 0) => SystemPrivateCoreLib_v8_0_0_0,
                 (9, 0) => SystemPrivateCoreLib_v9_0_0_0,
                 (10, 0) => SystemPrivateCoreLib_v10_0_0_0,
+                (11, 0) => SystemPrivateCoreLib_v11_0_0_0,
                 _ => throw new ArgumentException($"Invalid or unsupported .NET or .NET Core version {version}.")
             };
         }
