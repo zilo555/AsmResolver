@@ -10,7 +10,7 @@ namespace AsmResolver.DotNet.Builder.Metadata
     /// </summary>
     /// <typeparam name="TKey">The type of members that are assigned new metadata rows.</typeparam>
     /// <typeparam name="TRow">The type of rows to store.</typeparam>
-    public class SortedMetadataTableBuffer<TKey, TRow> : ISortedMetadataTableBuffer<TKey, TRow>
+    public class SortedMetadataTableBuffer<TKey, TRow> : IMetadataTableBuffer
         where TKey : notnull
         where TRow : struct, IMetadataRow
     {
@@ -51,16 +51,25 @@ namespace AsmResolver.DotNet.Builder.Metadata
         /// <inheritdoc />
         public int Count => _entries.Count;
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Adds a row to the metadata table.
+        /// </summary>
+        /// <param name="originalKey">The original member that was assigned a new metadata row.</param>
+        /// <param name="row">The row to add.</param>
         public void Add(TKey originalKey, in TRow row)
         {
             _entries.Add((originalKey, row, _entries.Count));
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets all the members that were added to the buffer.
+        /// </summary>
+        /// <returns>The added members.</returns>
         public IEnumerable<TKey> GetMembers() => _entries.Select(entry => entry.Key);
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Sorts the metadata table buffer, and determines all new metadata tokens of the added members.
+        /// </summary>
         public void Sort()
         {
             _entries.Sort(_comparer);
@@ -72,7 +81,11 @@ namespace AsmResolver.DotNet.Builder.Metadata
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets the new metadata token that was assigned to the member.
+        /// </summary>
+        /// <param name="member">The member.</param>
+        /// <returns>The new metadata token.</returns>
         public MetadataToken GetNewToken(TKey member) => _newTokens[member];
 
         /// <inheritdoc />

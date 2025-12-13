@@ -364,7 +364,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var type = TypeNameParser.Parse(_module, "System.Array");
 
             Assert.NotEqual(_module.RuntimeContext.RuntimeCorLib, _module.CorLibTypeFactory.CorLibScope.GetAssembly(), _comparer);
-            Assert.Equal(_module.RuntimeContext.RuntimeCorLib, type.Scope.GetAssembly(), _comparer);
+            Assert.Equal(_module.RuntimeContext.RuntimeCorLib, type.Scope?.GetAssembly(), _comparer);
         }
 
         [Fact]

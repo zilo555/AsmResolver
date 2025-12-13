@@ -290,15 +290,17 @@ namespace AsmResolver.DotNet.Builder
             if (constraint is null)
                 return;
 
-            var table = Metadata.TablesStream.GetTable<GenericParameterConstraintRow>(TableIndex.GenericParamConstraint);
+            var table = Metadata.TablesStream.GetDistinctTable<GenericParameterConstraintRow>(TableIndex.GenericParamConstraint);
 
             var row = new GenericParameterConstraintRow(
                 ownerToken.Rid,
                 GetTypeDefOrRefIndex(constraint.Constraint, constraint));
 
-            var token = table.Add(row);
-            _tokenMapping.Register(constraint, token);
-            AddCustomAttributes(token, constraint);
+            if (table.TryAdd(row, false, out var token))
+            {
+                _tokenMapping.Register(constraint, token);
+                AddCustomAttributes(token, constraint);
+            }
         }
 
         private void AddClassLayout(MetadataToken ownerToken, ClassLayout? layout)

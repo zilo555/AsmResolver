@@ -1,7 +1,10 @@
 using System;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using AsmResolver.DotNet.Signatures;
 using Xunit;
+using FieldAttributes = AsmResolver.PE.DotNet.Metadata.Tables.FieldAttributes;
 
 namespace AsmResolver.DotNet.Tests
 {
@@ -110,6 +113,38 @@ namespace AsmResolver.DotNet.Tests
                 .CreateTypeReference("System", "Nullable`1")
                 .MakeGenericInstanceType(module.CorLibTypeFactory.Int32);
             Assert.True(genericType.IsValueType);
+        }
+
+        [Fact]
+        public void AddReferenceTwiceShouldAddCustomAttributesOnce()
+        {
+            // https://github.com/Washi1337/AsmResolver/pull/697
+
+            // Prepare module.
+            var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
+
+            // Add some assembly ref with a CA.
+            var reference = new AssemblyReference("Foo", new Version(1, 0, 0, 0));
+            var ctor = module.CorLibTypeFactory.CorLibScope
+                .CreateTypeReference("System", "ObsoleteAttribute")
+                .CreateMemberReference(".ctor", MethodSignature.CreateInstance(module.CorLibTypeFactory.Void));
+            reference.CustomAttributes.Add(new CustomAttribute(ctor));
+
+            // Reference the assembly twice.
+            var moduleType = module.GetOrCreateModuleType();
+            var type = reference.CreateTypeReference("SomeNamespace", "SomeType").ToTypeSignature(false);
+            moduleType.Fields.Add(new FieldDefinition("Foo1", FieldAttributes.Static, type));
+            moduleType.Fields.Add(new FieldDefinition("Foo2", FieldAttributes.Static, type));
+
+            // Rebuild.
+            using var stream = new MemoryStream();
+            module.Write(stream);
+
+            // Verify the assembly ref still has only one CA.
+            var newModule =  ModuleDefinition.FromBytes(stream.ToArray());
+            var newReference = Assert.Single(newModule.AssemblyReferences, x => x.Name == "Foo");
+            var newAttribute = Assert.Single(newReference.CustomAttributes);
+            Assert.Equal(ctor, newAttribute.Constructor, SignatureComparer.Default);
         }
     }
 }
