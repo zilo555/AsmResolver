@@ -19,6 +19,10 @@ namespace AsmResolver
         IEquatable<byte[]>,
         IComparable<Utf8String>,
         IEnumerable<char>
+#if NET10_0_OR_GREATER
+        , ISpanFormattable
+        , IUtf8SpanFormattable
+#endif
     {
         /// <summary>
         /// Represents the empty UTF-8 string.
@@ -360,6 +364,45 @@ namespace AsmResolver
 
         /// <inheritdoc />
         public override string ToString() => Value;
+
+#if NET10_0_OR_GREATER
+        /// <inheritdoc />
+        public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
+        {
+            if (Value.TryCopyTo(destination))
+            {
+                charsWritten = Value.Length;
+
+                return true;
+
+            }
+
+            charsWritten = 0;
+
+            return false;
+        }
+
+        /// <inheritdoc />
+        public string ToString(string? format, IFormatProvider? formatProvider)
+        {
+            return ToString();
+        }
+
+        /// <inheritdoc />
+        public bool TryFormat(Span<byte> utf8Destination, out int bytesWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
+        {
+            if (_data.AsSpan().TryCopyTo(utf8Destination))
+            {
+                bytesWritten = _data.Length;
+
+                return true;
+            }
+
+            bytesWritten = 0;
+
+            return false;
+        }
+#endif
 
         /// <summary>
         /// Converts a <see cref="Utf8String"/> into a <see cref="System.String"/>.
