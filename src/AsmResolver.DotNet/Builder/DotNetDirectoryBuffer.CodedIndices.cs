@@ -1,4 +1,5 @@
 ﻿using System;
+using AsmResolver.DotNet.Builder.Metadata;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 
@@ -43,7 +44,9 @@ namespace AsmResolver.DotNet.Builder
                 TableIndex.AssemblyRef => AddAssemblyReference(scope as AssemblyReference, allowDuplicates, preserveRid, diagnosticSource),
                 TableIndex.TypeRef => AddTypeReference(scope as TypeReference, allowDuplicates, preserveRid),
                 TableIndex.ModuleRef => AddModuleReference(scope as ModuleReference, allowDuplicates, preserveRid, diagnosticSource),
-                TableIndex.Module => new MetadataToken(TableIndex.Module, 1),
+                TableIndex.Module when scope.ContextModule == Module => new MetadataToken(TableIndex.Module, 1),
+                TableIndex.Module when scope.GetAssembly() is { } assembly => AddAssemblyReference(assembly.ToAssemblyReference(), false, false, diagnosticSource),
+                TableIndex.Module => ErrorListener.RegisterExceptionAndReturnDefault<MetadataToken>(new MemberNotImportedException(scope, diagnosticSource)),
                 _ => throw new ArgumentOutOfRangeException(nameof(scope))
             };
 
