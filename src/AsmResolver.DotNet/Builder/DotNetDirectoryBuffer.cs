@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using AsmResolver.DotNet.Builder.Metadata;
 using AsmResolver.DotNet.Builder.Resources;
 using AsmResolver.DotNet.Builder.VTableFixups;
 using AsmResolver.DotNet.Code;
 using AsmResolver.DotNet.Code.Native;
+using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using AsmResolver.PE.Platforms;
@@ -127,6 +127,11 @@ namespace AsmResolver.DotNet.Builder
         private bool IsInSameModule([NotNullWhen(true)] IModuleProvider? member)
         {
             return member is not null && member.ContextModule == Module;
+        }
+
+        private uint SerializeBlobSignature(BlobSignature? signature, object? diagnosticSource)
+        {
+            return Metadata.BlobStream.GetBlobIndex(Module, this, signature, ErrorListener, diagnosticSource);
         }
 
         /// <summary>

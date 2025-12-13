@@ -291,7 +291,7 @@ namespace AsmResolver.DotNet.Signatures
                     }
 
                     writer.WriteByte((byte) ElementType.Enum);
-                    writer.WriteSerString(TypeNameBuilder.GetAssemblyQualifiedName(type));
+                    writer.WriteSerString(TypeNameBuilder.GetAssemblyQualifiedName(type, context.ContextModule));
                     return;
             }
         }

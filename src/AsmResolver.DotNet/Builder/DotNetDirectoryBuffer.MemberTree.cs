@@ -178,7 +178,8 @@ namespace AsmResolver.DotNet.Builder
                 var row = new FieldDefinitionRow(
                     field.Attributes,
                     Metadata.StringsStream.GetStringIndex(field.Name),
-                    Metadata.BlobStream.GetBlobIndex(this, field.Signature, ErrorListener, field));
+                    SerializeBlobSignature(field.Signature, field)
+                );
 
                 var token = table.Add(row);
                 _tokenMapping.Register(field, token);
@@ -206,8 +207,9 @@ namespace AsmResolver.DotNet.Builder
                     method.ImplAttributes,
                     method.Attributes,
                     Metadata.StringsStream.GetStringIndex(method.Name),
-                    Metadata.BlobStream.GetBlobIndex(this, method.Signature, ErrorListener, method),
-                    0);
+                    SerializeBlobSignature(method.Signature, method),
+                    0
+                );
 
                 var token = table.Add(row);
                 _tokenMapping.Register(method, token);
@@ -258,7 +260,8 @@ namespace AsmResolver.DotNet.Builder
                 var row = new PropertyDefinitionRow(
                     property.Attributes,
                     Metadata.StringsStream.GetStringIndex(property.Name),
-                    Metadata.BlobStream.GetBlobIndex(this, property.Signature, ErrorListener, property));
+                    SerializeBlobSignature(property.Signature, property)
+                );
 
                 var token = table.Add(row);
                 _tokenMapping.Register(property, token);
@@ -667,7 +670,8 @@ namespace AsmResolver.DotNet.Builder
             var row = new FileReferenceRow(
                 fileReference.Attributes,
                 Metadata.StringsStream.GetStringIndex(fileReference.Name),
-                Metadata.BlobStream.GetBlobIndex(fileReference.HashValue));
+                Metadata.BlobStream.GetBlobIndex(fileReference.HashValue)
+            );
 
             var token = table.Add(row);
             _tokenMapping.Register(fileReference, token);

@@ -29,7 +29,8 @@ namespace AsmResolver.DotNet.Builder
             var row = new CustomAttributeRow(
                 encoder.EncodeToken(ownerToken),
                 AddCustomAttributeType(attribute.Constructor, attribute),
-                Metadata.BlobStream.GetBlobIndex(this, attribute.Signature, ErrorListener, attribute));
+                SerializeBlobSignature(attribute.Signature, attribute)
+            );
 
             table.Add(attribute, row);
         }
@@ -139,7 +140,8 @@ namespace AsmResolver.DotNet.Builder
             var row = new ConstantRow(
                 constant.Type,
                 encoder.EncodeToken(ownerToken),
-                Metadata.BlobStream.GetBlobIndex(this, constant.Value, ErrorListener, constant));
+                SerializeBlobSignature(constant.Value, constant)
+            );
 
             table.Add(constant, row);
         }
@@ -193,7 +195,8 @@ namespace AsmResolver.DotNet.Builder
                 var row = new SecurityDeclarationRow(
                     declaration.Action,
                     encoder.EncodeToken(ownerToken),
-                    Metadata.BlobStream.GetBlobIndex(this, declaration.PermissionSet, ErrorListener, declaration));
+                    SerializeBlobSignature(declaration.PermissionSet, declaration)
+                );
                 table.Add(declaration, row);
             }
         }
@@ -208,7 +211,9 @@ namespace AsmResolver.DotNet.Builder
 
             var row = new FieldMarshalRow(
                 encoder.EncodeToken(ownerToken),
-                Metadata.BlobStream.GetBlobIndex(this, owner.MarshalDescriptor, ErrorListener, owner));
+                SerializeBlobSignature(owner.MarshalDescriptor, owner)
+            );
+
             table.Add(owner, row);
         }
 

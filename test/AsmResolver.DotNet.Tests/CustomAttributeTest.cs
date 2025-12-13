@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using AsmResolver.DotNet.Collections;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.TestCases.CustomAttributes;
 using AsmResolver.DotNet.TestCases.Properties;
@@ -788,6 +789,35 @@ namespace AsmResolver.DotNet.Tests
             // If we add it, it should be compatible again.
             attribute.Signature.FixedArguments.Add(new CustomAttributeArgument(factory.Boolean, true));
             Assert.True(attribute.Signature!.IsCompatibleWith(attribute.Constructor!));
+        }
+
+        [Fact]
+        public void WriteExternalTypeDefinitionParameterShouldIncludeAssemblyScope()
+        {
+            var dependencyModule = ModuleDefinition.FromFile(typeof(CustomAttributesTestClass).Assembly.Location, TestReaderParameters);
+            var attributeType = dependencyModule.LookupMember<TypeDefinition>(typeof(TestCaseAttribute).MetadataToken);
+            var attributeCtor = attributeType.Methods.First(m => m is
+            {
+                IsConstructor: true,
+                Parameters: [{ParameterType: {Namespace: "System", Name: "Type"}}]
+            });
+
+            var module = new ModuleDefinition("Dummy");
+            var field = new FieldDefinition("foo", FieldAttributes.Static, module.CorLibTypeFactory.Object);
+            module.GetOrCreateModuleType().Fields.Add(field);
+
+            var attribute = new CustomAttribute(attributeCtor);
+            attribute.Signature!.FixedArguments.Add(new CustomAttributeArgument(attributeCtor.Parameters[0].ParameterType, attributeType.ToTypeSignature(false)));
+            field.CustomAttributes.Add(attribute);
+
+            using var stream = new MemoryStream();
+            module.Write(stream);
+
+            var newModule = ModuleDefinition.FromBytes(stream.ToArray());
+            var newAttribute = newModule.GetModuleType()!.Fields[0].CustomAttributes[0];
+            var newAttributeType = Assert.IsAssignableFrom<TypeSignature>(Assert.Single(newAttribute.Signature!.FixedArguments).Element).GetUnderlyingTypeDefOrRef()!;
+
+            Assert.Equal(attributeType.DeclaringModule!.Assembly, newAttributeType.Scope?.GetAssembly(), SignatureComparer.Default);
         }
     }
 }
