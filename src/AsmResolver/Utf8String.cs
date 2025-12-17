@@ -374,13 +374,11 @@ namespace AsmResolver
             if (Value.TryCopyTo(destination))
             {
                 charsWritten = Value.Length;
-
                 return true;
 
             }
 
             charsWritten = 0;
-
             return false;
         }
 
@@ -398,12 +396,10 @@ namespace AsmResolver
             if (_data.AsSpan().TryCopyTo(utf8Destination))
             {
                 bytesWritten = _data.Length;
-
                 return true;
             }
 
             bytesWritten = 0;
-
             return false;
         }
 #endif
