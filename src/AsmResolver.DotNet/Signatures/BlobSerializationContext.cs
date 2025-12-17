@@ -12,20 +12,28 @@ namespace AsmResolver.DotNet.Signatures
         /// Creates a new instance of the <see cref="BlobSerializationContext"/> class.
         /// </summary>
         /// <param name="writer">The output stream to write the raw data to.</param>
+        /// <param name="contextModule">The context module to assume the blob is serialized in.</param>
         /// <param name="indexProvider">The object responsible for obtaining coded indices to types.</param>
         /// <param name="errorListener">The object responsible for collecting diagnostic information during the serialization process.</param>
         /// <param name="diagnosticSource">When available, the object that is reported in diagnostics when serialization of the blob fails.</param>
         public BlobSerializationContext(
             BinaryStreamWriter writer,
+            ModuleDefinition contextModule,
             ITypeCodedIndexProvider indexProvider,
             IErrorListener errorListener,
             object? diagnosticSource)
         {
             Writer = writer ?? throw new ArgumentNullException(nameof(writer));
+            ContextModule = contextModule;
             IndexProvider = indexProvider ?? throw new ArgumentNullException(nameof(indexProvider));
             ErrorListener = errorListener ?? throw new ArgumentNullException(nameof(errorListener));
             DiagnosticSource = diagnosticSource;
         }
+
+        /// <summary>
+        /// Gets the module that is assumed the final blob is stored in.
+        /// </summary>
+        public ModuleDefinition ContextModule { get; }
 
         /// <summary>
         /// Gets the output stream to write the raw data to.

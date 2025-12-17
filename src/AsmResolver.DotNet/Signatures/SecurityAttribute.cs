@@ -77,7 +77,7 @@ namespace AsmResolver.DotNet.Signatures
         {
             var writer = context.Writer;
 
-            string attributeTypeString = TypeNameBuilder.GetAssemblyQualifiedName(AttributeType);
+            string attributeTypeString = TypeNameBuilder.GetAssemblyQualifiedName(AttributeType, context.ContextModule);
             writer.WriteSerString(attributeTypeString);
 
             if (NamedArguments.Count == 0)
@@ -90,6 +90,7 @@ namespace AsmResolver.DotNet.Signatures
                 using var subBlob = new MemoryStream();
                 var subContext = new BlobSerializationContext(
                     new BinaryStreamWriter(subBlob),
+                    context.ContextModule,
                     context.IndexProvider,
                     context.ErrorListener,
                     context.DiagnosticSource

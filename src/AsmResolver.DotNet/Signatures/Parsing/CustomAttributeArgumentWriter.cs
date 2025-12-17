@@ -90,7 +90,7 @@ namespace AsmResolver.DotNet.Signatures.Parsing
 
             if (argumentType.IsTypeOf("System", "Type"))
             {
-                writer.WriteSerString(TypeNameBuilder.GetAssemblyQualifiedName((TypeSignature) element));
+                writer.WriteSerString(TypeNameBuilder.GetAssemblyQualifiedName((TypeSignature) element, _context.ContextModule));
                 return;
             }
 

@@ -1,4 +1,6 @@
+using System;
 using AsmResolver.DotNet.Signatures.Parsing;
+using AsmResolver.PE.DotNet.Metadata.Tables;
 using Xunit;
 
 namespace AsmResolver.DotNet.Tests.Signatures
@@ -85,6 +87,21 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var type = _module.CorLibTypeFactory.Object;
             string name = TypeNameBuilder.GetAssemblyQualifiedName(type);
             Assert.Equal("System.Object, System.Private.CoreLib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e", name);
+        }
+
+        [Fact]
+        public void ExternalTypeShouldIncludeAssemblySpec()
+        {
+            // Prepare dependency module with a type.
+            var dependencyAssembly = new AssemblyDefinition("Foo", new Version(1, 0, 0, 0));
+            var dependencyModule = new ModuleDefinition("Foo.dll");
+            dependencyAssembly.Modules.Add(dependencyModule);
+            dependencyModule.TopLevelTypes.Add(new TypeDefinition("SomeNamespace", "SomeType", TypeAttributes.Public, dependencyModule.CorLibTypeFactory.Object.Type));
+
+            // Create a reference based on an external ModuleDefinition
+            var reference = dependencyModule.CreateTypeReference("SomeNamespace", "SomeType");
+            string name = TypeNameBuilder.GetAssemblyQualifiedName(reference.ToTypeSignature(false), _module);
+            Assert.Equal("SomeNamespace.SomeType, Foo, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null", name);
         }
     }
 }

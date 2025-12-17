@@ -1,6 +1,9 @@
 using System;
+using System.IO;
 using System.Linq;
+using AsmResolver.DotNet.Builder;
 using AsmResolver.DotNet.Signatures;
+using AsmResolver.PE.Builder;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using Xunit;
 
@@ -192,6 +195,52 @@ namespace AsmResolver.DotNet.Tests
             var type = new TypeReference(module, "SomeNamespace", "SomeType");
             type.Namespace = string.Empty;
             Assert.Null(type.Namespace);
+        }
+
+        [Fact]
+        public void CreateTypeReferenceOnCurrentModuleDefShouldPreserveModuleDefScope()
+        {
+            // Create a reference based on an internal type definition.
+            var module = new ModuleDefinition("SomeModule");
+            module.TopLevelTypes.Add(new TypeDefinition("SomeNamespace", "SomeType", TypeAttributes.Public, module.CorLibTypeFactory.Object.Type));
+            var reference = module.CreateTypeReference("SomeNamespace", "SomeType");
+            module.GetOrCreateModuleType().Fields.Add(new FieldDefinition("Foo", FieldAttributes.Static, reference.ToTypeSignature(false)));
+
+            // Rebuild
+            using var stream = new MemoryStream();
+            module.Write(stream);
+
+            // Verify.
+            var newModule = ModuleDefinition.FromBytes(stream.ToArray());
+            var newReference = newModule.GetOrCreateModuleType().Fields[0].Signature!.FieldType.GetUnderlyingTypeDefOrRef()!;
+            Assert.IsAssignableFrom<ModuleDefinition>(newReference.Scope);
+            Assert.Equal(reference.Scope!.GetAssembly(), newReference.Scope!.GetAssembly(), SignatureComparer.Default);
+        }
+
+
+        [Fact]
+        public void CreateTypeReferenceOnExternalModuleDefShouldReferenceParentAssembly()
+        {
+            // Prepare dependency module with a type.
+            var dependencyAssembly = new AssemblyDefinition("Foo", new Version(1, 0, 0, 0));
+            var dependencyModule = new ModuleDefinition("Foo.dll");
+            dependencyAssembly.Modules.Add(dependencyModule);
+            dependencyModule.TopLevelTypes.Add(new TypeDefinition("SomeNamespace", "SomeType", TypeAttributes.Public, dependencyModule.CorLibTypeFactory.Object.Type));
+
+            // Create a reference based on an external ModuleDefinition
+            var module = new ModuleDefinition("SomeModule");
+            var reference = dependencyModule.CreateTypeReference("SomeNamespace", "SomeType");
+            module.GetOrCreateModuleType().Fields.Add(new FieldDefinition("Foo", FieldAttributes.Static, reference.ToTypeSignature(false)));
+
+            // Rebuild
+            using var stream = new MemoryStream();
+            module.Write(stream);
+
+            // Verify.
+            var newModule = ModuleDefinition.FromBytes(stream.ToArray());
+            var newReference = newModule.GetOrCreateModuleType().Fields[0].Signature!.FieldType.GetUnderlyingTypeDefOrRef()!;
+            Assert.IsAssignableFrom<AssemblyReference>(newReference.Scope);
+            Assert.Equal(reference.Scope!.GetAssembly(), newReference.Scope!.GetAssembly(), SignatureComparer.Default);
         }
     }
 }

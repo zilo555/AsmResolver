@@ -89,11 +89,11 @@ namespace AsmResolver.DotNet.Builder
                 Metadata.StringsStream.GetStringIndex(type.Namespace)
             );
 
-            var token = preserveRid && type.MetadataToken.Rid != 0
-                ? table.Insert(type.MetadataToken.Rid, row, allowDuplicates)
-                : table.Add(row, allowDuplicates);
+            bool added = preserveRid && type.MetadataToken.Rid != 0
+                ? table.TryInsert(type.MetadataToken.Rid, row, allowDuplicates, out var token)
+                : table.TryAdd(row, allowDuplicates, out token);
 
-            if (type is TypeReference reference)
+            if (added && type is TypeReference reference)
             {
                 _tokenMapping.Register(reference, token);
                 AddCustomAttributes(token, type);
@@ -240,11 +240,11 @@ namespace AsmResolver.DotNet.Builder
             var row = new MemberReferenceRow(
                 AddMemberRefParent(parent, memberSource),
                 Metadata.StringsStream.GetStringIndex(name),
-                Metadata.BlobStream.GetBlobIndex(this, signature, ErrorListener, diagnosticSource)
+                SerializeBlobSignature(signature, diagnosticSource)
             );
 
-            var token = table.Add(row, allowDuplicates);
-            if (memberSource is MemberReference)
+            if (table.TryAdd(row, allowDuplicates, out var token)
+                && memberSource is MemberReference)
             {
                 _tokenMapping.Register(memberSource, token);
                 AddCustomAttributes(token, memberSource);
@@ -276,12 +276,15 @@ namespace AsmResolver.DotNet.Builder
 
             var table = Metadata.TablesStream.GetDistinctTable<StandAloneSignatureRow>(TableIndex.StandAloneSig);
             var row = new StandAloneSignatureRow(
-                Metadata.BlobStream.GetBlobIndex(this, signature.Signature, ErrorListener, diagnosticSource)
+                SerializeBlobSignature(signature.Signature, diagnosticSource)
             );
 
-            var token = table.Add(row, allowDuplicates);
-            _tokenMapping.Register(signature, token);
-            AddCustomAttributes(token, signature);
+            if (table.TryAdd(row, allowDuplicates, out var token))
+            {
+                _tokenMapping.Register(signature, token);
+                AddCustomAttributes(token, signature);
+            }
+
             return token;
         }
 
@@ -323,11 +326,13 @@ namespace AsmResolver.DotNet.Builder
                 Metadata.BlobStream.GetBlobIndex(assembly.HashValue)
             );
 
-            var token = preserveRid && assembly.MetadataToken.Rid != 0
-                ? table.Insert(assembly.MetadataToken.Rid, row, allowDuplicates)
-                : table.Add(row, allowDuplicates);
+            bool added = preserveRid && assembly.MetadataToken.Rid != 0
+                ? table.TryInsert(assembly.MetadataToken.Rid, row, allowDuplicates, out var token)
+                : table.TryAdd(row, allowDuplicates, out token);
 
-            AddCustomAttributes(token, assembly);
+            if (added)
+                AddCustomAttributes(token, assembly);
+
             return token;
         }
 
@@ -363,11 +368,13 @@ namespace AsmResolver.DotNet.Builder
             var table = Metadata.TablesStream.GetDistinctTable<ModuleReferenceRow>(TableIndex.ModuleRef);
 
             var row = new ModuleReferenceRow(Metadata.StringsStream.GetStringIndex(module.Name));
-            var token = preserveRid && module.MetadataToken.Rid != 0
-                ? table.Insert(module.MetadataToken.Rid, row, allowDuplicates)
-                : table.Add(row, allowDuplicates);
+            bool added = preserveRid && module.MetadataToken.Rid != 0
+                ? table.TryInsert(module.MetadataToken.Rid, row, allowDuplicates, out var token)
+                : table.TryAdd(row, allowDuplicates, out token);
 
-            AddCustomAttributes(token, module);
+            if (added)
+                AddCustomAttributes(token, module);
+
             return token;
         }
 
@@ -394,12 +401,15 @@ namespace AsmResolver.DotNet.Builder
 
             var table = Metadata.TablesStream.GetDistinctTable<TypeSpecificationRow>(TableIndex.TypeSpec);
             var row = new TypeSpecificationRow(
-                Metadata.BlobStream.GetBlobIndex(this, type.Signature, ErrorListener, diagnosticSource)
+                SerializeBlobSignature(type.Signature, diagnosticSource)
             );
 
-            var token = table.Add(row, allowDuplicates);
-            _tokenMapping.Register(type, token);
-            AddCustomAttributes(token, type);
+            if (table.TryAdd(row, allowDuplicates, out var token))
+            {
+                _tokenMapping.Register(type, token);
+                AddCustomAttributes(token, type);
+            }
+
             return token;
         }
 
@@ -427,12 +437,15 @@ namespace AsmResolver.DotNet.Builder
             var table = Metadata.TablesStream.GetDistinctTable<MethodSpecificationRow>(TableIndex.MethodSpec);
             var row = new MethodSpecificationRow(
                 AddMethodDefOrRef(method.Method, method),
-                Metadata.BlobStream.GetBlobIndex(this, method.Signature, ErrorListener, diagnosticSource)
+                SerializeBlobSignature(method.Signature, diagnosticSource)
             );
 
-            var token = table.Add(row, allowDuplicates);
-            _tokenMapping.Register(method, token);
-            AddCustomAttributes(token, method);
+            if (table.TryAdd(row, allowDuplicates, out var token))
+            {
+                _tokenMapping.Register(method, token);
+                AddCustomAttributes(token, method);
+            }
+
             return token;
         }
     }

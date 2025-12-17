@@ -144,7 +144,7 @@ namespace AsmResolver.DotNet.Signatures
                 writer.WriteCompressedUInt32(((uint) VariantType & 0xFFF) | (uint) VariantTypeFlags);
 
                 if (UserDefinedSubType != null)
-                    writer.WriteSerString(TypeNameBuilder.GetAssemblyQualifiedName(UserDefinedSubType));
+                    writer.WriteSerString(TypeNameBuilder.GetAssemblyQualifiedName(UserDefinedSubType, context.ContextModule));
             }
         }
     }

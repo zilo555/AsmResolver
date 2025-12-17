@@ -93,7 +93,7 @@ namespace AsmResolver.DotNet.Signatures
             writer.WriteByte((byte) NativeType);
             writer.WriteSerString(Guid ?? string.Empty);
             writer.WriteSerString(NativeTypeName ?? Utf8String.Empty);
-            writer.WriteSerString(MarshalType is null ? string.Empty : TypeNameBuilder.GetAssemblyQualifiedName(MarshalType));
+            writer.WriteSerString(MarshalType is null ? string.Empty : TypeNameBuilder.GetAssemblyQualifiedName(MarshalType, context.ContextModule));
             writer.WriteSerString(Cookie ?? Utf8String.Empty);
         }
     }

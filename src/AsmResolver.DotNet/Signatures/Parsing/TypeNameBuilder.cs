@@ -20,10 +20,12 @@ namespace AsmResolver.DotNet.Signatures.Parsing
     public sealed class TypeNameBuilder : ITypeSignatureVisitor<object?>
     {
         private readonly TextWriter _writer;
+        private readonly ModuleDefinition? _destinationModule;
 
-        private TypeNameBuilder(TextWriter writer)
+        private TypeNameBuilder(TextWriter writer, ModuleDefinition? destinationModule)
         {
             _writer = writer ?? throw new ArgumentNullException(nameof(writer));
+            _destinationModule = destinationModule;
         }
 
         /// <summary>
@@ -34,7 +36,21 @@ namespace AsmResolver.DotNet.Signatures.Parsing
         public static string GetAssemblyQualifiedName(TypeSignature signature)
         {
             var writer = new StringWriter();
-            var builder = new TypeNameBuilder(writer);
+            var builder = new TypeNameBuilder(writer, signature.ContextModule);
+            builder.WriteTypeAssemblyQualifiedName(signature);
+            return writer.ToString();
+        }
+
+        /// <summary>
+        /// Builds up an assembly qualified type name.
+        /// </summary>
+        /// <param name="signature">The type to convert to a string.</param>
+        /// <param name="destinationModule">The module to assume the name is stored in.</param>
+        /// <returns>The built up type name.</returns>
+        public static string GetAssemblyQualifiedName(TypeSignature signature, ModuleDefinition? destinationModule)
+        {
+            var writer = new StringWriter();
+            var builder = new TypeNameBuilder(writer, destinationModule);
             builder.WriteTypeAssemblyQualifiedName(signature);
             return writer.ToString();
         }
@@ -44,7 +60,7 @@ namespace AsmResolver.DotNet.Signatures.Parsing
             type.AcceptVisitor(this);
 
             var assembly = type.Scope?.GetAssembly();
-            if (assembly is not null && assembly != type.ContextModule?.Assembly)
+            if (assembly is not null && (_destinationModule is null || assembly != _destinationModule.Assembly))
             {
                 _writer.Write(", ");
                 WriteAssemblySpec(assembly);

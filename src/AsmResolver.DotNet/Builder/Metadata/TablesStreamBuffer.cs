@@ -9,10 +9,10 @@ namespace AsmResolver.DotNet.Builder.Metadata
     public class TablesStreamBuffer : IMetadataStreamBuffer
     {
         private static readonly TableIndex[] EncTables =
-        {
+        [
             TableIndex.FieldPtr, TableIndex.MethodPtr, TableIndex.ParamPtr, TableIndex.EventPtr, TableIndex.PropertyPtr,
-            TableIndex.EncLog, TableIndex.EncMap,
-        };
+            TableIndex.EncLog, TableIndex.EncMap
+        ];
 
         private readonly TablesStream _tablesStream = new();
         private readonly IMetadataTableBuffer[] _tableBuffers;
@@ -22,8 +22,8 @@ namespace AsmResolver.DotNet.Builder.Metadata
         /// </summary>
         public TablesStreamBuffer()
         {
-            _tableBuffers = new IMetadataTableBuffer[]
-            {
+            _tableBuffers =
+            [
                 Unsorted<ModuleDefinitionRow>(TableIndex.Module),
                 Distinct<TypeReferenceRow>(TableIndex.TypeRef),
                 Unsorted<TypeDefinitionRow>(TableIndex.TypeDef),
@@ -64,12 +64,12 @@ namespace AsmResolver.DotNet.Builder.Metadata
                 Unsorted<AssemblyRefOSRow>(TableIndex.AssemblyRefOS),
                 Distinct<FileReferenceRow>(TableIndex.File),
                 Distinct<ExportedTypeRow>(TableIndex.ExportedType),
-                Distinct<ManifestResourceRow>(TableIndex.ManifestResource),
+                Unsorted<ManifestResourceRow>(TableIndex.ManifestResource),
                 Sorted<TypeDefinition, NestedClassRow>(TableIndex.NestedClass, 0),
                 Sorted<GenericParameter, GenericParameterRow>(TableIndex.GenericParam, 2, 0),
                 Distinct<MethodSpecificationRow>(TableIndex.MethodSpec),
-                Distinct<GenericParameterConstraintRow>(TableIndex.GenericParamConstraint),
-            };
+                Distinct<GenericParameterConstraintRow>(TableIndex.GenericParamConstraint)
+            ];
         }
 
         /// <inheritdoc />
@@ -125,10 +125,10 @@ namespace AsmResolver.DotNet.Builder.Metadata
         /// <param name="table">The index of the table to get.</param>
         /// <typeparam name="TRow">The type of rows the table stores.</typeparam>
         /// <returns>The metadata table.</returns>
-        public IMetadataTableBuffer<TRow> GetTable<TRow>(TableIndex table)
+        public UnsortedMetadataTableBuffer<TRow> GetTable<TRow>(TableIndex table)
             where TRow : struct, IMetadataRow
         {
-            return (IMetadataTableBuffer<TRow>) _tableBuffers[(int) table];
+            return (UnsortedMetadataTableBuffer<TRow>) _tableBuffers[(int) table];
         }
 
         /// <summary>
@@ -150,10 +150,11 @@ namespace AsmResolver.DotNet.Builder.Metadata
         /// <typeparam name="TKey">The type of members that are assigned new metadata rows.</typeparam>
         /// <typeparam name="TRow">The type of rows the table stores.</typeparam>
         /// <returns>The metadata table.</returns>
-        public ISortedMetadataTableBuffer<TKey, TRow> GetSortedTable<TKey, TRow>(TableIndex table)
+        public SortedMetadataTableBuffer<TKey, TRow> GetSortedTable<TKey, TRow>(TableIndex table)
             where TRow : struct, IMetadataRow
+            where TKey : notnull
         {
-            return (ISortedMetadataTableBuffer<TKey, TRow>) _tableBuffers[(int) table];
+            return (SortedMetadataTableBuffer<TKey, TRow>) _tableBuffers[(int) table];
         }
 
         /// <summary>
@@ -181,19 +182,19 @@ namespace AsmResolver.DotNet.Builder.Metadata
         /// <inheritdoc />
         IMetadataStream IMetadataStreamBuffer.CreateStream() => CreateStream();
 
-        private IMetadataTableBuffer<TRow> Unsorted<TRow>(TableIndex table)
+        private UnsortedMetadataTableBuffer<TRow> Unsorted<TRow>(TableIndex table)
             where TRow : struct, IMetadataRow
         {
             return new UnsortedMetadataTableBuffer<TRow>((MetadataTable<TRow>) _tablesStream.GetTable(table));
         }
 
-        private IMetadataTableBuffer<TRow> Distinct<TRow>(TableIndex table)
+        private DistinctMetadataTableBuffer<TRow> Distinct<TRow>(TableIndex table)
             where TRow : struct, IMetadataRow
         {
             return new DistinctMetadataTableBuffer<TRow>(Unsorted<TRow>(table));
         }
 
-        private ISortedMetadataTableBuffer<TKey, TRow> Sorted<TKey, TRow>(TableIndex table, int primaryColumn)
+        private SortedMetadataTableBuffer<TKey, TRow> Sorted<TKey, TRow>(TableIndex table, int primaryColumn)
             where TKey : notnull
             where TRow : struct, IMetadataRow
         {
@@ -202,7 +203,7 @@ namespace AsmResolver.DotNet.Builder.Metadata
                 primaryColumn);
         }
 
-        private ISortedMetadataTableBuffer<TKey, TRow> Sorted<TKey, TRow>(TableIndex table, int primaryColumn, int secondaryColumn)
+        private SortedMetadataTableBuffer<TKey, TRow> Sorted<TKey, TRow>(TableIndex table, int primaryColumn, int secondaryColumn)
             where TKey : notnull
             where TRow : struct, IMetadataRow
         {
