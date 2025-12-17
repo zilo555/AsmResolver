@@ -19,8 +19,10 @@ namespace AsmResolver
         IEquatable<byte[]>,
         IComparable<Utf8String>,
         IEnumerable<char>
-#if NET10_0_OR_GREATER
+#if NET6_0_OR_GREATER
         , ISpanFormattable
+#endif
+#if NET8_0_OR_GREATER
         , IUtf8SpanFormattable
 #endif
     {
@@ -365,7 +367,7 @@ namespace AsmResolver
         /// <inheritdoc />
         public override string ToString() => Value;
 
-#if NET10_0_OR_GREATER
+#if NET6_0_OR_GREATER
         /// <inheritdoc />
         public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
         {
@@ -387,7 +389,9 @@ namespace AsmResolver
         {
             return ToString();
         }
+#endif
 
+#if NET8_0_OR_GREATER
         /// <inheritdoc />
         public bool TryFormat(Span<byte> utf8Destination, out int bytesWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
         {
