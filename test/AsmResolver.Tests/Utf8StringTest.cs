@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace AsmResolver.Tests
@@ -12,6 +14,35 @@ namespace AsmResolver.Tests
             const string text = "Hello, World";
             Utf8String utf8 = text;
             Assert.Equal(text, utf8.Value);
+        }
+
+        [Fact]
+        public void FormattableEqualsToString()
+        {
+            Utf8String text = "Hello world!"u8;
+
+            DefaultInterpolatedStringHandler handler1 = new(0, 0);
+            DefaultInterpolatedStringHandler handler2 = new(0, 0);
+
+            handler1.AppendLiteral(text.ToString());
+            handler2.AppendFormatted(text);
+
+            Assert.Equal(handler1.ToStringAndClear(), handler2.ToStringAndClear());
+        }
+
+        [Fact]
+        public void Utf8FormattableEqualsToString()
+        {
+            Utf8String text = "Hello world!"u8;
+
+            Span<byte> buffer = stackalloc byte[256];
+
+            bool result = text.TryFormat(buffer, out int bytesWritten, default, null);
+
+            Assert.True(result);
+            Assert.Equal(bytesWritten, text.ByteCount);
+            Assert.Null(typeof(Utf8String).GetField("_cachedString", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(text));
+            Assert.True(text.AsSpan().SequenceEqual(buffer[..bytesWritten]));
         }
 
         [Theory]
