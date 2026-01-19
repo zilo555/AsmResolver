@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using AsmResolver.DotNet.Collections;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE;
@@ -68,9 +67,9 @@ namespace AsmResolver.DotNet.Serialized
             // Find assembly definition and corlib assembly.
             Assembly = FindParentAssembly();
             CorLibTypeFactory = CreateCorLibTypeFactory();
-            OriginalTargetRuntime = DetectTargetRuntime();
+            OriginalTargetRuntime = TargetRuntimeProber.GetLikelyTargetRuntime(peImage);
 
-            // Initialize metadata resolution engines.
+            // Inherit or create new runtime context.
             if (readerParameters.RuntimeContext is { } runtimeContext)
                 RuntimeContext = runtimeContext;
             else
@@ -124,7 +123,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         public override bool TryLookupString(MetadataToken token, [NotNullWhen(true)] out string? value)
         {
-            if (ReaderContext.UserStringsStream is not { } userStringsStream)
+            if (ReaderContext.Streams.UserStringsStream is not { } userStringsStream)
             {
                 value = null;
                 return false;
@@ -136,12 +135,12 @@ namespace AsmResolver.DotNet.Serialized
 
         /// <inheritdoc />
         public override IndexEncoder GetIndexEncoder(CodedIndex codedIndex) =>
-            ReaderContext.TablesStream.GetIndexEncoder(codedIndex);
+            ReaderContext.Streams.TablesStream!.GetIndexEncoder(codedIndex);
 
         /// <inheritdoc />
         public override IEnumerable<IMetadataMember> EnumerateTableMembers(TableIndex tableIndex)
         {
-            var table = ReaderContext.TablesStream.GetTable(tableIndex);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(tableIndex);
 
             for (uint rid = 1; rid <= table.Count; rid++)
             {
@@ -151,24 +150,24 @@ namespace AsmResolver.DotNet.Serialized
         }
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => ReaderContext.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => ReaderContext.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
-        protected override Guid GetMvid() => ReaderContext.GuidStream?.GetGuidByIndex(_row.Mvid) ?? Guid.Empty;
+        protected override Guid GetMvid() => ReaderContext.Streams.GuidStream?.GetGuidByIndex(_row.Mvid) ?? Guid.Empty;
 
         /// <inheritdoc />
-        protected override Guid GetEncId() => ReaderContext.GuidStream?.GetGuidByIndex(_row.EncId) ?? Guid.Empty;
+        protected override Guid GetEncId() => ReaderContext.Streams.GuidStream?.GetGuidByIndex(_row.EncId) ?? Guid.Empty;
 
         /// <inheritdoc />
-        protected override Guid GetEncBaseId() => ReaderContext.GuidStream?.GetGuidByIndex(_row.EncBaseId) ?? Guid.Empty;
+        protected override Guid GetEncBaseId() => ReaderContext.Streams.GuidStream?.GetGuidByIndex(_row.EncBaseId) ?? Guid.Empty;
 
         /// <inheritdoc />
         protected override IList<TypeDefinition> GetTopLevelTypes()
         {
             EnsureTypeDefinitionTreeInitialized();
 
-            var typeDefTable = ReaderContext.TablesStream.GetTable<TypeDefinitionRow>(TableIndex.TypeDef);
-            int nestedTypeCount = ReaderContext.TablesStream.GetTable(TableIndex.NestedClass).Count;
+            var typeDefTable = ReaderContext.Streams.TablesStream!.GetTable<TypeDefinitionRow>(TableIndex.TypeDef);
+            int nestedTypeCount = ReaderContext.Streams.TablesStream.GetTable(TableIndex.NestedClass).Count;
 
             var types = new MemberCollection<ITypeOwner, TypeDefinition>(this,
                 typeDefTable.Count - nestedTypeCount);
@@ -189,7 +188,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<AssemblyReference> GetAssemblyReferences()
         {
-            var table = ReaderContext.TablesStream.GetTable<AssemblyReferenceRow>(TableIndex.AssemblyRef);
+            var table = ReaderContext.Streams.TablesStream!.GetTable<AssemblyReferenceRow>(TableIndex.AssemblyRef);
 
             var result = new MemberCollection<ModuleDefinition, AssemblyReference>(this, table.Count);
 
@@ -206,7 +205,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<ModuleReference> GetModuleReferences()
         {
-            var table = ReaderContext.TablesStream.GetTable(TableIndex.ModuleRef);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(TableIndex.ModuleRef);
 
             var result = new MemberCollection<ModuleDefinition, ModuleReference>(this, table.Count);
 
@@ -223,7 +222,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<FileReference> GetFileReferences()
         {
-            var table = ReaderContext.TablesStream.GetTable(TableIndex.File);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(TableIndex.File);
 
             var result = new MemberCollection<ModuleDefinition, FileReference>(this, table.Count);
 
@@ -240,7 +239,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<ManifestResource> GetResources()
         {
-            var table = ReaderContext.TablesStream.GetTable(TableIndex.ManifestResource);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(TableIndex.ManifestResource);
 
             var result = new MemberCollection<ModuleDefinition, ManifestResource>(this, table.Count);
 
@@ -257,7 +256,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<ExportedType> GetExportedTypes()
         {
-            var table = ReaderContext.TablesStream.GetTable(TableIndex.ExportedType);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(TableIndex.ExportedType);
 
             var result = new MemberCollection<ModuleDefinition, ExportedType>(this, table.Count);
 
@@ -302,7 +301,7 @@ namespace AsmResolver.DotNet.Serialized
 
         private AssemblyDefinition? FindParentAssembly()
         {
-            var assemblyTable = ReaderContext.TablesStream.GetTable<AssemblyDefinitionRow>(TableIndex.Assembly);
+            var assemblyTable = ReaderContext.Streams.TablesStream!.GetTable<AssemblyDefinitionRow>(TableIndex.Assembly);
 
             if (assemblyTable.Count > 0)
             {

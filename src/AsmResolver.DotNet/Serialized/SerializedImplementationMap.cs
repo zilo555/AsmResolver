@@ -37,11 +37,11 @@ namespace AsmResolver.DotNet.Serialized
             return _context.ParentModule.TryLookupMember(ownerToken, out var member)
                 ? member as IMemberForwarded
                 :  _context.BadImageAndReturn<IMemberForwarded>(
-                    $"Invalid forwarded member in implementation map {MetadataToken.ToString()}.");;
+                    $"Invalid forwarded member in implementation map {MetadataToken.ToString()}.");
         }
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.ImportName);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.ImportName);
 
         /// <inheritdoc />
         protected override ModuleReference? GetScope()

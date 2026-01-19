@@ -35,12 +35,12 @@ namespace AsmResolver.DotNet.Serialized
             : CustomAttributes.Count > 0;
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
         protected override ITypeDefOrRef? GetEventType()
         {
-            var eventTypeToken = _context.TablesStream
+            var eventTypeToken = _context.Streams.TablesStream!
                 .GetIndexEncoder(CodedIndex.TypeDefOrRef)
                 .DecodeIndex(_row.EventType);
 

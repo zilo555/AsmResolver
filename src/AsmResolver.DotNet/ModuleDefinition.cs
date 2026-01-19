@@ -1245,7 +1245,7 @@ namespace AsmResolver.DotNet
         {
             return Assembly is not null && Assembly.TryGetTargetFramework(out var targetRuntime)
                 ? targetRuntime
-                : CorLibTypeFactory.ExtractDotNetRuntimeInfo();
+                : TargetRuntimeProber.ExtractDotNetRuntimeInfo(CorLibTypeFactory.CorLibScope);
         }
 
         /// <inheritdoc />

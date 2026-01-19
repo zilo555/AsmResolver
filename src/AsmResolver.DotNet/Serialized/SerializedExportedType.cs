@@ -36,15 +36,15 @@ namespace AsmResolver.DotNet.Serialized
             : CustomAttributes.Count > 0;
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
-        protected override Utf8String? GetNamespace() => _context.StringsStream?.GetStringByIndex(_row.Namespace);
+        protected override Utf8String? GetNamespace() => _context.Streams.StringsStream?.GetStringByIndex(_row.Namespace);
 
         /// <inheritdoc />
         protected override IImplementation? GetImplementation()
         {
-            var token = _context.TablesStream
+            var token = _context.Streams.TablesStream!
                 .GetIndexEncoder(CodedIndex.Implementation)
                 .DecodeIndex(_row.Implementation);
 

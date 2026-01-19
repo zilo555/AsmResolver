@@ -39,7 +39,7 @@ namespace AsmResolver.DotNet.Serialized
         internal CachedSerializedMemberFactory(ModuleReaderContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
-            _tablesStream = _context.TablesStream;
+            _tablesStream = _context.Streams.TablesStream ?? throw new ArgumentException("Tables stream not found.");
         }
 
         internal bool TryLookupMember(MetadataToken token, [NotNullWhen(true)] out IMetadataMember? member)

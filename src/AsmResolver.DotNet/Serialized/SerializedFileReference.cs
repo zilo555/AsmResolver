@@ -37,10 +37,10 @@ namespace AsmResolver.DotNet.Serialized
             : CustomAttributes.Count > 0;
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
-        protected override byte[]? GetHashValue() => _context.BlobStream?.GetBlobByIndex(_row.HashValue);
+        protected override byte[]? GetHashValue() => _context.Streams.BlobStream?.GetBlobByIndex(_row.HashValue);
 
         /// <inheritdoc />
         protected override IList<CustomAttribute> GetCustomAttributes() =>

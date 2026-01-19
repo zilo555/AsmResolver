@@ -35,7 +35,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IMethodDefOrRef? GetMethod()
         {
-            var methodToken = _context.TablesStream
+            var methodToken = _context.Streams.TablesStream!
                 .GetIndexEncoder(CodedIndex.MethodDefOrRef)
                 .DecodeIndex(_row.Method);
 
@@ -48,7 +48,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override GenericInstanceMethodSignature? GetSignature()
         {
-            if (_context.BlobStream is not { } blobStream
+            if (_context.Streams.BlobStream is not { } blobStream
                 || !blobStream.TryGetBlobReaderByIndex(_row.Instantiation, out var reader))
             {
                 return _context.BadImageAndReturn<GenericInstanceMethodSignature>(
