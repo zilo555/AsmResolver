@@ -1,3 +1,4 @@
+using System.Linq;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.TestCases.Methods;
 using AsmResolver.DotNet.TestCases.Types;
@@ -9,12 +10,25 @@ namespace AsmResolver.DotNet.Tests
     public class RuntimeContextTest
     {
         [Fact]
+        public void LoadAssemblyShouldCreateContextWithAssembly()
+        {
+            var assembly = AssemblyDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
+
+            Assert.NotNull(assembly.RuntimeContext);
+            Assert.Contains(assembly, assembly.RuntimeContext.GetLoadedAssemblies());
+        }
+
+        [Fact]
         public void ResolveDependencyShouldUseSameRuntimeContext()
         {
-            var main = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
-            var dependency = main.CorLibTypeFactory.CorLibScope.GetAssembly()!.Resolve(main.RuntimeContext).Unwrap().ManifestModule!;
+            var main = AssemblyDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
+            var dependency = main.ManifestModule!.CorLibTypeFactory.CorLibScope.GetAssembly()!.Resolve(main.RuntimeContext).Unwrap()!;
 
             Assert.Same(main.RuntimeContext, dependency.RuntimeContext);
+
+            var loadedAssemblies = main.RuntimeContext!.GetLoadedAssemblies().ToArray();
+            Assert.Contains(main, loadedAssemblies);
+            Assert.Contains(dependency, loadedAssemblies);
         }
 
         [Fact]
@@ -84,12 +98,10 @@ namespace AsmResolver.DotNet.Tests
         public void ResolveSameDependencyInSameContextShouldResultInSameAssembly()
         {
             var module1 = ModuleDefinition.FromFile(typeof(Class).Assembly.Location, TestReaderParameters);
-            var module2 = ModuleDefinition.FromFile(typeof(SingleMethod).Assembly.Location, new ModuleReaderParameters
-            {
-                RuntimeContext = module1.RuntimeContext
-            });
+            var context = module1.RuntimeContext;
+            var module2 = context.LoadAssembly(typeof(SingleMethod).Assembly.Location).ManifestModule!;
 
-            var object1 = module1.CorLibTypeFactory.Object.Resolve(module1.RuntimeContext).Unwrap();
+            var object1 = module1.CorLibTypeFactory.Object.Resolve(context).Unwrap();
             var object2 = module2.CorLibTypeFactory.Object.Resolve(module2.RuntimeContext).Unwrap();
 
             Assert.Same(object1, object2);

@@ -49,64 +49,36 @@ namespace AsmResolver.DotNet.Tests
         }
 
         [Fact]
-        public void LoadFromFileShouldPopulateResolverSearchDirectories()
-        {
-            string path = typeof(ModuleDefinitionTest).Assembly.Location;
-            var module = ModuleDefinition.FromFile(path, TestReaderParameters);
-
-            Assert.Contains(
-                Path.GetDirectoryName(path),
-                ((AssemblyResolverBase) module.RuntimeContext.AssemblyResolver).SearchDirectories
-            );
-        }
-
-        [Fact]
-        public void LoadFromBytesShouldLeaveSearchDirectoriesEmpty()
+        public void LoadFromBytesShouldNotResolveDependenciesInSameDirectory()
         {
             string path = typeof(ModuleDefinitionTest).Assembly.Location;
             var module = ModuleDefinition.FromBytes(File.ReadAllBytes(path), TestReaderParameters);
 
-            Assert.DoesNotContain(
-                Path.GetDirectoryName(path),
-                ((AssemblyResolverBase) module.RuntimeContext.AssemblyResolver).SearchDirectories
-            );
+            var reference = module.AssemblyReferences.First(x => x.Name == "AsmResolver.DotNet");
+            Assert.False(reference.Resolve(module.RuntimeContext).IsSuccess);
         }
 
         [Fact]
-        public void LoadFromBytesWithWorkingDirectoryShouldPopulateSearchDirectories()
+        public void LoadFromFileShouldResolveDependenciesInSameDirectory()
         {
             string path = typeof(ModuleDefinitionTest).Assembly.Location;
-            var module = ModuleDefinition.FromBytes(
-                File.ReadAllBytes(path),
-                new ModuleReaderParameters(Path.GetDirectoryName(path)));
+            var module = ModuleDefinition.FromFile(path, TestReaderParameters);
 
-            Assert.Contains(
-                Path.GetDirectoryName(path),
-                ((AssemblyResolverBase) module.RuntimeContext.AssemblyResolver).SearchDirectories
-            );
+            var reference = module.AssemblyReferences.First(x => x.Name == "AsmResolver.DotNet");
+            Assert.True(reference.Resolve(module.RuntimeContext).IsSuccess);
         }
 
         [Fact]
-        public void LoadFromFileWithSameWorkingDirectoryShouldNotPopulateSearchDirectoriesTwice()
+        public void LoadFromBytesWithWorkingDirectorySetShouldResolveDependenciesInSameDirectory()
         {
             string path = typeof(ModuleDefinitionTest).Assembly.Location;
-            var module = ModuleDefinition.FromFile(path,
-                new ModuleReaderParameters(Path.GetDirectoryName(path)));
+            var module = ModuleDefinition.FromBytes(File.ReadAllBytes(path), new ModuleReaderParameters(TestReaderParameters)
+            {
+                WorkingDirectory = Path.GetDirectoryName(path)
+            });
 
-            var resolver = (AssemblyResolverBase) module.RuntimeContext.AssemblyResolver;
-            Assert.Equal(1, resolver.SearchDirectories.Count(x => x == Path.GetDirectoryName(path)));
-        }
-
-        [Fact]
-        public void LoadFromFileWithDifferentWorkingDirectoryShouldPopulateSearchDirectoriesTwice()
-        {
-            string path = typeof(ModuleDefinitionTest).Assembly.Location;
-            string otherPath = @"C:\other\path";
-            var module = ModuleDefinition.FromFile(path, new ModuleReaderParameters(otherPath));
-
-            var searchDirectories = ((AssemblyResolverBase) module.RuntimeContext.AssemblyResolver).SearchDirectories;
-            Assert.Contains(Path.GetDirectoryName(path), searchDirectories);
-            Assert.Contains(otherPath, searchDirectories);
+            var reference = module.AssemblyReferences.First(x => x.Name == "AsmResolver.DotNet");
+            Assert.True(reference.Resolve(module.RuntimeContext).IsSuccess);
         }
 
         [Fact]

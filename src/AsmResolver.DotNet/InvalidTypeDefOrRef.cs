@@ -49,9 +49,11 @@ namespace AsmResolver.DotNet
 
         bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => false;
 
-        Result<TypeDefinition> ITypeDescriptor.Resolve(RuntimeContext? context) => Result.Fail<TypeDefinition>();
+        Result<TypeDefinition> ITypeDescriptor.Resolve(RuntimeContext? context)
+            => Result.InvalidOperation<TypeDefinition>("Type is invalid.");
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext context) => Result.Fail<IMemberDefinition>();
+        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context)
+            => Result.InvalidOperation<IMemberDefinition>("Type is invalid.");
 
         ITypeDefOrRef? ITypeDefOrRef.DeclaringType => null;
 
@@ -93,7 +95,7 @@ namespace AsmResolver.DotNet
 
         public TypeSignature ToTypeSignature() => new TypeDefOrRefSignature(this, false);
 
-        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => throw new InvalidOperationException();
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext context) => throw new InvalidOperationException();
 
         TypeSignature ITypeDefOrRef.ToTypeSignature(bool isValueType) => ToTypeSignature();
 

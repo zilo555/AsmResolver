@@ -18,8 +18,6 @@ namespace AsmResolver.DotNet
         private static readonly string[] BinaryFileExtensions = {".dll", ".exe"};
         private static readonly SignatureComparer Comparer = new(SignatureComparisonFlags.AcceptNewerVersions);
 
-        private readonly ConcurrentDictionary<AssemblyDescriptor, AssemblyDefinition> _cache = new(SignatureComparer.Default);
-
         /// <summary>
         /// Initializes the base of an assembly resolver.
         /// </summary>
@@ -61,58 +59,10 @@ namespace AsmResolver.DotNet
         } = new List<string>();
 
         /// <inheritdoc />
-        public Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly)
+        public Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule = null)
         {
-            AssemblyDefinition? result;
-
-            while (!_cache.TryGetValue(assembly, out result))
-            {
-                var candidate = ResolveImpl(assembly);
-                if (candidate is null)
-                    break;
-
-                _cache.TryAdd(assembly, candidate);
-            }
-
-            return result is not null
-                ? Result.Success(result)
-                : Result.Fail<AssemblyDefinition>();
-        }
-
-        /// <inheritdoc />
-        public void AddToCache(AssemblyDescriptor descriptor, AssemblyDefinition definition)
-        {
-            if (_cache.ContainsKey(descriptor))
-                throw new ArgumentException($"The cache already contains an entry of assembly {descriptor.FullName}.", nameof(descriptor));
-
-            if (!Comparer.Equals(descriptor, definition))
-                throw new ArgumentException("Assembly descriptor and definition do not refer to the same assembly.");
-
-            _cache.TryAdd(descriptor, definition);
-        }
-
-        /// <inheritdoc />
-        public bool RemoveFromCache(AssemblyDescriptor descriptor) => _cache.TryRemove(descriptor, out _);
-
-        /// <inheritdoc />
-        public bool HasCached(AssemblyDescriptor descriptor) => _cache.ContainsKey(descriptor);
-
-        /// <inheritdoc />
-        public void ClearCache() => _cache.Clear();
-
-        /// <summary>
-        /// Resolves a new unseen reference to an assembly.
-        /// </summary>
-        /// <param name="assembly">The assembly to resolve.</param>
-        /// <returns>The resolved assembly, or <c>null</c> if the resolution failed.</returns>
-        /// <remarks>
-        /// This method should not implement caching of resolved assemblies. The caller of this method already implements
-        /// this.
-        /// </remarks>
-        protected virtual AssemblyDefinition? ResolveImpl(AssemblyDescriptor assembly)
-        {
-            // Prefer assemblies in the current directory, in case .NET libraries are shipped with the application.
-            string? path = ProbeSearchDirectories(assembly);
+            // Prefer assemblies in the search directories, in case .NET libraries are shipped with the application.
+            string? path = ProbeSearchDirectories(assembly, originModule);
 
             if (string.IsNullOrEmpty(path))
             {
@@ -122,21 +72,23 @@ namespace AsmResolver.DotNet
 
                 // If still no suitable file was found, abort.
                 if (string.IsNullOrEmpty(path))
-                    return null;
+                {
+                    return Result.Fail<AssemblyDefinition>(new FileNotFoundException(
+                        $"Could not find the assembly file for {assembly.SafeToString()}."
+                    ));
+                }
             }
 
             // Attempt to load the file.
-            AssemblyDefinition? assemblyDef = null;
             try
             {
-                assemblyDef = LoadAssemblyFromFile(path!);
+                return Result.Success(LoadAssemblyFromFile(path!));
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore any errors.
+                // Wrap into error object.
+                return Result.Fail<AssemblyDefinition>(ex);
             }
-
-            return assemblyDef;
         }
 
         /// <summary>
@@ -154,8 +106,24 @@ namespace AsmResolver.DotNet
         /// </summary>
         /// <param name="assembly">The assembly descriptor to search.</param>
         /// <returns>The path to the assembly, or <c>null</c> if none was found.</returns>
-        protected string? ProbeSearchDirectories(AssemblyDescriptor assembly)
+        protected string? ProbeSearchDirectories(AssemblyDescriptor assembly, ModuleDefinition? originModule)
         {
+            // Try directory of module as a search path.
+            if (originModule is {FilePath: { } filePath}
+                && Path.GetDirectoryName(filePath) is { } moduleDirectory
+                && ProbeDirectory(assembly, moduleDirectory) is { } moduleDirectoryPath)
+            {
+                return moduleDirectoryPath;
+            }
+
+            // Try working directory as specified in reader parameters.
+            if (ReaderParameters.WorkingDirectory is { } workingDirectory
+                && ProbeDirectory(assembly, workingDirectory) is { } workingDirectoryPath)
+            {
+                return workingDirectoryPath;
+            }
+
+            // Probe other custom search paths.
             for (int i = 0; i < SearchDirectories.Count; i++)
             {
                 string? path = ProbeDirectory(assembly, SearchDirectories[i]);

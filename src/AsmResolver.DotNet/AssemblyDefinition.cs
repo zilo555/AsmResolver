@@ -17,7 +17,11 @@ namespace AsmResolver.DotNet
     /// <summary>
     /// Represents an assembly of self-describing modules of an executable file hosted by a common language runtime (CLR).
     /// </summary>
-    public class AssemblyDefinition : AssemblyDescriptor, IModuleProvider, IHasSecurityDeclaration
+    public class AssemblyDefinition :
+        AssemblyDescriptor,
+        IModuleProvider,
+        IHasSecurityDeclaration,
+        IOwnedCollectionElement<RuntimeContext>
     {
         private IList<ModuleDefinition>? _modules;
         private readonly LazyVariable<AssemblyDefinition, byte[]?> _publicKey;
@@ -143,9 +147,11 @@ namespace AsmResolver.DotNet
         /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromImage(PEImage peImage, ModuleReaderParameters readerParameters) =>
-            ModuleDefinition.FromImage(peImage, readerParameters).Assembly
-            ?? throw new BadImageFormatException("The provided PE image does not contain an assembly manifest.");
+        public static AssemblyDefinition FromImage(PEImage peImage, ModuleReaderParameters readerParameters)
+        {
+            return ModuleDefinition.FromImage(peImage, readerParameters).Assembly
+                ?? throw new BadImageFormatException("The provided PE image does not contain an assembly manifest.");
+        }
 
         /// <summary>
         /// Initializes a new assembly definition.
@@ -167,6 +173,18 @@ namespace AsmResolver.DotNet
         {
             Name = name;
             Version = version;
+        }
+
+        public RuntimeContext? RuntimeContext
+        {
+            get;
+            internal set;
+        }
+
+        RuntimeContext? IOwnedCollectionElement<RuntimeContext>.Owner
+        {
+            get => RuntimeContext;
+            set => RuntimeContext = value;
         }
 
         /// <summary>

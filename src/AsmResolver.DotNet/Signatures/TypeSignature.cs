@@ -290,7 +290,7 @@ namespace AsmResolver.DotNet.Signatures
         public Result<TypeDefinition> Resolve(RuntimeContext? context)
         {
             return GetUnderlyingTypeDefOrRef()?.Resolve(context)
-                ?? Result.Fail<TypeDefinition>();
+                ?? Result.InvalidOperation<TypeDefinition>("Underlying type is null.");
         }
 
         Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
@@ -298,7 +298,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public virtual ITypeDefOrRef ToTypeDefOrRef() => new TypeSpecification(this);
 
-        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => this;
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext context) => this;
 
         /// <summary>
         /// Gets the underlying base type signature, without any extra adornments.

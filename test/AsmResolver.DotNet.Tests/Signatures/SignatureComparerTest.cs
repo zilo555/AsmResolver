@@ -159,42 +159,42 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [Fact]
         public void MatchForwardedNestedTypes()
         {
-            // TODO: implement using rt context.
-            throw new NotImplementedException();
-
+            // Load main module.
             var module = ModuleDefinition.FromBytes(Properties.Resources.ForwarderRefTest, TestReaderParameters);
-            var forwarder = ModuleDefinition.FromBytes(Properties.Resources.ForwarderLibrary, TestReaderParameters).Assembly!;
-            var library = ModuleDefinition.FromBytes(Properties.Resources.ActualLibrary, TestReaderParameters).Assembly!;
 
-            module.RuntimeContext.AssemblyResolver.AddToCache(forwarder, forwarder);
-            module.RuntimeContext.AssemblyResolver.AddToCache(library, library);
-            forwarder.ManifestModule!.RuntimeContext.AssemblyResolver.AddToCache(library, library);
+            // Load dependencies.
+            var context = module.RuntimeContext;
+            context.LoadAssembly(Properties.Resources.ForwarderLibrary);
+            context.LoadAssembly(Properties.Resources.ActualLibrary);
 
+            // Find all referenced types in main.
             var referencedTypes = module.ManagedEntryPointMethod!.CilMethodBody!.Instructions
                 .Where(i => i.OpCode.Code == CilCode.Call)
                 .Select(i => ((IMethodDefOrRef) i.Operand!).DeclaringType)
                 .Where(t => t.Name == "MyNestedClass")
                 .ToArray();
 
+            var comparer = context.SignatureComparer;
+
             var type1 = referencedTypes[0]!;
             var type2 = referencedTypes[1]!;
 
-            var resolvedType1 = type1.Resolve(module.RuntimeContext).Unwrap();;
-            var resolvedType2 = type2.Resolve(module.RuntimeContext).Unwrap();;
+            var resolvedType1 = type1.Resolve(context).Unwrap();
+            var resolvedType2 = type2.Resolve(context).Unwrap();
 
             var resolvedTypeReference1 = resolvedType1.ToTypeReference();
             var resolvedTypeReference2 = resolvedType2.ToTypeReference();
 
-            Assert.Equal(type1, resolvedType1, _comparer);
-            Assert.Equal(type1, resolvedTypeReference1, _comparer);
-            Assert.Equal(type2, resolvedType2, _comparer);
-            Assert.Equal(type2, resolvedTypeReference2, _comparer);
+            Assert.Equal(type1, resolvedType1, comparer);
+            Assert.Equal(type1, resolvedTypeReference1, comparer);
+            Assert.Equal(type2, resolvedType2, comparer);
+            Assert.Equal(type2, resolvedTypeReference2, comparer);
 
-            Assert.NotEqual(type1, type2, _comparer);
-            Assert.NotEqual(type1, resolvedType2, _comparer); // Fails
-            Assert.NotEqual(type1, resolvedTypeReference2, _comparer); // Fails
-            Assert.NotEqual(type2, resolvedType1, _comparer); // Fails
-            Assert.NotEqual(type2, resolvedTypeReference1, _comparer); // Fails
+            Assert.NotEqual(type1, type2, comparer);
+            Assert.NotEqual(type1, resolvedType2, comparer); // Fails
+            Assert.NotEqual(type1, resolvedTypeReference2, comparer); // Fails
+            Assert.NotEqual(type2, resolvedType1, comparer); // Fails
+            Assert.NotEqual(type2, resolvedTypeReference1, comparer); // Fails
         }
 
         [Fact]

@@ -1,9 +1,15 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using AsmResolver.DotNet.Bundles;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.IO;
+using AsmResolver.PE;
+using AsmResolver.PE.File;
 
 namespace AsmResolver.DotNet;
 
@@ -12,8 +18,10 @@ namespace AsmResolver.DotNet;
 /// </summary>
 public partial class RuntimeContext
 {
+    private readonly Dictionary<AssemblyDescriptor, AssemblyDefinition> _loadedAssemblies = new(
+        new SignatureComparer(SignatureComparisonFlags.VersionAgnostic)
+    );
     private readonly ConcurrentDictionary<ITypeDescriptor, TypeDefinition> _typeCache = new();
-    private readonly SignatureComparer _comparer;
 
     /// <summary>
     /// Creates a new runtime context.
@@ -77,7 +85,7 @@ public partial class RuntimeContext
         TargetRuntime = targetRuntime;
         AssemblyResolver = assemblyResolver ?? CreateAssemblyResolver(targetRuntime, DefaultReaderParameters);
         RuntimeCorLib = corLibReference ?? targetRuntime.GetAssumedImplCorLib();
-        _comparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
+        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
     }
 
     /// <summary>
@@ -98,11 +106,11 @@ public partial class RuntimeContext
     {
         TargetRuntime = manifest.GetTargetRuntime();
         DefaultReaderParameters = new ModuleReaderParameters(readerParameters) {RuntimeContext = this};
-        AssemblyResolver = new BundleAssemblyResolver(manifest, readerParameters);
-        RuntimeCorLib = AssemblyResolver.Resolve(TargetRuntime.GetDefaultCorLib()).UnwrapOrDefault()?
+        AssemblyResolver = new BundleAssemblyResolver(manifest, DefaultReaderParameters);
+        RuntimeCorLib = AssemblyResolver.Resolve(TargetRuntime.GetDefaultCorLib(), null).UnwrapOrDefault()?
             .ManifestModule?.CorLibTypeFactory.Object.Resolve(this).UnwrapOrDefault()?
             .DeclaringModule?.Assembly;
-        _comparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
+        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
     }
 
     /// <summary>
@@ -137,6 +145,11 @@ public partial class RuntimeContext
         get;
     }
 
+    public SignatureComparer SignatureComparer
+    {
+        get;
+    }
+
     private static AssemblyResolverBase CreateAssemblyResolver(
         DotNetRuntimeInfo runtime,
         ModuleReaderParameters readerParameters)
@@ -157,4 +170,128 @@ public partial class RuntimeContext
                 return new DotNetFrameworkAssemblyResolver(readerParameters, MonoPathProvider.Default);
         }
     }
+
+    /// <summary>
+    /// Reads a .NET assembly from the provided input buffer.
+    /// </summary>
+    /// <param name="buffer">The raw contents of the executable file to load.</param>
+    /// <returns>The module.</returns>
+    /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+    public AssemblyDefinition LoadAssembly(byte[] buffer)
+        => GetOrAddAssembly(AssemblyDefinition.FromBytes(buffer, DefaultReaderParameters));
+
+    /// <summary>
+    /// Reads a .NET assembly from the provided input stream.
+    /// </summary>
+    /// <param name="stream">The raw contents of the executable file to load.</param>
+    /// <returns>The module.</returns>
+    /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+    public AssemblyDefinition LoadAssembly(Stream stream)
+        => GetOrAddAssembly(AssemblyDefinition.FromStream(stream, DefaultReaderParameters));
+
+    /// <summary>
+    /// Reads a .NET assembly from the provided input file.
+    /// </summary>
+    /// <param name="filePath">The file path to the input executable to load.</param>
+    /// <returns>The module.</returns>
+    /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+    public AssemblyDefinition LoadAssembly(string filePath)
+        => GetOrAddAssembly(AssemblyDefinition.FromFile(filePath, DefaultReaderParameters));
+
+    /// <summary>
+    /// Reads a .NET assembly from the provided input file.
+    /// </summary>
+    /// <param name="file">The portable executable file to load.</param>
+    /// <returns>The module.</returns>
+    /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+    public AssemblyDefinition LoadAssembly(PEFile file)
+        => GetOrAddAssembly(AssemblyDefinition.FromFile(file, DefaultReaderParameters));
+
+    /// <summary>
+    /// Reads a .NET assembly from the provided input file.
+    /// </summary>
+    /// <param name="file">The portable executable file to load.</param>
+    /// <returns>The module.</returns>
+    /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+    public AssemblyDefinition LoadAssembly(IInputFile file)
+        => GetOrAddAssembly(AssemblyDefinition.FromFile(file, DefaultReaderParameters));
+
+    /// <summary>
+    /// Reads a .NET assembly from an input stream.
+    /// </summary>
+    /// <param name="reader">The input stream pointing at the beginning of the executable to load.</param>
+    /// <param name="mode">Indicates the input PE is mapped or unmapped.</param>
+    /// <returns>The module.</returns>
+    /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+    public AssemblyDefinition LoadAssembly(in BinaryStreamReader reader, PEMappingMode mode = PEMappingMode.Unmapped)
+        => LoadAssembly(PEFile.FromReader(reader, mode));
+
+    /// <summary>
+    /// Initializes a .NET assembly from a PE image.
+    /// </summary>
+    /// <param name="peImage">The image containing the .NET metadata.</param>
+    /// <returns>The module.</returns>
+    /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+    public AssemblyDefinition LoadAssembly(PEImage peImage)
+        => GetOrAddAssembly(AssemblyDefinition.FromImage(peImage, DefaultReaderParameters));
+
+    private void AssertNoOwner(AssemblyDefinition assembly)
+    {
+        if (assembly.RuntimeContext is not null)
+            throw new ArgumentException($"Assembly {assembly.SafeToString()} is already added to another context.");
+    }
+
+    public void AddAssembly(AssemblyDefinition assembly)
+    {
+        lock (_loadedAssemblies)
+        {
+            AssertNoOwner(assembly);
+
+            if (_loadedAssemblies.ContainsKey(assembly))
+                throw new ArgumentException($"Another assembly with name {assembly.Name} was already added to this context.", nameof(assembly));
+
+            _loadedAssemblies.Add(assembly, assembly);
+            assembly.RuntimeContext = this;
+        }
+    }
+
+    private AssemblyDefinition GetOrAddAssembly(AssemblyDefinition assembly)
+    {
+        lock (_loadedAssemblies)
+        {
+            if (_loadedAssemblies.TryGetValue(assembly, out var resolved))
+                return resolved;
+
+            AddAssembly(assembly);
+            return assembly;
+        }
+    }
+
+    public IEnumerable<AssemblyDefinition> GetLoadedAssemblies()
+    {
+        lock (_loadedAssemblies)
+        {
+            return _loadedAssemblies.Values.ToArray();
+        }
+    }
+
+    public Result<AssemblyDefinition> ResolveAssembly(AssemblyDescriptor assembly, ModuleDefinition? originModule)
+    {
+        lock (_loadedAssemblies)
+        {
+            if (_loadedAssemblies.TryGetValue(assembly, out var resolved))
+                return Result.Success(resolved);
+
+            var result = AssemblyResolver.Resolve(assembly, originModule);
+            if (result.IsSuccess)
+            {
+                var definition = result.Value;
+                AddAssembly(definition);
+                return Result.Success(definition);
+            }
+
+            return result;
+        }
+    }
+
 }

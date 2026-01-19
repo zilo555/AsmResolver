@@ -912,7 +912,7 @@ namespace AsmResolver.DotNet
 
             // Family (protected in C#) methods are accessible by any base type.
             if ((IsFamily || IsFamilyOrAssembly || IsFamilyAndAssembly)
-                && type.BaseType?.Resolve(context) is {Resolved: { } baseType})
+                && type.BaseType?.Resolve(context) is {Value: { } baseType})
             {
                 return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
             }

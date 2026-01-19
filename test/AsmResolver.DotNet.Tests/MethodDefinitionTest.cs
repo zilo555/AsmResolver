@@ -732,6 +732,7 @@ namespace AsmResolver.DotNet.Tests
             {
                 IsRuntimeAsync = true
             };
+            module.GetOrCreateModuleType().Methods.Add(method);
             method.VerifyMetadata();
 
             method.IsSynchronized = true;

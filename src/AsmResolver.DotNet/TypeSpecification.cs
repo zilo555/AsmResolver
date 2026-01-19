@@ -100,7 +100,7 @@ namespace AsmResolver.DotNet
 
         public TypeSignature ToTypeSignature() => Signature ?? throw new ArgumentException("Signature embedded into the type specification is null.");
 
-        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => ToTypeSignature();
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext context) => ToTypeSignature();
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType) => ToTypeSignature();

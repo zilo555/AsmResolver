@@ -857,7 +857,7 @@ namespace AsmResolver.DotNet
 
         public TypeSignature ToTypeSignature() => ToTypeSignature(IsValueType);
 
-        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => ToTypeSignature();
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext context) => ToTypeSignature();
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType)
@@ -931,7 +931,7 @@ namespace AsmResolver.DotNet
             //      class C : A {} // <-- `type` ( can access A+B )
             //
             if ((IsNestedFamily || IsNestedFamilyOrAssembly || IsNestedFamilyAndAssembly)
-                && type.BaseType?.Resolve(context) is {Resolved: { } baseType})
+                && type.BaseType?.Resolve(context) is {Value: { } baseType})
             {
                 return (!IsNestedFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
             }

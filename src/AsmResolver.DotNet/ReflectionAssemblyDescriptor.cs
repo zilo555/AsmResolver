@@ -65,7 +65,7 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         public override Result<AssemblyDefinition> Resolve(RuntimeContext? context)
         {
-            return context?.AssemblyResolver.Resolve(this)
+            return context?.ResolveAssembly(this, ContextModule)
                 ?? Result.Fail<AssemblyDefinition>();
         }
     }

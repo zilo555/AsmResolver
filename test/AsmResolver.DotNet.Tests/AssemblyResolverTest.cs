@@ -60,29 +60,6 @@ namespace AsmResolver.DotNet.Tests
         }
 
         [Fact]
-        public void ResolveLocalLibrary()
-        {
-            var resolver = new DotNetCoreAssemblyResolver(new Version(3, 1, 0));
-            resolver.SearchDirectories.Add(Path.GetDirectoryName(typeof(AssemblyResolverTest).Assembly.Location));
-
-            var assemblyDef = AssemblyDefinition.FromFile(typeof(TopLevelClass1).Assembly.Location, TestReaderParameters);
-            var assemblyRef = new AssemblyReference(assemblyDef);
-
-            Assert.Equal(assemblyDef, resolver.Resolve(assemblyRef).Unwrap(), _comparer);
-            Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
-
-            resolver.ClearCache();
-            Assert.False(resolver.HasCached(assemblyRef));
-
-            resolver.AddToCache(assemblyRef, assemblyDef);
-            Assert.True(resolver.HasCached(assemblyRef));
-            Assert.Equal(assemblyDef, resolver.Resolve(assemblyRef).Unwrap());
-
-            resolver.RemoveFromCache(assemblyRef);
-            Assert.NotEqual(assemblyDef, resolver.Resolve(assemblyRef).Unwrap());
-        }
-
-        [Fact]
         public void ResolveWithConfiguredRuntime()
         {
             var assemblyName = typeof(object).Assembly.GetName();

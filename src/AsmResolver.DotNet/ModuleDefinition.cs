@@ -272,8 +272,16 @@ namespace AsmResolver.DotNet
         /// <param name="readerParameters">The parameters to use while reading the module.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET data directory.</exception>
-        public static ModuleDefinition FromImage(PEImage peImage, ModuleReaderParameters readerParameters) =>
-            new SerializedModuleDefinition(peImage, readerParameters);
+        public static ModuleDefinition FromImage(PEImage peImage, ModuleReaderParameters readerParameters)
+        {
+            var result = new SerializedModuleDefinition(peImage, readerParameters);
+
+            var definition = result.Assembly;
+            if (readerParameters.RuntimeContext is null && definition is not null)
+                result.RuntimeContext.AddAssembly(definition);
+
+            return result;
+        }
 
         // Disable non-nullable property initialization warnings for the CorLibTypeFactory, RuntimeContext and
         // MetadataResolver properties. These are expected to be initialized by constructors that use this base

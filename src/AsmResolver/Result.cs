@@ -11,11 +11,16 @@ public static class Result
         return new Result<T>(resolved, null);
     }
 
-    public static Result<T> Fail<T>()
+    public static Result<T> Fail<T>(Exception? ex = null)
         where T : class
     {
-        // TODO: forward exception info.
-        return new Result<T>(null, null);
+        return new Result<T>(null, ex);
+    }
+
+    public static Result<T> InvalidOperation<T>(string message)
+        where T : class
+    {
+        return new Result<T>(null, new InvalidOperationException(message));
     }
 
 }
@@ -23,23 +28,23 @@ public static class Result
 public readonly struct Result<T>
     where T : class
 {
-    internal Result(T? resolved, Exception? exception)
+    internal Result(T? value, Exception? exception)
     {
-        Resolved = resolved;
+        Value = value;
         Exception = exception;
     }
 
-    [MemberNotNullWhen(true, nameof(Resolved))]
+    [MemberNotNullWhen(true, nameof(Value))]
     [MemberNotNullWhen(false, nameof(Exception))]
-    public bool IsSuccess => Resolved is not null;
+    public bool IsSuccess => Value is not null;
 
-    public T? Resolved { get; }
+    public T? Value { get; }
 
     public Exception? Exception { get; }
 
-    public T Unwrap() => Resolved ?? throw new InvalidOperationException("Cannot unwrap a failed operation.", Exception);
+    public T Unwrap() => Value ?? throw new InvalidOperationException("Cannot unwrap a failed operation.", Exception);
 
-    public T? UnwrapOrDefault() => IsSuccess ? Resolved : null;
+    public T? UnwrapOrDefault() => IsSuccess ? Value : null;
 
     public Result<TTarget> Into<TTarget>()
         where TTarget : class
@@ -47,10 +52,10 @@ public readonly struct Result<T>
         if (IsSuccess)
         {
             // Manual cast is required here because we cannot cast generics.
-            if (Resolved is not TTarget resolved)
+            if (Value is not TTarget target)
                 throw new InvalidOperationException($"Cannot cast an instance of {typeof(T)} into an instance of {typeof(TTarget)}.");
 
-            return new Result<TTarget>(resolved, Exception);
+            return new Result<TTarget>(target, Exception);
         }
 
         return new Result<TTarget>(null, Exception);

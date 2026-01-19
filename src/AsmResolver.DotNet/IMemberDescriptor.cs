@@ -18,6 +18,6 @@ namespace AsmResolver.DotNet
         /// </summary>
         /// <param name="context">The module to assume as resolution context.</param>
         /// <returns>The resolved member definition, or <c>null</c> if the member could not be resolved.</returns>
-        Result<IMemberDefinition> Resolve(RuntimeContext context);
+        Result<IMemberDefinition> Resolve(RuntimeContext? context);
     }
 }

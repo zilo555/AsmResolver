@@ -72,31 +72,9 @@ namespace AsmResolver.DotNet.Serialized
 
             // Initialize metadata resolution engines.
             if (readerParameters.RuntimeContext is { } runtimeContext)
-            {
                 RuntimeContext = runtimeContext;
-            }
             else
-            {
                 RuntimeContext = new RuntimeContext(OriginalTargetRuntime, readerParameters);
-
-                if (RuntimeContext.AssemblyResolver is AssemblyResolverBase resolver)
-                {
-                    // Add current file's directory as a search directory (if present).
-                    if (!string.IsNullOrEmpty(peImage.FilePath)
-                        && Path.GetDirectoryName(peImage.FilePath) is { } directory
-                        && !resolver.SearchDirectories.Contains(directory))
-                    {
-                        resolver.SearchDirectories.Add(directory);
-                    }
-
-                    // Add current working directory as a search directory (if present).
-                    if (!string.IsNullOrEmpty(readerParameters.WorkingDirectory)
-                        && !resolver.SearchDirectories.Contains(readerParameters.WorkingDirectory!))
-                    {
-                        resolver.SearchDirectories.Add(readerParameters.WorkingDirectory!);
-                    }
-                }
-            }
 
             // Prepare lazy RID lists.
             _fieldLists = new LazyRidListRelation<TypeDefinitionRow>(metadata, TableIndex.Field, TableIndex.TypeDef,
@@ -332,7 +310,8 @@ namespace AsmResolver.DotNet.Serialized
                     ReaderContext,
                     new MetadataToken(TableIndex.Assembly, 1),
                     assemblyTable[0],
-                    this);
+                    this
+                );
             }
 
             return null;

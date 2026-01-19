@@ -104,10 +104,12 @@ namespace AsmResolver.DotNet.Tests
 
             ITypeDefOrRef expected = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Object");
             var reference = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Object");
+
             var definition = _fwContext.ResolveType(reference).Unwrap();
             Assert.Equal(expected, definition, _fwComparer);
-            definition.Name = "String";
-            Assert.NotEqual(expected, _fwContext.ResolveType(reference).Unwrap(), _fwComparer);
+
+            definition.Name = "Foo";
+            Assert.False(_fwContext.ResolveType(reference).IsSuccess);
         }
 
         [Fact]
@@ -236,21 +238,13 @@ namespace AsmResolver.DotNet.Tests
         {
             // Issue: https://github.com/Washi1337/AsmResolver/issues/124
 
-            // TODO: replace with rt context
-            throw new NotImplementedException();
-
-            // Load assemblies.
+            // Load main assembly.
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld_Forwarder, TestReaderParameters);
-            var assembly1 = AssemblyDefinition.FromBytes(Properties.Resources.Assembly1_Forwarder, TestReaderParameters);
-            var assembly2 = AssemblyDefinition.FromBytes(Properties.Resources.Assembly2_Actual, TestReaderParameters);
 
-            // Manually wire assemblies together for in-memory resolution.
-            var resolver = (AssemblyResolverBase) module.RuntimeContext.AssemblyResolver;
-            resolver.AddToCache(assembly1, assembly1);
-            resolver.AddToCache(assembly2, assembly2);
-            resolver = (AssemblyResolverBase) assembly1.ManifestModule!.RuntimeContext.AssemblyResolver;
-            resolver.AddToCache(assembly1, assembly1);
-            resolver.AddToCache(assembly2, assembly2);
+            // Load dependencies.
+            var context = module.RuntimeContext;
+            context.LoadAssembly(Properties.Resources.Assembly1_Forwarder);
+            context.LoadAssembly(Properties.Resources.Assembly2_Actual);
 
             // Resolve
             var instructions = module.ManagedEntryPointMethod!.CilMethodBody!.Instructions;
@@ -260,24 +254,12 @@ namespace AsmResolver.DotNet.Tests
         [Fact]
         public void MaliciousExportedTypeLoop()
         {
-            // TODO: replace with rt context
-            throw new NotImplementedException();
-
-            // Load assemblies.
+            // Load main assembly.
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld_MaliciousExportedTypeLoop, TestReaderParameters);
-            var assembly1 = AssemblyDefinition.FromBytes(Properties.Resources.Assembly1_MaliciousExportedTypeLoop, TestReaderParameters);
-            var assembly2 = AssemblyDefinition.FromBytes(Properties.Resources.Assembly2_MaliciousExportedTypeLoop, TestReaderParameters);
 
-            // Manually wire assemblies together for in-memory resolution.
-            var resolver = (AssemblyResolverBase) module.RuntimeContext.AssemblyResolver;
-            resolver.AddToCache(assembly1, assembly1);
-            resolver.AddToCache(assembly2, assembly2);
-            resolver = (AssemblyResolverBase) assembly1.ManifestModule!.RuntimeContext.AssemblyResolver;
-            resolver.AddToCache(assembly1, assembly1);
-            resolver.AddToCache(assembly2, assembly2);
-            resolver = (AssemblyResolverBase) assembly2.ManifestModule!.RuntimeContext.AssemblyResolver;
-            resolver.AddToCache(assembly1, assembly1);
-            resolver.AddToCache(assembly2, assembly2);
+            var context = module.RuntimeContext;
+            context.LoadAssembly(Properties.Resources.Assembly1_MaliciousExportedTypeLoop);
+            context.LoadAssembly(Properties.Resources.Assembly2_MaliciousExportedTypeLoop);
 
             // Find reference to exported type loop.
             var reference = module
@@ -285,7 +267,7 @@ namespace AsmResolver.DotNet.Tests
                 .First(t => t.Name == "SomeName");
 
             // Attempt to resolve. The test here is that it should not result in an infinite loop / stack overflow.
-            Assert.Null(reference.Resolve(module.RuntimeContext).Resolved);
+            Assert.Null(reference.Resolve(module.RuntimeContext).Value);
         }
 
         [Fact]
@@ -293,13 +275,10 @@ namespace AsmResolver.DotNet.Tests
         {
             // https://github.com/Washi1337/AsmResolver/issues/321
 
-            // TODO: replace with rt context
-            throw new NotImplementedException();
-
             var mainApp = ModuleDefinition.FromBytes(Properties.Resources.DifferentNetVersion_MainApp, TestReaderParameters);
-            var library = ModuleDefinition.FromBytes(Properties.Resources.DifferentNetVersion_Library, TestReaderParameters);
+            var context = mainApp.RuntimeContext;
 
-            mainApp.RuntimeContext.AssemblyResolver.AddToCache(library.Assembly!, library.Assembly!);
+            var library = context.LoadAssembly(Properties.Resources.DifferentNetVersion_Library).ManifestModule!;
 
             var definition = library
                 .TopLevelTypes.First(t => t.Name == "MyClass")

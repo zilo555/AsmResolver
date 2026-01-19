@@ -1,8 +1,6 @@
-using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
+using System;
 using System.IO;
 using AsmResolver.DotNet.Serialized;
-using AsmResolver.DotNet.Signatures;
 
 namespace AsmResolver.DotNet.Bundles;
 
@@ -13,7 +11,6 @@ public class BundleAssemblyResolver : IAssemblyResolver
 {
     private readonly BundleManifest _manifest;
     private readonly DotNetCoreAssemblyResolver _baseResolver;
-    private readonly ConcurrentDictionary<AssemblyDescriptor, AssemblyDefinition> _embeddedFilesCache = new(SignatureComparer.Default);
 
     internal BundleAssemblyResolver(BundleManifest manifest, ModuleReaderParameters readerParameters)
     {
@@ -24,22 +21,18 @@ public class BundleAssemblyResolver : IAssemblyResolver
     }
 
     /// <inheritdoc />
-    public Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly)
+    public Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule)
     {
         // Prefer embedded files before we forward to the default assembly resolution algorithm.
-        if (TryResolveFromEmbeddedFiles(assembly, out var resolved))
-            return Result.Success(resolved);
 
-        return _baseResolver.Resolve(assembly);
+        var result = TryResolveFromEmbeddedFiles(assembly);
+        return result.IsSuccess
+            ? result
+            : _baseResolver.Resolve(assembly, originModule);
     }
 
-    private bool TryResolveFromEmbeddedFiles(
-        AssemblyDescriptor assembly,
-        [NotNullWhen(true)] out AssemblyDefinition? resolved)
+    private Result<AssemblyDefinition> TryResolveFromEmbeddedFiles(AssemblyDescriptor assembly)
     {
-        if (_embeddedFilesCache.TryGetValue(assembly, out resolved))
-            return true;
-
         try
         {
             for (int i = 0; i < _manifest.Files.Count; i++)
@@ -49,45 +42,14 @@ public class BundleAssemblyResolver : IAssemblyResolver
                     continue;
 
                 if (Path.GetFileNameWithoutExtension(file.RelativePath) == assembly.Name)
-                {
-                    resolved = AssemblyDefinition.FromBytes(file.GetData(), _baseResolver.ReaderParameters);
-                    _embeddedFilesCache.TryAdd(assembly, resolved);
-                    return true;
-                }
+                    return Result.Success(AssemblyDefinition.FromBytes(file.GetData(), _baseResolver.ReaderParameters));
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore any reader errors.
+            return Result.Fail<AssemblyDefinition>(ex);
         }
 
-        resolved = null;
-        return false;
-    }
-
-    /// <inheritdoc />
-    public void AddToCache(AssemblyDescriptor descriptor, AssemblyDefinition definition)
-    {
-        _baseResolver.AddToCache(descriptor, definition);
-    }
-
-    /// <inheritdoc />
-    public bool RemoveFromCache(AssemblyDescriptor descriptor)
-    {
-        // Note: This is intentionally not an or-else (||) construction.
-        return _embeddedFilesCache.TryRemove(descriptor, out _) | _baseResolver.RemoveFromCache(descriptor);
-    }
-
-    /// <inheritdoc />
-    public bool HasCached(AssemblyDescriptor descriptor)
-    {
-        return _embeddedFilesCache.ContainsKey(descriptor) || _baseResolver.HasCached(descriptor);
-    }
-
-    /// <inheritdoc />
-    public void ClearCache()
-    {
-        _embeddedFilesCache.Clear();
-        _baseResolver.ClearCache();
+        return Result.Fail<AssemblyDefinition>();
     }
 }

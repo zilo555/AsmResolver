@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using AsmResolver.Collections;
@@ -141,7 +142,7 @@ namespace AsmResolver.DotNet
 
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
-        public TypeSignature ToTypeSignature(RuntimeContext? context) => ToTypeSignature(GetIsValueType(context));
+        public TypeSignature ToTypeSignature(RuntimeContext context) => ToTypeSignature(GetIsValueType(context));
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType)
@@ -168,7 +169,7 @@ namespace AsmResolver.DotNet
         public Result<TypeDefinition> Resolve(RuntimeContext? context)
         {
             return context?.ResolveType(this, ContextModule)
-                ?? Result.Fail<TypeDefinition>();
+                ?? Result.InvalidOperation<TypeDefinition>("No runtime context provided.");
         }
 
         Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();

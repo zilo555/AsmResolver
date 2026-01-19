@@ -10,15 +10,11 @@ namespace AsmResolver.DotNet.Tests
         [Fact]
         public void ResolveForwardedMethod()
         {
-            // TODO: load forwarder and library into rt context.
-            throw new NotImplementedException();
-
             var module = ModuleDefinition.FromBytes(Properties.Resources.ForwarderRefTest, TestReaderParameters);
-            var forwarder = ModuleDefinition.FromBytes(Properties.Resources.ForwarderLibrary, TestReaderParameters).Assembly!;
-            var library = ModuleDefinition.FromBytes(Properties.Resources.ActualLibrary, TestReaderParameters).Assembly!;
+            var context = module.RuntimeContext;
 
-            module.RuntimeContext.AssemblyResolver.AddToCache(forwarder, forwarder);
-            module.RuntimeContext.AssemblyResolver.AddToCache(library, library);
+            context.LoadAssembly(Properties.Resources.ForwarderLibrary);
+            context.LoadAssembly(Properties.Resources.ActualLibrary);
 
             var reference = module
                 .GetImportedMemberReferences()

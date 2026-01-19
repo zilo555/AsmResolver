@@ -104,6 +104,7 @@ namespace AsmResolver.DotNet.Serialized
         public string? WorkingDirectory
         {
             get;
+            set;
         }
 
         /// <summary>
