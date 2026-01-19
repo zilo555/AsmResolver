@@ -235,38 +235,36 @@ namespace AsmResolver.DotNet.Signatures
             var assembly = CorLibScope.GetAssembly();
 
             if (assembly is null)
-                return new DotNetRuntimeInfo(DotNetRuntimeInfo.NetFramework, new Version(4, 0));
+                return DotNetRuntimeInfo.NetFramework(4, 0);
 
             var v = assembly.Version;
             if (v.Major >= 5)
-                return new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(v.Major, v.Minor));
+                return DotNetRuntimeInfo.NetCoreApp(v.Major, v.Minor);
 
             switch (assembly.Name)
             {
                 case "mscorlib":
-                    return new DotNetRuntimeInfo(DotNetRuntimeInfo.NetFramework, v);
+                    return DotNetRuntimeInfo.NetFramework(v);
 
                 case "netstandard":
-                    return new DotNetRuntimeInfo(DotNetRuntimeInfo.NetStandard, v);
+                    return DotNetRuntimeInfo.NetStandard(v);
 
                 case "System.Private.CoreLib":
-                    return new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(1, 0));
+                    return DotNetRuntimeInfo.NetCoreApp(1, 0);
 
                 case "System.Runtime":
                 {
-                    (string name, Version version) =
-                        (v.Major, v.Minor, v.Build, v.Revision) switch
-                        {
-                            (4, 0, 20, 0) => (DotNetRuntimeInfo.NetStandard, new Version(1, 3)),
-                            (4, 1, 0, 0) => (DotNetRuntimeInfo.NetStandard, new Version(1, 5)),
-                            (4, 2, 1, 0) => (DotNetRuntimeInfo.NetCoreApp, new Version(2, 1)),
-                            _ => (DotNetRuntimeInfo.NetCoreApp, new Version(3, 1)),
-                        };
-                    return new DotNetRuntimeInfo(name, version);
+                    return (v.Major, v.Minor, v.Build, v.Revision) switch
+                    {
+                        (4, 0, 20, 0) => DotNetRuntimeInfo.NetStandard(1, 3),
+                        (4, 1, 0, 0) => DotNetRuntimeInfo.NetStandard(1, 5),
+                        (4, 2, 1, 0) => DotNetRuntimeInfo.NetCoreApp(2, 1),
+                        _ => DotNetRuntimeInfo.NetCoreApp(3, 1),
+                    };
                 }
             }
 
-            return new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, v);
+            return DotNetRuntimeInfo.NetCoreApp(v);
         }
 
         private CorLibTypeSignature GetOrCreateCorLibTypeSignature(ref CorLibTypeSignature? cache, ElementType elementType, string name)

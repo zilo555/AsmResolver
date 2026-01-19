@@ -13,7 +13,7 @@ namespace AsmResolver.DotNet
         /// <summary>
         /// The target framework name used by applications targeting .NET or .NET Core.
         /// </summary>
-        public const string NetCoreApp = ".NETCoreApp";
+        public const string NetCoreAppName = ".NETCoreApp";
 
         /// <summary>
         /// A target framework name used in some legacy architectures.
@@ -21,22 +21,22 @@ namespace AsmResolver.DotNet
         /// <remarks>
         /// This should not be confused with <see cref="NetCoreApp"/>, which is the correct name for applications targeting .NET or .NET Core.
         /// </remarks>
-        public const string NetCore = ".NETCore";
+        public const string NetCoreName = ".NETCore";
 
         /// <summary>
         /// The target framework name used by libraries targeting .NET Standard.
         /// </summary>
-        public const string NetStandard = ".NETStandard";
+        public const string NetStandardName = ".NETStandard";
 
         /// <summary>
         /// The target framework name used by applications targeting legacy .NET Framework.
         /// </summary>
-        public const string NetFramework = ".NETFramework";
+        public const string NetFrameworkName = ".NETFramework";
 
         /// <summary>
         /// The target framework name used by applications targeting legacy .NET Portable.
         /// </summary>
-        public const string NetPortable = ".NETPortable";
+        public const string NetPortableName = ".NETPortable";
 
         private static readonly Regex FormatRegex = new(@"([a-zA-Z.]+)\s*,\s*Version=v(\d+\.\d+)");
 
@@ -78,7 +78,7 @@ namespace AsmResolver.DotNet
         /// <summary>
         /// Gets a value indicating whether the application targets the .NET or .NET Core runtime or not.
         /// </summary>
-        public bool IsNetCoreApp => Name == NetCoreApp;
+        public bool IsNetCoreApp => Name == NetCoreAppName;
 
         /// <summary>
         /// Gets a value indicating whether or not the application is targeting a legacy architecture that uses <see cref="NetCore"/>.
@@ -86,22 +86,36 @@ namespace AsmResolver.DotNet
         /// <remarks>
         /// This should not be confused with <see cref="IsNetCoreApp"/>, which is the correct property for whether or not an application is targeting .NET or .NET Core.
         /// </remarks>
-        public bool IsNetCore => Name == NetCore;
+        public bool IsNetCore => Name == NetCoreName;
 
         /// <summary>
         /// Gets a value indicating whether the application targets the .NET Framework runtime or not.
         /// </summary>
-        public bool IsNetFramework => Name == NetFramework;
+        public bool IsNetFramework => Name == NetFrameworkName;
 
         /// <summary>
         /// Gets a value indicating whether the application targets the .NET standard specification or not.
         /// </summary>
-        public bool IsNetStandard => Name == NetStandard;
+        public bool IsNetStandard => Name == NetStandardName;
 
         /// <summary>
         /// Gets a value indicating whether the application targets the .NET Portable runtime or not.
         /// </summary>
-        public bool IsNetPortable => Name == NetPortable;
+        public bool IsNetPortable => Name == NetPortableName;
+
+        public static DotNetRuntimeInfo NetFramework(int major, int minor) => NetFramework(new Version(major, minor));
+
+        public static DotNetRuntimeInfo NetFramework(int major, int minor, int patch) => NetFramework(new Version(major, minor, patch));
+        public static DotNetRuntimeInfo NetFramework(Version version) => new(NetFrameworkName, version);
+
+        public static DotNetRuntimeInfo NetStandard(int major, int minor) => NetStandard(new Version(major, minor));
+        public static DotNetRuntimeInfo NetStandard(Version version) => new(NetStandardName, version);
+
+        public static DotNetRuntimeInfo NetCoreApp(int major, int minor) => NetCoreApp(new Version(major, minor));
+
+        public static DotNetRuntimeInfo NetCoreApp(int major, int minor, int patch) => NetCoreApp(new Version(major, minor, patch));
+
+        public static DotNetRuntimeInfo NetCoreApp(Version version) => new(NetCoreAppName, version);
 
         /// <summary>
         /// Parses the framework name as provided in a <c>System.Runtime.Versioning.TargetFrameworkAttribute</c> attribute.
@@ -157,13 +171,13 @@ namespace AsmResolver.DotNet
 
             Match match;
             if ((match = NetMonikerRegex.Match(moniker)).Success)
-                runtime = NetCoreApp;
+                runtime = NetCoreAppName;
             else if ((match = NetCoreAppMonikerRegex.Match(moniker)).Success)
-                runtime = NetCoreApp;
+                runtime = NetCoreAppName;
             else if ((match = NetStandardMonikerRegex.Match(moniker)).Success)
-                runtime = NetStandard;
+                runtime = NetStandardName;
             else if ((match = NetFxMonikerRegex.Match(moniker)).Success)
-                runtime = NetFramework;
+                runtime = NetFrameworkName;
             else
                 return false;
 

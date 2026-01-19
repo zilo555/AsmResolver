@@ -126,7 +126,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void ParseGenericFromNonGenericTypeSignature()
         {
             var type = new TypeDefinition("", "Test type", TypeAttributes.Public);
-            var notGenericSignature = new TypeDefOrRefSignature(type);
+            var notGenericSignature = type.ToTypeSignature();
 
             var context = GenericContext.FromType(notGenericSignature);
             var context2 = GenericContext.FromMember(notGenericSignature);
@@ -209,7 +209,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void ParseGenericFromNotGenericTypeSpecification()
         {
             var type = new TypeDefinition("", "Test type", TypeAttributes.Public);
-            var notGenericSignature = new TypeDefOrRefSignature(type);
+            var notGenericSignature = type.ToTypeSignature();
 
             var typeSpecification = new TypeSpecification(notGenericSignature);
 
@@ -226,7 +226,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void ParseGenericFromNotGenericMethodSpecification()
         {
             var type = new TypeDefinition("", "Test type", TypeAttributes.Public);
-            var notGenericSignature = new TypeDefOrRefSignature(type);
+            var notGenericSignature = type.ToTypeSignature();
 
             var method = new MethodDefinition(
                 "TestMethod",
@@ -252,7 +252,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var typeSpecification = new TypeSpecification(genericTypeInstance);
 
             var type = new TypeDefinition("", "Test type", TypeAttributes.Public);
-            var notGenericSignature = new TypeDefOrRefSignature(type);
+            var notGenericSignature = type.ToTypeSignature();
 
             var method = new MemberReference(typeSpecification, "TestMethod",
                 MethodSignature.CreateStatic(notGenericSignature));
@@ -295,7 +295,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void ParseGenericFromNotGenericField()
         {
             var type = new TypeDefinition("", "Test type", TypeAttributes.Public);
-            var notGenericSignature = new TypeDefOrRefSignature(type);
+            var notGenericSignature = type.ToTypeSignature();
 
             var field = new FieldDefinition("Field", FieldAttributes.Private, notGenericSignature);
 
@@ -338,7 +338,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void ParseGenericFromNotGenericMethod()
         {
             var type = new TypeDefinition("", "Test type", TypeAttributes.Public);
-            var notGenericSignature = new TypeDefOrRefSignature(type);
+            var notGenericSignature = type.ToTypeSignature();
 
             var method = new MethodDefinition(
                 "Method",
@@ -382,7 +382,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void ParseGenericFromNotGenericProperty()
         {
             var type = new TypeDefinition("", "Test type", TypeAttributes.Public);
-            var notGenericSignature = new TypeDefOrRefSignature(type);
+            var notGenericSignature = type.ToTypeSignature();
 
             var property = new PropertyDefinition("Property", PropertyAttributes.None,
                 PropertySignature.CreateStatic(notGenericSignature));

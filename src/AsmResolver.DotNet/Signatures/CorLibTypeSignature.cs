@@ -94,7 +94,7 @@ namespace AsmResolver.DotNet.Signatures
         public override ITypeDefOrRef ToTypeDefOrRef() => Type;
 
         /// <inheritdoc />
-        public override TypeSignature GetReducedType()
+        public override TypeSignature GetReducedType(RuntimeContext? context)
         {
             var factory = ContextModule!.CorLibTypeFactory;
             return ElementType switch
@@ -104,30 +104,30 @@ namespace AsmResolver.DotNet.Signatures
                 ElementType.I4 or ElementType.U4 => factory.Int32,
                 ElementType.I8 or ElementType.U8 => factory.Int64,
                 ElementType.I or ElementType.U => factory.IntPtr,
-                _ => base.GetReducedType()
+                _ => base.GetReducedType(context)
             };
         }
 
         /// <inheritdoc />
-        public override TypeSignature GetVerificationType()
+        public override TypeSignature GetVerificationType(RuntimeContext? context)
         {
             var factory = ContextModule!.CorLibTypeFactory;
-            return GetReducedType().ElementType switch
+            return GetReducedType(context).ElementType switch
             {
                 ElementType.I1 or ElementType.Boolean => factory.SByte,
                 ElementType.I2 or ElementType.Char => factory.Int16,
                 ElementType.I4 => factory.Int32,
                 ElementType.I8 => factory.Int64,
                 ElementType.I => factory.IntPtr,
-                _ => base.GetVerificationType()
+                _ => base.GetVerificationType(context)
             };
         }
 
         /// <inheritdoc />
-        public override TypeSignature GetIntermediateType()
+        public override TypeSignature GetIntermediateType(RuntimeContext? context)
         {
             var factory = ContextModule!.CorLibTypeFactory;
-            var verificationType = GetVerificationType();
+            var verificationType = GetVerificationType(context);
             return verificationType.ElementType switch
             {
                 ElementType.I1 or ElementType.I2 or ElementType.I4 => factory.Int32,

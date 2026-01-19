@@ -49,22 +49,22 @@ namespace AsmResolver.DotNet.Signatures
         public override bool IsImportedInModule(ModuleDefinition module) => Signature.IsImportedInModule(module);
 
         /// <inheritdoc />
-        protected override bool IsDirectlyCompatibleWith(TypeSignature other, SignatureComparer comparer)
+        protected override bool IsDirectlyCompatibleWith(TypeSignature other, RuntimeContext? context, SignatureComparer comparer)
         {
-            if (base.IsDirectlyCompatibleWith(other, comparer))
+            if (base.IsDirectlyCompatibleWith(other, context, comparer))
                 return true;
 
             if (other is not FunctionPointerTypeSignature {Signature: { } otherSignature}
                 || Signature.GenericParameterCount != otherSignature.GenericParameterCount
                 || Signature.ParameterTypes.Count != otherSignature.ParameterTypes.Count
-                || !Signature.ReturnType.IsAssignableTo(otherSignature.ReturnType, comparer))
+                || !Signature.ReturnType.IsAssignableTo(otherSignature.ReturnType, context, comparer))
             {
                 return false;
             }
 
             for (int i = 0; i < Signature.ParameterTypes.Count; i++)
             {
-                if (!Signature.ParameterTypes[i].IsAssignableTo(otherSignature.ParameterTypes[i], comparer))
+                if (!Signature.ParameterTypes[i].IsAssignableTo(otherSignature.ParameterTypes[i], context, comparer))
                     return false;
             }
 

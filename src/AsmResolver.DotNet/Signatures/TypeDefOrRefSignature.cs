@@ -16,8 +16,8 @@ namespace AsmResolver.DotNet.Signatures
         /// Creates a new type signature referencing a type in a type metadata table.
         /// </summary>
         /// <param name="type">The type to reference.</param>
-        public TypeDefOrRefSignature(ITypeDefOrRef type)
-            : this(type, type.IsValueType)
+        public TypeDefOrRefSignature(ITypeDefOrRef type, RuntimeContext? context)
+            : this(type, type.GetIsValueType(context))
         {
         }
 
@@ -35,15 +35,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <summary>
         /// Gets the metadata type that is referenced by this signature.
         /// </summary>
-        public ITypeDefOrRef Type
-        {
-            get => _type;
-            set
-            {
-                _type = value;
-                _isValueType = value.IsValueType;
-            }
-        }
+        public ITypeDefOrRef Type => _type;
 
         /// <inheritdoc />
         public override ElementType ElementType => IsValueType ? ElementType.ValueType : ElementType.Class;
@@ -60,8 +52,18 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override ModuleDefinition? ContextModule => Type.ContextModule;
 
-        /// <inheritdoc />
         public override bool IsValueType => _isValueType;
+
+        public void SetUnderlyingType(ITypeDefOrRef type, RuntimeContext? context)
+        {
+            SetUnderlyingType(type, type.GetIsValueType(context));
+        }
+
+        public void SetUnderlyingType(ITypeDefOrRef type, bool isValueType)
+        {
+            _type = type;
+            _isValueType = isValueType;
+        }
 
         /// <inheritdoc />
         public override bool IsImportedInModule(ModuleDefinition module) => Type.IsImportedInModule(module);
@@ -73,9 +75,9 @@ namespace AsmResolver.DotNet.Signatures
         public override ITypeDefOrRef GetUnderlyingTypeDefOrRef() => Type;
 
         /// <inheritdoc />
-        public override TypeSignature GetUnderlyingType()
+        public override TypeSignature GetUnderlyingType(RuntimeContext? context)
         {
-            var type = Type.Resolve();
+            var type = Type.Resolve(context).UnwrapOrDefault();
 
             if (type is {IsEnum: true})
                 return type.GetEnumUnderlyingType() ?? this;
@@ -84,18 +86,18 @@ namespace AsmResolver.DotNet.Signatures
         }
 
         /// <inheritdoc />
-        public override TypeSignature GetReducedType()
+        public override TypeSignature GetReducedType(RuntimeContext? context)
         {
-            var underlyingType = GetUnderlyingType();
+            var underlyingType = GetUnderlyingType(context);
             return !ReferenceEquals(underlyingType, this)
-                ? underlyingType.GetReducedType()
+                ? underlyingType.GetReducedType(context)
                 : this;
         }
 
         /// <inheritdoc />
-        public override TypeSignature? GetDirectBaseClass()
+        public override TypeSignature? GetDirectBaseClass(RuntimeContext? context)
         {
-            var type = Type.Resolve();
+            var type = Type.Resolve(context).UnwrapOrDefault();
             if (type is null)
                 return null;
 
@@ -106,9 +108,9 @@ namespace AsmResolver.DotNet.Signatures
         }
 
         /// <inheritdoc />
-        public override IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces()
+        public override IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces(RuntimeContext? context)
         {
-            var type = Type.Resolve();
+            var type = Type.Resolve(context).UnwrapOrDefault();
             if (type is null)
                 return Enumerable.Empty<TypeSignature>();
 

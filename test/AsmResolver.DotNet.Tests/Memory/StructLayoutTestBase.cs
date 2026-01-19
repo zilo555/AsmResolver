@@ -23,7 +23,7 @@ namespace AsmResolver.DotNet.Tests.Memory
         protected void VerifySize<T>()
         {
             var type = FindTestType(typeof(T));
-            var layout = type.GetImpliedMemoryLayout(IntPtr.Size == 4);
+            var layout = type.GetImpliedMemoryLayout(type.ContextModule!.RuntimeContext, IntPtr.Size == 4);
             Assert.Equal((uint) Unsafe.SizeOf<T>(), layout.Size);
         }
 

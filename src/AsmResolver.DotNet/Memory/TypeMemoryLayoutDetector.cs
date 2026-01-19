@@ -11,6 +11,7 @@ namespace AsmResolver.DotNet.Memory
     /// </summary>
     public class TypeMemoryLayoutDetector : ITypeSignatureVisitor<TypeMemoryLayout>
     {
+        private readonly RuntimeContext _runtimeContext;
         private readonly Stack<TypeDefinition> _traversedTypes = new();
         private readonly MemoryLayoutAttributes _defaultAttributes;
         private GenericContext _currentGenericContext;
@@ -19,9 +20,10 @@ namespace AsmResolver.DotNet.Memory
         /// Creates a new instance of the <see cref="TypeMemoryLayoutDetector"/>.
         /// </summary>
         /// <param name="is32Bit">Determines whether memory addresses are 32 bit or 64 bit wide.</param>
-        public TypeMemoryLayoutDetector(bool is32Bit)
-            : this(new GenericContext(), is32Bit)
+        public TypeMemoryLayoutDetector(RuntimeContext runtimeContext, bool is32Bit)
+            : this(runtimeContext, new GenericContext(), is32Bit)
         {
+            _runtimeContext = runtimeContext;
         }
 
         /// <summary>
@@ -29,8 +31,9 @@ namespace AsmResolver.DotNet.Memory
         /// </summary>
         /// <param name="currentGenericContext">The current generic context to use.</param>
         /// <param name="is32Bit">Determines whether memory addresses are 32 bit or 64 bit wide.</param>
-        public TypeMemoryLayoutDetector(GenericContext currentGenericContext, bool is32Bit)
+        public TypeMemoryLayoutDetector(RuntimeContext runtimeContext, GenericContext currentGenericContext, bool is32Bit)
         {
+            _runtimeContext = runtimeContext;
             _currentGenericContext = currentGenericContext;
             _defaultAttributes = is32Bit
                 ? MemoryLayoutAttributes.Is32Bit
@@ -169,9 +172,10 @@ namespace AsmResolver.DotNet.Memory
             return type.Signature!.AcceptVisitor(this);
         }
 
-        private TypeMemoryLayout VisitTypeReference(TypeReference type) =>
-            VisitTypeDefinition(type.Resolve() ?? throw new ArgumentException(
-                $"Could not resolve type {type.SafeToString()}."));
+        private TypeMemoryLayout VisitTypeReference(TypeReference type)
+        {
+            return VisitTypeDefinition(type.Resolve(_runtimeContext).Unwrap());
+        }
 
         private TypeMemoryLayout VisitTypeDefinition(TypeDefinition type)
         {
@@ -189,7 +193,7 @@ namespace AsmResolver.DotNet.Memory
             // Enter type.
             _traversedTypes.Push(type);
 
-            var alignmentDetector = new TypeAlignmentDetector(_currentGenericContext, Is32Bit);
+            var alignmentDetector = new TypeAlignmentDetector(_runtimeContext, _currentGenericContext, Is32Bit);
             uint alignment = alignmentDetector.VisitTypeDefinition(type);
 
             // Infer raw layout.

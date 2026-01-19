@@ -117,12 +117,12 @@ namespace AsmResolver.DotNet.Tests
 
             var initializer = field.FindInitializerField();
 
-            var data = new byte[]
-            {
-                1, 2, 3, 4
-            };
+            byte[] data = [1, 2, 3, 4];
             initializer.FieldRva = new DataSegment(data);
-            initializer.Signature.FieldType.Resolve().ClassLayout.ClassSize = (uint) data.Length;
+            initializer.Signature!.FieldType
+                .Resolve(module.RuntimeContext)
+                .UnwrapOrDefault()?
+                .ClassLayout?.ClassSize = (uint) data.Length;
 
             var newInitializer = RebuildAndLookup(initializer);
 
@@ -247,7 +247,7 @@ namespace AsmResolver.DotNet.Tests
             var field = new FieldDefinition("Field", FieldAttributes.Static,
                 targetModule.CorLibTypeFactory.CorLibScope
                     .CreateTypeReference("System", "Action`1")
-                    .MakeGenericInstanceType(sourceType.ToTypeSignature())
+                    .MakeGenericInstanceType(isValueType: false, sourceType.ToTypeSignature())
             );
             targetModule.GetOrCreateModuleType().Fields.Add(field);
 

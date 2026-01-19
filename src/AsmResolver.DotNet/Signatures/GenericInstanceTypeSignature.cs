@@ -70,15 +70,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <summary>
         /// Gets or sets the underlying generic type definition or reference.
         /// </summary>
-        public ITypeDefOrRef GenericType
-        {
-            get => _genericType;
-            set
-            {
-                _genericType = value;
-                _isValueType = _genericType.IsValueType;
-            }
-        }
+        public ITypeDefOrRef GenericType => _genericType;
 
         /// <summary>
         /// Gets a collection of type arguments used to instantiate the generic type.
@@ -107,6 +99,17 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override bool IsValueType => _isValueType;
 
+        public void SetUnderlyingType(ITypeDefOrRef type, RuntimeContext? context)
+        {
+            SetUnderlyingType(type, type.GetIsValueType(context));
+        }
+
+        public void SetUnderlyingType(ITypeDefOrRef type, bool isValueType)
+        {
+            _genericType = type;
+            _isValueType = isValueType;
+        }
+
         /// <inheritdoc />
         public override ITypeDefOrRef GetUnderlyingTypeDefOrRef() => GenericType;
 
@@ -126,9 +129,9 @@ namespace AsmResolver.DotNet.Signatures
         }
 
         /// <inheritdoc />
-        public override TypeSignature? GetDirectBaseClass()
+        public override TypeSignature? GetDirectBaseClass(RuntimeContext? context)
         {
-            var genericType = GenericType.Resolve();
+            var genericType = GenericType.Resolve(context).UnwrapOrDefault();
             if (genericType is null)
                 return null;
 
@@ -150,20 +153,20 @@ namespace AsmResolver.DotNet.Signatures
         }
 
         /// <inheritdoc />
-        public override IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces()
+        public override IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces(RuntimeContext? context)
         {
-            var type = GenericType.Resolve();
+            var type = GenericType.Resolve(context).UnwrapOrDefault();
             if (type is null)
                 return Enumerable.Empty<TypeSignature>();
 
-            var context = GenericContext.FromType(this);
-            return type.Interfaces.Select(i => i.Interface!.ToTypeSignature(false).InstantiateGenericTypes(context));
+            var genericContext = GenericContext.FromType(this);
+            return type.Interfaces.Select(i => i.Interface!.ToTypeSignature(false).InstantiateGenericTypes(genericContext));
         }
 
         /// <inheritdoc />
-        protected override bool IsDirectlyCompatibleWith(TypeSignature other, SignatureComparer comparer)
+        protected override bool IsDirectlyCompatibleWith(TypeSignature other, RuntimeContext? context, SignatureComparer comparer)
         {
-            if (base.IsDirectlyCompatibleWith(other, comparer))
+            if (base.IsDirectlyCompatibleWith(other, context, comparer))
                 return true;
 
             // Other type must be a generic instance with the same generic base type and type argument count.
@@ -175,7 +178,7 @@ namespace AsmResolver.DotNet.Signatures
             }
 
             // If resolution fails, assume no parameter variance.
-            var genericType = GenericType.Resolve();
+            var genericType = GenericType.Resolve(context).UnwrapOrDefault();
 
             // Check that every type argument is compatible with each other.
             for (int i = 0; i < TypeArguments.Count; i++)
@@ -187,9 +190,9 @@ namespace AsmResolver.DotNet.Signatures
                     GenericParameterAttributes.NonVariant =>
                         comparer.Equals(TypeArguments[i].StripModifiers(), otherGenericInstance.TypeArguments[i].StripModifiers()),
                     GenericParameterAttributes.Covariant =>
-                        TypeArguments[i].IsCompatibleWith(otherGenericInstance.TypeArguments[i], comparer),
+                        TypeArguments[i].IsCompatibleWith(otherGenericInstance.TypeArguments[i], context, comparer),
                     GenericParameterAttributes.Contravariant =>
-                        otherGenericInstance.TypeArguments[i].IsCompatibleWith(TypeArguments[i], comparer),
+                        otherGenericInstance.TypeArguments[i].IsCompatibleWith(TypeArguments[i], context, comparer),
                     _ => throw new ArgumentOutOfRangeException()
                 };
 

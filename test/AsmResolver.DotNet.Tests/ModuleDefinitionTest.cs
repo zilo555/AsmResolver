@@ -7,7 +7,6 @@ using System.Runtime.InteropServices;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.TestCases.NestedClasses;
-using AsmResolver.IO;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using AsmResolver.PE.File;
 using AsmResolver.PE.Win32Resources;
@@ -57,7 +56,8 @@ namespace AsmResolver.DotNet.Tests
 
             Assert.Contains(
                 Path.GetDirectoryName(path),
-                ((AssemblyResolverBase) module.MetadataResolver.AssemblyResolver).SearchDirectories);
+                ((AssemblyResolverBase) module.RuntimeContext.AssemblyResolver).SearchDirectories
+            );
         }
 
         [Fact]
@@ -68,7 +68,8 @@ namespace AsmResolver.DotNet.Tests
 
             Assert.DoesNotContain(
                 Path.GetDirectoryName(path),
-                ((AssemblyResolverBase) module.MetadataResolver.AssemblyResolver).SearchDirectories);
+                ((AssemblyResolverBase) module.RuntimeContext.AssemblyResolver).SearchDirectories
+            );
         }
 
         [Fact]
@@ -81,7 +82,8 @@ namespace AsmResolver.DotNet.Tests
 
             Assert.Contains(
                 Path.GetDirectoryName(path),
-                ((AssemblyResolverBase) module.MetadataResolver.AssemblyResolver).SearchDirectories);
+                ((AssemblyResolverBase) module.RuntimeContext.AssemblyResolver).SearchDirectories
+            );
         }
 
         [Fact]
@@ -91,8 +93,8 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromFile(path,
                 new ModuleReaderParameters(Path.GetDirectoryName(path)));
 
-            Assert.Equal(1, ((AssemblyResolverBase) module.MetadataResolver.AssemblyResolver)
-                .SearchDirectories.Count(x => x == Path.GetDirectoryName(path)));
+            var resolver = (AssemblyResolverBase) module.RuntimeContext.AssemblyResolver;
+            Assert.Equal(1, resolver.SearchDirectories.Count(x => x == Path.GetDirectoryName(path)));
         }
 
         [Fact]
@@ -102,7 +104,7 @@ namespace AsmResolver.DotNet.Tests
             string otherPath = @"C:\other\path";
             var module = ModuleDefinition.FromFile(path, new ModuleReaderParameters(otherPath));
 
-            var searchDirectories = ((AssemblyResolverBase) module.MetadataResolver.AssemblyResolver).SearchDirectories;
+            var searchDirectories = ((AssemblyResolverBase) module.RuntimeContext.AssemblyResolver).SearchDirectories;
             Assert.Contains(Path.GetDirectoryName(path), searchDirectories);
             Assert.Contains(otherPath, searchDirectories);
         }
@@ -464,7 +466,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             Assert.True(module.OriginalTargetRuntime.IsNetFramework);
-            Assert.Contains(DotNetRuntimeInfo.NetFramework, module.OriginalTargetRuntime.Name);
+            Assert.Contains(DotNetRuntimeInfo.NetFrameworkName, module.OriginalTargetRuntime.Name);
             Assert.Equal(4, module.OriginalTargetRuntime.Version.Major);
             Assert.Equal(0, module.OriginalTargetRuntime.Version.Minor);
         }
@@ -474,7 +476,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld_NetCore, TestReaderParameters);
             Assert.True(module.OriginalTargetRuntime.IsNetCoreApp);
-            Assert.Contains(DotNetRuntimeInfo.NetCoreApp, module.OriginalTargetRuntime.Name);
+            Assert.Contains(DotNetRuntimeInfo.NetCoreAppName, module.OriginalTargetRuntime.Name);
             Assert.Equal(2, module.OriginalTargetRuntime.Version.Major);
             Assert.Equal(2, module.OriginalTargetRuntime.Version.Minor);
         }
@@ -484,7 +486,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromFile(typeof(TestCases.Types.Class).Assembly.Location, TestReaderParameters);
             Assert.True(module.OriginalTargetRuntime.IsNetStandard);
-            Assert.Contains(DotNetRuntimeInfo.NetStandard, module.OriginalTargetRuntime.Name);
+            Assert.Contains(DotNetRuntimeInfo.NetStandardName, module.OriginalTargetRuntime.Name);
             Assert.Equal(2, module.OriginalTargetRuntime.Version.Major);
         }
 

@@ -164,7 +164,11 @@ namespace AsmResolver.DotNet
             (AssemblyReference) importer.ImportScope(this);
 
         /// <inheritdoc />
-        public override AssemblyDefinition? Resolve() => ContextModule?.MetadataResolver.AssemblyResolver.Resolve(this);
+        public override Result<AssemblyDefinition> Resolve(RuntimeContext? context)
+        {
+            return context?.AssemblyResolver.Resolve(this)
+                ?? Result.Fail<AssemblyDefinition>();
+        }
 
         AssemblyDescriptor IResolutionScope.GetAssembly() => this;
     }

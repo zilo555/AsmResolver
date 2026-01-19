@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
@@ -23,16 +24,18 @@ public class BundleAssemblyResolver : IAssemblyResolver
     }
 
     /// <inheritdoc />
-    public AssemblyDefinition? Resolve(AssemblyDescriptor assembly)
+    public Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly)
     {
         // Prefer embedded files before we forward to the default assembly resolution algorithm.
         if (TryResolveFromEmbeddedFiles(assembly, out var resolved))
-            return resolved;
+            return Result.Success(resolved);
 
         return _baseResolver.Resolve(assembly);
     }
 
-    private bool TryResolveFromEmbeddedFiles(AssemblyDescriptor assembly, out AssemblyDefinition? resolved)
+    private bool TryResolveFromEmbeddedFiles(
+        AssemblyDescriptor assembly,
+        [NotNullWhen(true)] out AssemblyDefinition? resolved)
     {
         if (_embeddedFilesCache.TryGetValue(assembly, out resolved))
             return true;

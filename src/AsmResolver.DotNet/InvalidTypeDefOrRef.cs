@@ -45,9 +45,13 @@ namespace AsmResolver.DotNet
 
         IResolutionScope? ITypeDescriptor.Scope => null;
 
-        bool ITypeDescriptor.IsValueType => false;
-
         ITypeDescriptor? IMemberDescriptor.DeclaringType => null;
+
+        bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => false;
+
+        Result<TypeDefinition> ITypeDescriptor.Resolve(RuntimeContext? context) => Result.Fail<TypeDefinition>();
+
+        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext context) => Result.Fail<IMemberDefinition>();
 
         ITypeDefOrRef? ITypeDefOrRef.DeclaringType => null;
 
@@ -85,19 +89,13 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         IImportable IImportable.ImportWith(ReferenceImporter importer) => throw new InvalidOperationException();
 
-        IMemberDefinition? IMemberDescriptor.Resolve() => null;
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => null;
-
-        TypeDefinition? ITypeDescriptor.Resolve() => null;
-
-        TypeDefinition? ITypeDescriptor.Resolve(ModuleDefinition context) => null;
-
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
-        TypeSignature ITypeDescriptor.ToTypeSignature() => throw new InvalidOperationException();
+        public TypeSignature ToTypeSignature() => new TypeDefOrRefSignature(this, false);
 
-        TypeSignature ITypeDefOrRef.ToTypeSignature(bool isValueType) => throw new InvalidOperationException();
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => throw new InvalidOperationException();
+
+        TypeSignature ITypeDefOrRef.ToTypeSignature(bool isValueType) => ToTypeSignature();
 
         /// <inheritdoc />
         public override string ToString() =>  ((IFullNameProvider) this).Name!;

@@ -106,9 +106,6 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public bool IsValueType => Resolve()?.IsValueType ?? false;
-
-        /// <inheritdoc />
         public ModuleDefinition? ContextModule
         {
             // Note: We cannot make this a computed property that returns `Scope.ContextModule`, because a TypeRef's
@@ -139,10 +136,12 @@ namespace AsmResolver.DotNet
             }
         }
 
+        /// <inheritdoc />
+        public bool GetIsValueType(RuntimeContext? context) => Resolve(context).UnwrapOrDefault()?.IsValueType is true;
+
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
-        /// <inheritdoc />
-        public TypeSignature ToTypeSignature() => ToTypeSignature(IsValueType);
+        public TypeSignature ToTypeSignature(RuntimeContext? context) => ToTypeSignature(GetIsValueType(context));
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType)
@@ -166,14 +165,13 @@ namespace AsmResolver.DotNet
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
         /// <inheritdoc />
-        public TypeDefinition? Resolve() => ContextModule is { } context ? Resolve(context) : null;
+        public Result<TypeDefinition> Resolve(RuntimeContext? context)
+        {
+            return context?.ResolveType(this, ContextModule)
+                ?? Result.Fail<TypeDefinition>();
+        }
 
-        /// <inheritdoc />
-        public TypeDefinition? Resolve(ModuleDefinition context) => context.MetadataResolver.ResolveType(this);
-
-        IMemberDefinition? IMemberDescriptor.Resolve() => Resolve();
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => Resolve(context);
+        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
 
         /// <summary>
         /// Obtains the name of the type reference.

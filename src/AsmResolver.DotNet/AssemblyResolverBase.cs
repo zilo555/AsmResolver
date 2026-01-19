@@ -61,7 +61,7 @@ namespace AsmResolver.DotNet
         } = new List<string>();
 
         /// <inheritdoc />
-        public AssemblyDefinition? Resolve(AssemblyDescriptor assembly)
+        public Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly)
         {
             AssemblyDefinition? result;
 
@@ -74,7 +74,9 @@ namespace AsmResolver.DotNet
                 _cache.TryAdd(assembly, candidate);
             }
 
-            return result;
+            return result is not null
+                ? Result.Success(result)
+                : Result.Fail<AssemblyDefinition>();
         }
 
         /// <inheritdoc />

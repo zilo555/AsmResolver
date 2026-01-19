@@ -92,15 +92,10 @@ namespace AsmResolver.DotNet
             }
         }
 
-        /// <inheritdoc />
-        public MethodDefinition? Resolve() => Method?.Resolve();
-
-        IMemberDefinition? IMemberDescriptor.Resolve() => Resolve();
+        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
 
         /// <inheritdoc />
-        public MethodDefinition? Resolve(ModuleDefinition context) => Method?.Resolve(context);
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => Resolve(context);
+        public Result<MethodDefinition> Resolve(RuntimeContext? context) => Method?.Resolve(context) ?? Result.Fail<MethodDefinition>();
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
@@ -118,6 +113,7 @@ namespace AsmResolver.DotNet
 
         /// <inheritdoc />
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
+
         /// <summary>
         /// Obtains the instantiated method.
         /// </summary>

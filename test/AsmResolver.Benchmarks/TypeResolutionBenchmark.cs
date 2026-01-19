@@ -26,7 +26,7 @@ public class TypeResolutionBenchmark
 
         var module2 = ModuleDefinition.FromFile(typeof(SingleMethod).Assembly.Location, parameters);
 
-        _ = module1.CorLibTypeFactory.Object.Resolve();
-        _ = module2.CorLibTypeFactory.Object.Resolve();
+        _ = module1.CorLibTypeFactory.Object.Resolve(module1.RuntimeContext);
+        _ = module2.CorLibTypeFactory.Object.Resolve(module1.RuntimeContext);
     }
 }

@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using AsmResolver.DotNet.Signatures;
 using Xunit;
 using FieldAttributes = AsmResolver.PE.DotNet.Metadata.Tables.FieldAttributes;
@@ -65,8 +64,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var assemblyRef = module.AssemblyReferences[0];
-            var assemblyDef = assemblyRef.Resolve();
-            Assert.NotNull(assemblyDef);
+            var assemblyDef = assemblyRef.Resolve(module.RuntimeContext).Unwrap();
             Assert.Equal(assemblyDef.Name, assemblyDef.Name);
             Assert.Equal(assemblyDef.Version, assemblyDef.Version);
         }
@@ -101,7 +99,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var genericType = module.CorLibTypeFactory.CorLibScope
                 .CreateTypeReference("System.Collections.Generic", "List`1")
-                .MakeGenericInstanceType(module.CorLibTypeFactory.Int32);
+                .MakeGenericInstanceType(isValueType: false, module.CorLibTypeFactory.Int32);
             Assert.False(genericType.IsValueType);
         }
 
@@ -111,7 +109,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var genericType = module.CorLibTypeFactory.CorLibScope
                 .CreateTypeReference("System", "Nullable`1")
-                .MakeGenericInstanceType(module.CorLibTypeFactory.Int32);
+                .MakeGenericInstanceType(isValueType: true, module.CorLibTypeFactory.Int32);
             Assert.True(genericType.IsValueType);
         }
 

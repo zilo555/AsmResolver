@@ -530,9 +530,17 @@ namespace AsmResolver.DotNet
 
         IResolutionScope? ITypeDescriptor.Scope => GetDeclaringScope();
 
-        /// <inheritdoc />
         [MemberNotNullWhen(true, nameof(BaseType))]
-        public bool IsValueType => !this.IsTypeOf("System", nameof(Enum)) && BaseType is { } && (BaseType.IsTypeOf("System", nameof(ValueType)) || IsEnum);
+        public bool IsValueType
+        {
+            get
+            {
+                return !this.IsTypeOf("System", nameof(Enum)) // System.Enum itself is considered by the runtime a value type.
+                    && BaseType is not null
+                    && BaseType.Namespace == "System"
+                    && BaseType.Name?.Value is nameof(ValueType) or nameof(Enum);
+            }
+        }
 
         /// <summary>
         /// Gets a value indicating whether the type defines an enumeration of discrete values.
@@ -824,6 +832,8 @@ namespace AsmResolver.DotNet
 
         private bool FindInTypeTree(Predicate<TypeDefinition> condition)
         {
+            var context = _module?.RuntimeContext;
+
             var visited = new List<TypeDefinition>();
 
             var type = this;
@@ -837,7 +847,7 @@ namespace AsmResolver.DotNet
                     return true;
 
                 visited.Add(type);
-                type = type.BaseType?.Resolve();
+                type = type.BaseType?.Resolve(context).UnwrapOrDefault();
             } while (type is not null);
 
             return false;
@@ -845,8 +855,9 @@ namespace AsmResolver.DotNet
 
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
-        /// <inheritdoc />
         public TypeSignature ToTypeSignature() => ToTypeSignature(IsValueType);
+
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => ToTypeSignature();
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType)
@@ -884,6 +895,8 @@ namespace AsmResolver.DotNet
             if (SignatureComparer.Default.Equals(this, type))
                 return true;
 
+            var context = DeclaringModule?.RuntimeContext;
+
             bool isInSameAssembly = SignatureComparer.Default.Equals(DeclaringModule, type.DeclaringModule);
 
             // Most common case: A top-level types is accessible by all other types in the same assembly, or types in
@@ -918,7 +931,7 @@ namespace AsmResolver.DotNet
             //      class C : A {} // <-- `type` ( can access A+B )
             //
             if ((IsNestedFamily || IsNestedFamilyOrAssembly || IsNestedFamilyAndAssembly)
-                && type.BaseType?.Resolve() is { } baseType)
+                && type.BaseType?.Resolve(context) is {Resolved: { } baseType})
             {
                 return (!IsNestedFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
             }
@@ -945,10 +958,11 @@ namespace AsmResolver.DotNet
             return DeclaringType.ToTypeReference();
         }
 
-        TypeDefinition ITypeDescriptor.Resolve() => this;
-        TypeDefinition ITypeDescriptor.Resolve(ModuleDefinition context) => this;
-        IMemberDefinition IMemberDescriptor.Resolve() => this;
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => this;
+        bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => IsValueType;
+
+        Result<TypeDefinition> ITypeDescriptor.Resolve(RuntimeContext? context) => Result.Success(this);
+
+        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Result.Success<IMemberDefinition>(this);
 
         /// <summary>
         /// When this type is an enum, extracts the underlying enum type.

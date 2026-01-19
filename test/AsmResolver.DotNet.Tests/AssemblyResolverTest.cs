@@ -23,15 +23,11 @@ namespace AsmResolver.DotNet.Tests
         [InlineData(4, 7)]
         public void ResolveFrameworkCorLib(int major, int minor)
         {
-            var corlib = KnownCorLibs.FromRuntimeInfo(new DotNetRuntimeInfo(
-                DotNetRuntimeInfo.NetFramework,
-                new Version(major, minor)
-            ));
+            var corlib = KnownCorLibs.FromRuntimeInfo(DotNetRuntimeInfo.NetFramework(major, minor));
 
             var resolver = new DotNetFrameworkAssemblyResolver();
-            var assemblyDef = resolver.Resolve(corlib);
+            var assemblyDef = resolver.Resolve(corlib).Unwrap();
 
-            Assert.NotNull(assemblyDef);
             Assert.Equal(corlib.Name, assemblyDef.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
         }
@@ -41,15 +37,11 @@ namespace AsmResolver.DotNet.Tests
         [InlineData(8, 0)]
         public void ResolveCoreCorLib(int major, int minor)
         {
-            var corlib = KnownCorLibs.FromRuntimeInfo(new DotNetRuntimeInfo(
-                DotNetRuntimeInfo.NetCoreApp,
-                new Version(major, minor)
-            ));
+            var corlib = KnownCorLibs.FromRuntimeInfo(DotNetRuntimeInfo.NetCoreApp(major, minor));
 
             var resolver = new DotNetCoreAssemblyResolver(new Version(major, minor, 0));
-            var assemblyDef = resolver.Resolve(corlib);
+            var assemblyDef = resolver.Resolve(corlib).Unwrap();
 
-            Assert.NotNull(assemblyDef);
             Assert.Equal(corlib.Name, assemblyDef.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
         }
@@ -76,7 +68,7 @@ namespace AsmResolver.DotNet.Tests
             var assemblyDef = AssemblyDefinition.FromFile(typeof(TopLevelClass1).Assembly.Location, TestReaderParameters);
             var assemblyRef = new AssemblyReference(assemblyDef);
 
-            Assert.Equal(assemblyDef, resolver.Resolve(assemblyRef), _comparer);
+            Assert.Equal(assemblyDef, resolver.Resolve(assemblyRef).Unwrap(), _comparer);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
 
             resolver.ClearCache();
@@ -84,10 +76,10 @@ namespace AsmResolver.DotNet.Tests
 
             resolver.AddToCache(assemblyRef, assemblyDef);
             Assert.True(resolver.HasCached(assemblyRef));
-            Assert.Equal(assemblyDef, resolver.Resolve(assemblyRef));
+            Assert.Equal(assemblyDef, resolver.Resolve(assemblyRef).Unwrap());
 
             resolver.RemoveFromCache(assemblyRef);
-            Assert.NotEqual(assemblyDef, resolver.Resolve(assemblyRef));
+            Assert.NotEqual(assemblyDef, resolver.Resolve(assemblyRef).Unwrap());
         }
 
         [Fact]
@@ -110,9 +102,8 @@ namespace AsmResolver.DotNet.Tests
     }
 }");
             var resolver = new DotNetCoreAssemblyResolver(config, new Version(3, 1, 0));
-            var assemblyDef = resolver.Resolve(assemblyRef);
+            var assemblyDef = resolver.Resolve(assemblyRef).Unwrap();
 
-            Assert.NotNull(assemblyDef);
             Assert.Equal(assemblyName.Name, assemblyDef.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
             Assert.Contains("Microsoft.NETCore.App", assemblyDef.ManifestModule.FilePath);
@@ -140,9 +131,8 @@ namespace AsmResolver.DotNet.Tests
     }
 }");
             var resolver = new DotNetCoreAssemblyResolver(config, new Version(3, 1, 0));
-            var assemblyDef = resolver.Resolve(assemblyRef);
+            var assemblyDef = resolver.Resolve(assemblyRef).Unwrap();
 
-            Assert.NotNull(assemblyDef);
             Assert.Equal(assemblyName.Name, assemblyDef.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
         }
@@ -168,9 +158,8 @@ namespace AsmResolver.DotNet.Tests
     }
 }");
             var resolver = new DotNetCoreAssemblyResolver(config, new Version(3, 1, 0));
-            var assemblyDef = resolver.Resolve(assemblyRef);
+            var assemblyDef = resolver.Resolve(assemblyRef).Unwrap();
 
-            Assert.NotNull(assemblyDef);
             Assert.Equal("WindowsBase", assemblyDef.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
             Assert.Contains("Microsoft.WindowsDesktop.App", assemblyDef.ManifestModule.FilePath);
@@ -192,8 +181,11 @@ namespace AsmResolver.DotNet.Tests
             module.MachineType = MachineType.I386;
             module.PEKind = OptionalHeaderMagic.PE32;
 
-            var resolved = module.CorLibTypeFactory.CorLibScope.GetAssembly()!.Resolve();
-            Assert.NotNull(resolved);
+            var resolved = module.CorLibTypeFactory.CorLibScope
+                .GetAssembly()!
+                .Resolve(module.RuntimeContext)
+                .Unwrap();
+
             Assert.Contains("GAC_32", resolved.ManifestModule!.FilePath!);
         }
 
@@ -213,8 +205,11 @@ namespace AsmResolver.DotNet.Tests
             module.MachineType = MachineType.Amd64;
             module.PEKind = OptionalHeaderMagic.PE32Plus;
 
-            var resolved = module.CorLibTypeFactory.CorLibScope.GetAssembly()!.Resolve();
-            Assert.NotNull(resolved);
+            var resolved = module.CorLibTypeFactory.CorLibScope
+                .GetAssembly()!
+                .Resolve(module.RuntimeContext)
+                .Unwrap();
+
             Assert.Contains("GAC_64", resolved.ManifestModule!.FilePath!);
         }
 
@@ -227,26 +222,25 @@ namespace AsmResolver.DotNet.Tests
                 "System.Collections",
                 new Version(6, 0, 0, 0),
                 true,
-                new byte[]
-            {
-                0x00, 0x24, 0x00, 0x00, 0x04, 0x80, 0x00, 0x00, 0x94, 0x00, 0x00, 0x00, 0x06, 0x02, 0x00, 0x00, 0x00,
-                0x24, 0x00, 0x00, 0x52, 0x53, 0x41, 0x31, 0x00, 0x04, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x07, 0xD1,
-                0xFA, 0x57, 0xC4, 0xAE, 0xD9, 0xF0, 0xA3, 0x2E, 0x84, 0xAA, 0x0F, 0xAE, 0xFD, 0x0D, 0xE9, 0xE8, 0xFD,
-                0x6A, 0xEC, 0x8F, 0x87, 0xFB, 0x03, 0x76, 0x6C, 0x83, 0x4C, 0x99, 0x92, 0x1E, 0xB2, 0x3B, 0xE7, 0x9A,
-                0xD9, 0xD5, 0xDC, 0xC1, 0xDD, 0x9A, 0xD2, 0x36, 0x13, 0x21, 0x02, 0x90, 0x0B, 0x72, 0x3C, 0xF9, 0x80,
-                0x95, 0x7F, 0xC4, 0xE1, 0x77, 0x10, 0x8F, 0xC6, 0x07, 0x77, 0x4F, 0x29, 0xE8, 0x32, 0x0E, 0x92, 0xEA,
-                0x05, 0xEC, 0xE4, 0xE8, 0x21, 0xC0, 0xA5, 0xEF, 0xE8, 0xF1, 0x64, 0x5C, 0x4C, 0x0C, 0x93, 0xC1, 0xAB,
-                0x99, 0x28, 0x5D, 0x62, 0x2C, 0xAA, 0x65, 0x2C, 0x1D, 0xFA, 0xD6, 0x3D, 0x74, 0x5D, 0x6F, 0x2D, 0xE5,
-                0xF1, 0x7E, 0x5E, 0xAF, 0x0F, 0xC4, 0x96, 0x3D, 0x26, 0x1C, 0x8A, 0x12, 0x43, 0x65, 0x18, 0x20, 0x6D,
-                0xC0, 0x93, 0x34, 0x4D, 0x5A, 0xD2, 0x93
-            });
+                [
+                    0x00, 0x24, 0x00, 0x00, 0x04, 0x80, 0x00, 0x00, 0x94, 0x00, 0x00, 0x00, 0x06, 0x02, 0x00, 0x00, 0x00,
+                    0x24, 0x00, 0x00, 0x52, 0x53, 0x41, 0x31, 0x00, 0x04, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x07, 0xD1,
+                    0xFA, 0x57, 0xC4, 0xAE, 0xD9, 0xF0, 0xA3, 0x2E, 0x84, 0xAA, 0x0F, 0xAE, 0xFD, 0x0D, 0xE9, 0xE8, 0xFD,
+                    0x6A, 0xEC, 0x8F, 0x87, 0xFB, 0x03, 0x76, 0x6C, 0x83, 0x4C, 0x99, 0x92, 0x1E, 0xB2, 0x3B, 0xE7, 0x9A,
+                    0xD9, 0xD5, 0xDC, 0xC1, 0xDD, 0x9A, 0xD2, 0x36, 0x13, 0x21, 0x02, 0x90, 0x0B, 0x72, 0x3C, 0xF9, 0x80,
+                    0x95, 0x7F, 0xC4, 0xE1, 0x77, 0x10, 0x8F, 0xC6, 0x07, 0x77, 0x4F, 0x29, 0xE8, 0x32, 0x0E, 0x92, 0xEA,
+                    0x05, 0xEC, 0xE4, 0xE8, 0x21, 0xC0, 0xA5, 0xEF, 0xE8, 0xF1, 0x64, 0x5C, 0x4C, 0x0C, 0x93, 0xC1, 0xAB,
+                    0x99, 0x28, 0x5D, 0x62, 0x2C, 0xAA, 0x65, 0x2C, 0x1D, 0xFA, 0xD6, 0x3D, 0x74, 0x5D, 0x6F, 0x2D, 0xE5,
+                    0xF1, 0x7E, 0x5E, 0xAF, 0x0F, 0xC4, 0x96, 0x3D, 0x26, 0x1C, 0x8A, 0x12, 0x43, 0x65, 0x18, 0x20, 0x6D,
+                    0xC0, 0x93, 0x34, 0x4D, 0x5A, 0xD2, 0x93
+                ]
+            );
 
             var module = new ModuleDefinition("Dummy", KnownCorLibs.SystemRuntime_v6_0_0_0);
             module.AssemblyReferences.Add(reference);
 
-            var definition = reference.Resolve();
+            var definition = reference.Resolve(module.RuntimeContext).Unwrap();
 
-            Assert.NotNull(definition);
             Assert.Equal(reference.Name, definition.Name);
             Assert.NotNull(definition.ManifestModule!.FilePath);
         }

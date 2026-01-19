@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using AsmResolver.Collections;
@@ -141,17 +142,12 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public bool IsValueType => Resolve()?.IsValueType ?? false;
+        public Result<TypeDefinition> Resolve(RuntimeContext? context) => throw new NotImplementedException();
+
+        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
 
         /// <inheritdoc />
-        public TypeDefinition? Resolve() => ContextModule is { } context ? Resolve(context) : null;
-
-        /// <inheritdoc />
-        public TypeDefinition? Resolve(ModuleDefinition context) => context.MetadataResolver.ResolveType(this);
-
-        IMemberDefinition? IMemberDescriptor.Resolve() => Resolve();
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => Resolve(context);
+        public bool GetIsValueType(RuntimeContext? context) => Resolve(context).UnwrapOrDefault()?.IsValueType is true;
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
@@ -172,8 +168,9 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         public ITypeDefOrRef ToTypeDefOrRef() => new TypeReference(ContextModule, Scope, Namespace, Name);
 
-        /// <inheritdoc />
-        public TypeSignature ToTypeSignature() => new TypeDefOrRefSignature(ToTypeDefOrRef());
+        public TypeSignature ToTypeSignature(RuntimeContext? context) => new TypeDefOrRefSignature(ToTypeDefOrRef(), context);
+
+        public TypeSignature ToTypeSignature(bool isValueType) => new TypeDefOrRefSignature(ToTypeDefOrRef(), isValueType);
 
         /// <summary>
         /// Obtains the namespace of the exported type.

@@ -21,6 +21,8 @@ namespace AsmResolver.DotNet.Signatures
         /// </summary>
         public SignatureComparisonFlags Flags { get; }
 
+        public RuntimeContext? RuntimeContext { get; }
+
         /// <summary>
         /// The default <see cref="SignatureComparer"/> constructor.
         /// </summary>
@@ -35,7 +37,28 @@ namespace AsmResolver.DotNet.Signatures
         /// </summary>
         /// <param name="flags">The <see cref="Flags"/> used in comparisons.</param>
         public SignatureComparer(SignatureComparisonFlags flags)
+            : this(null, flags)
         {
+        }
+
+        /// <summary>
+        /// A <see cref="SignatureComparer"/> constructor with a parameter for specifying the <see cref="Flags"/>
+        /// used in comparisons.
+        /// </summary>
+        /// <param name="flags">The <see cref="Flags"/> used in comparisons.</param>
+        public SignatureComparer(RuntimeContext? context)
+            : this(context, DefaultFlags)
+        {
+        }
+
+        /// <summary>
+        /// A <see cref="SignatureComparer"/> constructor with a parameter for specifying the <see cref="Flags"/>
+        /// used in comparisons.
+        /// </summary>
+        /// <param name="flags">The <see cref="Flags"/> used in comparisons.</param>
+        public SignatureComparer(RuntimeContext? context, SignatureComparisonFlags flags)
+        {
+            RuntimeContext = context;
             Flags = flags;
         }
 

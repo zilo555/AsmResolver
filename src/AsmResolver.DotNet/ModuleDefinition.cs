@@ -304,7 +304,6 @@ namespace AsmResolver.DotNet
             CorLibTypeFactory = CorLibTypeFactory.CreateMscorlib40TypeFactory(this);
             OriginalTargetRuntime = DetectTargetRuntime();
             RuntimeContext = new RuntimeContext(OriginalTargetRuntime);
-            MetadataResolver = new DefaultMetadataResolver(RuntimeContext.AssemblyResolver, this);
 
             CreateAndInsertModuleType();
         }
@@ -325,7 +324,6 @@ namespace AsmResolver.DotNet
             CorLibTypeFactory = new CorLibTypeFactory((IResolutionScope?)corLib?.ImportWith(DefaultImporter) ?? this);
             OriginalTargetRuntime = DetectTargetRuntime();
             RuntimeContext = new RuntimeContext(OriginalTargetRuntime);
-            MetadataResolver = new DefaultMetadataResolver(RuntimeContext.AssemblyResolver);
 
             CreateAndInsertModuleType();
         }
@@ -766,15 +764,6 @@ namespace AsmResolver.DotNet
                     Interlocked.CompareExchange(ref CustomAttributesInternal, GetCustomAttributes(), null);
                 return CustomAttributesInternal;
             }
-        }
-
-        /// <summary>
-        /// Gets or sets the object responsible for resolving references to external .NET assemblies.
-        /// </summary>
-        public IMetadataResolver MetadataResolver
-        {
-            get;
-            set;
         }
 
         /// <summary>

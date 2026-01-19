@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using AsmResolver.DotNet.Signatures;
 using Xunit;
@@ -9,20 +10,21 @@ namespace AsmResolver.DotNet.Tests
         [Fact]
         public void ResolveForwardedMethod()
         {
+            // TODO: load forwarder and library into rt context.
+            throw new NotImplementedException();
+
             var module = ModuleDefinition.FromBytes(Properties.Resources.ForwarderRefTest, TestReaderParameters);
             var forwarder = ModuleDefinition.FromBytes(Properties.Resources.ForwarderLibrary, TestReaderParameters).Assembly!;
             var library = ModuleDefinition.FromBytes(Properties.Resources.ActualLibrary, TestReaderParameters).Assembly!;
 
-            module.MetadataResolver.AssemblyResolver.AddToCache(forwarder, forwarder);
-            module.MetadataResolver.AssemblyResolver.AddToCache(library, library);
-            forwarder.ManifestModule!.MetadataResolver.AssemblyResolver.AddToCache(library, library);
+            module.RuntimeContext.AssemblyResolver.AddToCache(forwarder, forwarder);
+            module.RuntimeContext.AssemblyResolver.AddToCache(library, library);
 
             var reference = module
                 .GetImportedMemberReferences()
                 .First(m => m.IsMethod && m.Name == "StaticMethod");
 
-            var definition = reference.Resolve();
-            Assert.NotNull(definition);
+            _ = reference.Resolve(module.RuntimeContext).Unwrap();
         }
 
         [Fact]

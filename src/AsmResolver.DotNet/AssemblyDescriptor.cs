@@ -262,7 +262,7 @@ namespace AsmResolver.DotNet
         /// Resolves the reference to the assembly to an assembly definition.
         /// </summary>
         /// <returns>The assembly definition, or <c>null</c> if the resolution failed.</returns>
-        public abstract AssemblyDefinition? Resolve();
+        public abstract Result<AssemblyDefinition> Resolve(RuntimeContext? context);
 
         /// <summary>
         /// Constructs a new assembly reference based on the descriptor.

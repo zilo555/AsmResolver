@@ -35,16 +35,15 @@ namespace AsmResolver.DotNet.Signatures
             get;
         }
 
-        /// <inheritdoc />
-        public abstract bool IsValueType
-        {
-            get;
-        }
-
         /// <summary>
         /// Gets the element type of the
         /// </summary>
         public abstract ElementType ElementType
+        {
+            get;
+        }
+
+        public abstract bool IsValueType
         {
             get;
         }
@@ -211,28 +210,17 @@ namespace AsmResolver.DotNet.Signatures
             var module = context.ReaderContext.ParentModule;
 
             var elementType = (ElementType) reader.ReadByte();
-            switch (elementType)
+            return elementType switch
             {
-                case ElementType.Boxed:
-                    return module.CorLibTypeFactory.Object;
-
-                case ElementType.SzArray:
-                    return new SzArrayTypeSignature(ReadFieldOrPropType(context, ref reader));
-
-                case ElementType.Enum:
-                    string? enumTypeName = reader.ReadSerString();
-                    return string.IsNullOrEmpty(enumTypeName)
-                        ? new TypeDefOrRefSignature(InvalidTypeDefOrRef.Get(InvalidTypeSignatureError.InvalidFieldOrProptype))
-                        : TypeNameParser.Parse(module, enumTypeName!);
-
-                case ElementType.Type:
-                    return new TypeDefOrRefSignature(new TypeReference(module,
-                        module.CorLibTypeFactory.CorLibScope, "System", "Type"));
-
-                default:
-                    return module.CorLibTypeFactory.FromElementType(elementType) as TypeSignature
-                           ?? new TypeDefOrRefSignature(InvalidTypeDefOrRef.Get(InvalidTypeSignatureError.InvalidFieldOrProptype));
-            }
+                ElementType.Boxed => module.CorLibTypeFactory.Object,
+                ElementType.SzArray => new SzArrayTypeSignature(ReadFieldOrPropType(context, ref reader)),
+                ElementType.Enum => reader.ReadSerString() is {Length: > 0} enumTypeName
+                    ? TypeNameParser.Parse(module, enumTypeName)
+                    : InvalidTypeDefOrRef.Get(InvalidTypeSignatureError.InvalidFieldOrProptype).ToTypeSignature(),
+                ElementType.Type => module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "Type").ToTypeSignature(false),
+                _ => module.CorLibTypeFactory.FromElementType(elementType) as TypeSignature
+                    ?? InvalidTypeDefOrRef.Get(InvalidTypeSignatureError.InvalidFieldOrProptype).ToTypeSignature()
+            };
         }
 
         internal static void WriteFieldOrPropType(BlobSerializationContext context, TypeSignature type)
@@ -278,7 +266,7 @@ namespace AsmResolver.DotNet.Signatures
                         return;
                     }
 
-                    var typeDef = type.Resolve();
+                    var typeDef = type.Resolve(context.ContextModule.RuntimeContext).UnwrapOrDefault();
                     if (typeDef is null)
                     {
                         context.ErrorListener.MetadataBuilder(
@@ -296,20 +284,21 @@ namespace AsmResolver.DotNet.Signatures
             }
         }
 
-        /// <inheritdoc />
-        public TypeDefinition? Resolve() => GetUnderlyingTypeDefOrRef()?.Resolve();
+        bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => IsValueType;
 
         /// <inheritdoc />
-        public TypeDefinition? Resolve(ModuleDefinition context) => GetUnderlyingTypeDefOrRef()?.Resolve(context);
+        public Result<TypeDefinition> Resolve(RuntimeContext? context)
+        {
+            return GetUnderlyingTypeDefOrRef()?.Resolve(context)
+                ?? Result.Fail<TypeDefinition>();
+        }
 
-        IMemberDefinition? IMemberDescriptor.Resolve() => Resolve();
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => Resolve(context);
+        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
 
         /// <inheritdoc />
         public virtual ITypeDefOrRef ToTypeDefOrRef() => new TypeSpecification(this);
 
-        TypeSignature ITypeDescriptor.ToTypeSignature() => this;
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => this;
 
         /// <summary>
         /// Gets the underlying base type signature, without any extra adornments.
@@ -331,7 +320,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <see cref="GetUnderlyingTypeDefOrRef"/>, which merely obtains the <see cref="ITypeDefOrRef"/> instance
         /// behind the type signature.
         /// </remarks>
-        public virtual TypeSignature GetUnderlyingType() => this;
+        public virtual TypeSignature GetUnderlyingType(RuntimeContext? context) => this;
 
         /// <summary>
         /// Obtains the reduced type of the type signature.
@@ -341,7 +330,7 @@ namespace AsmResolver.DotNet.Signatures
         /// As per ECMA-335 I.8.7, the reduced type ignores the semantic differences between enumerations and the signed
         /// and unsigned integer types; treating these types the same if they have the same number of bits.
         /// </remarks>
-        public virtual TypeSignature GetReducedType() => this;
+        public virtual TypeSignature GetReducedType(RuntimeContext? context) => this;
 
         /// <summary>
         /// Obtains the verification type of the type signature.
@@ -352,7 +341,7 @@ namespace AsmResolver.DotNet.Signatures
         /// characters, booleans, the signed and unsigned integer types, and managed pointers to any of these; treating
         /// these types the same if they have the same number of bits or point to types with the same number of bits.
         /// </remarks>
-        public virtual TypeSignature GetVerificationType() => this;
+        public virtual TypeSignature GetVerificationType(RuntimeContext? context) => this;
 
         /// <summary>
         /// Obtains the intermediate type of the type signature.
@@ -362,7 +351,7 @@ namespace AsmResolver.DotNet.Signatures
         /// As per ECMA-335 I.8.7, intermediate types are a subset of the built-in value types can be represented on the
         /// evaluation stack.
         /// </remarks>
-        public virtual TypeSignature GetIntermediateType() => GetVerificationType();
+        public virtual TypeSignature GetIntermediateType(RuntimeContext? context) => GetVerificationType(context);
 
         /// <summary>
         /// Obtains the direct base class of the type signature.
@@ -373,7 +362,7 @@ namespace AsmResolver.DotNet.Signatures
         /// will extend <see cref="System.Object"/>, and generic base types will be instantiated with the derived
         /// classes type arguments (if any).
         /// </remarks>
-        public virtual TypeSignature? GetDirectBaseClass() => null;
+        public virtual TypeSignature? GetDirectBaseClass(RuntimeContext? context) => null;
 
         /// <summary>
         /// Obtains the interfaces that are directly implemented by the type.
@@ -384,7 +373,7 @@ namespace AsmResolver.DotNet.Signatures
         /// will extend <see cref="System.Object"/>, and generic interfaces will be instantiated with the derived
         /// classes type arguments (if any).
         /// </remarks>
-        public virtual IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces() => Enumerable.Empty<TypeSignature>();
+        public virtual IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces(RuntimeContext? context) => Enumerable.Empty<TypeSignature>();
 
         /// <summary>
         /// Strips any top-level custom type modifier and pinned type annotations from the signature.
@@ -408,7 +397,7 @@ namespace AsmResolver.DotNet.Signatures
         /// Type compatibility is determined according to the rules in ECMA-335 I.8.7.1., excluding the transitivity
         /// rule.
         /// </remarks>
-        protected virtual bool IsDirectlyCompatibleWith(TypeSignature other, SignatureComparer comparer)
+        protected virtual bool IsDirectlyCompatibleWith(TypeSignature other, RuntimeContext? context, SignatureComparer comparer)
         {
             return comparer.Equals(this, other);
         }
@@ -421,7 +410,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <remarks>
         /// Type compatibility is determined according to the rules in ECMA-335 I.8.7.1.
         /// </remarks>
-        public bool IsCompatibleWith(TypeSignature other) => IsCompatibleWith(other, SignatureComparer.Default);
+        public bool IsCompatibleWith(TypeSignature other, RuntimeContext? context) => IsCompatibleWith(other, context, SignatureComparer.Default);
 
         /// <summary>
         /// Determines whether the current type is compatible with the provided type.
@@ -432,7 +421,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <remarks>
         /// Type compatibility is determined according to the rules in ECMA-335 I.8.7.1.
         /// </remarks>
-        public bool IsCompatibleWith(TypeSignature other, SignatureComparer comparer)
+        public bool IsCompatibleWith(TypeSignature other, RuntimeContext? context, SignatureComparer comparer)
         {
             var current = StripModifiers();
             other = other.StripModifiers();
@@ -441,18 +430,18 @@ namespace AsmResolver.DotNet.Signatures
             while (current is not null)
             {
                 // Is the current type compatible?
-                if (current.IsDirectlyCompatibleWith(other, comparer))
+                if (current.IsDirectlyCompatibleWith(other, context, comparer))
                     return true;
 
                 // Are any of the interfaces compatible instead?
-                foreach (var @interface in current.GetDirectlyImplementedInterfaces())
+                foreach (var @interface in current.GetDirectlyImplementedInterfaces(context))
                 {
-                    if (@interface.IsCompatibleWith(other, comparer))
+                    if (@interface.IsCompatibleWith(other, context, comparer))
                         return true;
                 }
 
                 // If neither, move up type hierarchy.
-                current = current.GetDirectBaseClass()?.StripModifiers();
+                current = current.GetDirectBaseClass(context)?.StripModifiers();
             }
 
             return false;
@@ -466,7 +455,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <remarks>
         /// Type compatibility is determined according to the rules in ECMA-335 I.8.7.3.
         /// </remarks>
-        public bool IsAssignableTo(TypeSignature other) => IsAssignableTo(other, SignatureComparer.Default);
+        public bool IsAssignableTo(TypeSignature other, RuntimeContext? context) => IsAssignableTo(other, context, SignatureComparer.Default);
 
         /// <summary>
         /// Determines whether the current type is assignable to the provided type.
@@ -477,10 +466,10 @@ namespace AsmResolver.DotNet.Signatures
         /// <remarks>
         /// Type compatibility is determined according to the rules in ECMA-335 I.8.7.3.
         /// </remarks>
-        public bool IsAssignableTo(TypeSignature other, SignatureComparer comparer)
+        public bool IsAssignableTo(TypeSignature other, RuntimeContext? context, SignatureComparer comparer)
         {
-            var intermediateType1 = GetIntermediateType();
-            var intermediateType2 = other.GetIntermediateType();
+            var intermediateType1 = GetIntermediateType(context);
+            var intermediateType2 = other.GetIntermediateType(context);
 
             if (comparer.Equals(intermediateType1, intermediateType2)
                 || intermediateType1.ElementType == ElementType.I && intermediateType2.ElementType == ElementType.I4
@@ -489,7 +478,7 @@ namespace AsmResolver.DotNet.Signatures
                 return true;
             }
 
-            return IsCompatibleWith(other, comparer);
+            return IsCompatibleWith(other, context, comparer);
         }
 
         /// <summary>
@@ -502,8 +491,7 @@ namespace AsmResolver.DotNet.Signatures
         /// When the type signature does not contain any generic parameter, this method might return the current
         /// instance of the type signature.
         /// </remarks>
-        public TypeSignature InstantiateGenericTypes(GenericContext context)
-            => AcceptVisitor(GenericTypeActivator.Instance, context);
+        public TypeSignature InstantiateGenericTypes(GenericContext context) => AcceptVisitor(GenericTypeActivator.Instance, context);
 
         /// <inheritdoc />
         public abstract bool IsImportedInModule(ModuleDefinition module);
@@ -518,6 +506,68 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
+          /// <summary>
+        /// Constructs a new single-dimension, zero based array signature with the provided type descriptor
+        /// as element type.
+        /// </summary>
+        /// <returns>The constructed array type signature.</returns>
+        public SzArrayTypeSignature MakeSzArrayType() => new(this);
+
+        /// <summary>
+        /// Constructs a new single-dimension, zero based array signature with the provided type descriptor
+        /// as element type.
+        /// </summary>
+        /// <param name="dimensionCount">The number of dimensions in the array.</param>
+        /// <returns>The constructed array type signature.</returns>
+        public ArrayTypeSignature MakeArrayType(int dimensionCount) => new(this, dimensionCount);
+
+        /// <summary>
+        /// Constructs a new single-dimension, zero based array signature with the provided type descriptor
+        /// as element type.
+        /// </summary>
+        /// <param name="dimensions">The dimensions of the array.</param>
+        /// <returns>The constructed array type signature.</returns>
+        public ArrayTypeSignature MakeArrayType(params ArrayDimension[] dimensions) => new(this, dimensions);
+
+        /// <summary>
+        /// Constructs a new boxed type signature with the provided type descriptor as element type.
+        /// as element type.
+        /// </summary>
+        /// <returns>The constructed boxed type signature.</returns>
+        public BoxedTypeSignature MakeBoxedType() => new(this);
+
+        /// <summary>
+        /// Constructs a new by-reference type signature with the provided type descriptor as element type.
+        /// as element type.
+        /// </summary>
+        /// <returns>The constructed by-reference type signature.</returns>
+        public ByReferenceTypeSignature MakeByReferenceType() => new(this);
+
+        /// <summary>
+        /// Constructs a new pinned type signature with the provided type descriptor as element type.
+        /// as element type.
+        /// </summary>
+        /// <returns>The constructed by-reference type signature.</returns>
+        public PinnedTypeSignature MakePinnedType() => new(this);
+
+        /// <summary>
+        /// Constructs a new pointer type signature with the provided type descriptor as element type.
+        /// as element type.
+        /// </summary>
+        /// <returns>The constructed by-reference type signature.</returns>
+        public PointerTypeSignature MakePointerType() => new(this);
+
+        /// <summary>
+        /// Constructs a new pointer type signature with the provided type descriptor as element type.
+        /// as element type.
+        /// </summary>
+        /// <param name="modifierType">The modifier type to add.</param>
+        /// <param name="isRequired">Indicates whether the modifier is required or optional.</param>
+        /// <returns>The constructed by-reference type signature.</returns>
+        public CustomModifierTypeSignature MakeModifierType(ITypeDefOrRef modifierType, bool isRequired)
+        {
+            return new CustomModifierTypeSignature(modifierType, isRequired, this);
+        }
 
         /// <summary>
         /// Visit the current type signature using the provided visitor.

@@ -9,10 +9,12 @@ namespace AsmResolver.DotNet.Memory
     {
         private readonly Stack<TypeDefinition> _traversedTypes = new();
         private readonly bool _is32Bit;
+        private readonly RuntimeContext _runtimeContext;
         private GenericContext _currentGenericContext;
 
-        public TypeAlignmentDetector(GenericContext currentGenericContext, bool is32Bit)
+        public TypeAlignmentDetector(RuntimeContext runtimeContext, GenericContext currentGenericContext, bool is32Bit)
         {
+            _runtimeContext = runtimeContext;
             _currentGenericContext = currentGenericContext;
             _is32Bit = is32Bit;
         }
@@ -102,7 +104,9 @@ namespace AsmResolver.DotNet.Memory
         }
 
         private uint VisitTypeReference(TypeReference type)
-            => VisitTypeDefinition(type.Resolve() ?? throw new ArgumentException($"Could not resolve {type.SafeToString()}."));
+        {
+            return VisitTypeDefinition(type.Resolve(_runtimeContext).Unwrap());
+        }
 
         public uint VisitTypeDefinition(TypeDefinition type)
         {

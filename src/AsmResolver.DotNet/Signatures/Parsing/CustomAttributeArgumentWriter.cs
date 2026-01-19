@@ -197,7 +197,7 @@ namespace AsmResolver.DotNet.Signatures.Parsing
         private void WriteEnumValue(TypeSignature argumentType, object? element)
         {
             // Try resolve enum and get enum underlying type.
-            var enumTypeDef = argumentType.Resolve();
+            var enumTypeDef = argumentType.Resolve(_context.ContextModule.RuntimeContext).UnwrapOrDefault();
             if (enumTypeDef is {IsEnum: true} && enumTypeDef.GetEnumUnderlyingType() is { } underlyingType)
             {
                 WriteElement(underlyingType, element);

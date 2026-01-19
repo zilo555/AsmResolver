@@ -99,8 +99,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void MatchTypeDefOrRefSignatures()
         {
             var reference = new TypeReference(_someAssemblyReference, "SomeNamespace", "SomeType");
-            var typeSig1 = new TypeDefOrRefSignature(reference);
-            var typeSig2 = new TypeDefOrRefSignature(reference);
+            var typeSig1 = reference.ToTypeSignature(false);
+            var typeSig2 = reference.ToTypeSignature(false);
 
             Assert.Equal(typeSig1, typeSig2, _comparer);
         }
@@ -110,8 +110,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var reference1 = new TypeReference(_someAssemblyReference, "SomeNamespace", "SomeType");
             var reference2 = new TypeReference(_someAssemblyReference, "SomeNamespace", "SomeOtherType");
-            var typeSig1 = new TypeDefOrRefSignature(reference1);
-            var typeSig2 = new TypeDefOrRefSignature(reference2);
+            var typeSig1 = reference1.ToTypeSignature(false);
+            var typeSig2 = reference2.ToTypeSignature(false);
 
             Assert.NotEqual(typeSig1, typeSig2, _comparer);
         }
@@ -120,8 +120,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void MatchPropertySignature()
         {
             var type = new TypeReference(_someAssemblyReference, "SomeNamespace", "SomeType");
-            var signature1 = PropertySignature.CreateStatic(type.ToTypeSignature());
-            var signature2 = PropertySignature.CreateStatic(type.ToTypeSignature());
+            var signature1 = PropertySignature.CreateStatic(type.ToTypeSignature(false));
+            var signature2 = PropertySignature.CreateStatic(type.ToTypeSignature(false));
 
             Assert.Equal(signature1, signature2, _comparer);
         }
@@ -159,13 +159,16 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [Fact]
         public void MatchForwardedNestedTypes()
         {
+            // TODO: implement using rt context.
+            throw new NotImplementedException();
+
             var module = ModuleDefinition.FromBytes(Properties.Resources.ForwarderRefTest, TestReaderParameters);
             var forwarder = ModuleDefinition.FromBytes(Properties.Resources.ForwarderLibrary, TestReaderParameters).Assembly!;
             var library = ModuleDefinition.FromBytes(Properties.Resources.ActualLibrary, TestReaderParameters).Assembly!;
 
-            module.MetadataResolver.AssemblyResolver.AddToCache(forwarder, forwarder);
-            module.MetadataResolver.AssemblyResolver.AddToCache(library, library);
-            forwarder.ManifestModule!.MetadataResolver.AssemblyResolver.AddToCache(library, library);
+            module.RuntimeContext.AssemblyResolver.AddToCache(forwarder, forwarder);
+            module.RuntimeContext.AssemblyResolver.AddToCache(library, library);
+            forwarder.ManifestModule!.RuntimeContext.AssemblyResolver.AddToCache(library, library);
 
             var referencedTypes = module.ManagedEntryPointMethod!.CilMethodBody!.Instructions
                 .Where(i => i.OpCode.Code == CilCode.Call)
@@ -176,8 +179,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var type1 = referencedTypes[0]!;
             var type2 = referencedTypes[1]!;
 
-            var resolvedType1 = type1.Resolve()!;
-            var resolvedType2 = type2.Resolve()!;
+            var resolvedType1 = type1.Resolve(module.RuntimeContext).Unwrap();;
+            var resolvedType2 = type2.Resolve(module.RuntimeContext).Unwrap();;
 
             var resolvedTypeReference1 = resolvedType1.ToTypeReference();
             var resolvedTypeReference2 = resolvedType2.ToTypeReference();
@@ -236,10 +239,10 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [Fact]
         public void CompareSimpleTypeDescriptors()
         {
-            var assembly = new DotNetFrameworkAssemblyResolver().Resolve(KnownCorLibs.MsCorLib_v4_0_0_0);
+            var assembly = new DotNetFrameworkAssemblyResolver().Resolve(KnownCorLibs.MsCorLib_v4_0_0_0).Unwrap();
             var definition = assembly.ManifestModule!.TopLevelTypes.First(x => x.IsTypeOf("System.IO", "Stream"));
             var reference = definition.ToTypeReference();
-            var signature = reference.ToTypeSignature();
+            var signature = reference.ToTypeSignature(false);
 
             Assert.Equal((ITypeDescriptor) reference, signature, _comparer);
             Assert.Equal((ITypeDescriptor) definition, signature, _comparer);

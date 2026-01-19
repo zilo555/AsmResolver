@@ -93,11 +93,14 @@ namespace AsmResolver.DotNet
             }
         }
 
+        /// <inheritdoc />
+        public bool GetIsValueType(RuntimeContext? context) => Signature?.IsValueType is true;
+
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
-        /// <inheritdoc />
-        public TypeSignature ToTypeSignature() =>
-            Signature ?? throw new ArgumentException("Signature embedded into the type specification is null.");
+        public TypeSignature ToTypeSignature() => Signature ?? throw new ArgumentException("Signature embedded into the type specification is null.");
+
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => ToTypeSignature();
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType) => ToTypeSignature();
@@ -116,14 +119,13 @@ namespace AsmResolver.DotNet
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
         /// <inheritdoc />
-        public TypeDefinition? Resolve() => ContextModule is { } context ? Resolve(context) : null;
+        public Result<TypeDefinition> Resolve(RuntimeContext? context)
+        {
+            return Signature?.Resolve(context)
+                ?? Result.Fail<TypeDefinition>();
+        }
 
-        /// <inheritdoc />
-        public TypeDefinition? Resolve(ModuleDefinition context) => ContextModule?.MetadataResolver.ResolveType(this);
-
-        IMemberDefinition? IMemberDescriptor.Resolve() => Resolve();
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => Resolve(context);
+        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
 
         /// <summary>
         /// Obtains the signature the type specification is referencing.

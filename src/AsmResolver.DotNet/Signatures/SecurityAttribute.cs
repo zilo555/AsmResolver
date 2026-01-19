@@ -21,7 +21,7 @@ namespace AsmResolver.DotNet.Signatures
         {
             string? typeName = reader.ReadSerString();
             var type = string.IsNullOrEmpty(typeName)
-                ? new TypeDefOrRefSignature(InvalidTypeDefOrRef.Get(InvalidTypeSignatureError.InvalidFieldOrProptype))
+                ? InvalidTypeDefOrRef.Get(InvalidTypeSignatureError.InvalidFieldOrProptype).ToTypeSignature()
                 : TypeNameParser.Parse(context.ReaderContext.ParentModule, typeName!);
 
             var result = new SecurityAttribute(type);

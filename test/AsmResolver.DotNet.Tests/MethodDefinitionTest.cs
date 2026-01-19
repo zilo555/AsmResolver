@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Signatures;
@@ -15,7 +14,6 @@ using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using AsmResolver.PE.DotNet.VTableFixups;
 using AsmResolver.PE.File;
-using AsmResolver.Shims;
 using AsmResolver.Tests.Runners;
 using Xunit;
 
@@ -747,7 +745,10 @@ namespace AsmResolver.DotNet.Tests
             method.Signature.ReturnType = factory.Int32.MakeByReferenceType();
             Assert.Throws<AggregateException>(() => method.VerifyMetadata());
 
-            method.Signature.ReturnType = factory.CorLibScope.CreateTypeReference("System", "Span`1").MakeGenericInstanceType(factory.Int32);
+            method.Signature.ReturnType = factory.CorLibScope
+                .CreateTypeReference("System", "Span`1")
+                .MakeGenericInstanceType(isValueType: true, factory.Int32);
+
             Assert.Throws<AggregateException>(() => method.VerifyMetadata());
         }
 

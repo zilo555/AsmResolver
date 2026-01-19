@@ -846,13 +846,9 @@ namespace AsmResolver.DotNet
             return ctor;
         }
 
-        MethodDefinition IMethodDescriptor.Resolve() => this;
+        Result<MethodDefinition> IMethodDescriptor.Resolve(RuntimeContext? context) => Result.Success(this);
 
-        MethodDefinition IMethodDescriptor.Resolve(ModuleDefinition context) => this;
-
-        IMemberDefinition IMemberDescriptor.Resolve() => this;
-
-        IMemberDefinition IMemberDescriptor.Resolve(ModuleDefinition context) => this;
+        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Result.Success<IMemberDefinition>(this);
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
@@ -889,6 +885,8 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         public bool IsAccessibleFromType(TypeDefinition type)
         {
+            var context = DeclaringModule?.RuntimeContext;
+
             // The method is only accessible if its declaring type is accessible.
             if (DeclaringType is not { } declaringType || !declaringType.IsAccessibleFromType(type))
                 return false;
@@ -914,7 +912,7 @@ namespace AsmResolver.DotNet
 
             // Family (protected in C#) methods are accessible by any base type.
             if ((IsFamily || IsFamilyOrAssembly || IsFamilyAndAssembly)
-                && type.BaseType?.Resolve() is { } baseType)
+                && type.BaseType?.Resolve(context) is {Resolved: { } baseType})
             {
                 return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
             }
@@ -1054,9 +1052,11 @@ namespace AsmResolver.DotNet
 
             public bool VisitCorLibType(CorLibTypeSignature signature, MethodDefinition state) => false;
 
-            public bool VisitCustomModifierType(CustomModifierTypeSignature signature, MethodDefinition state) => signature.BaseType.AcceptVisitor(this, state);
+            public bool VisitCustomModifierType(CustomModifierTypeSignature signature, MethodDefinition state)
+                => signature.BaseType.AcceptVisitor(this, state);
 
-            public bool VisitGenericInstanceType(GenericInstanceTypeSignature signature, MethodDefinition state) => signature.GenericType.Resolve()?.IsByRefLike ?? false;
+            public bool VisitGenericInstanceType(GenericInstanceTypeSignature signature, MethodDefinition state)
+                => signature.GenericType.Resolve(state.DeclaringModule?.RuntimeContext).UnwrapOrDefault()?.IsByRefLike is true;
 
             public bool VisitGenericParameter(GenericParameterSignature signature, MethodDefinition state)
             {
@@ -1075,7 +1075,8 @@ namespace AsmResolver.DotNet
 
             public bool VisitSzArrayType(SzArrayTypeSignature signature, MethodDefinition state) => false;
 
-            public bool VisitTypeDefOrRef(TypeDefOrRefSignature signature, MethodDefinition state) => signature.Type.Resolve()?.IsByRefLike ?? false;
+            public bool VisitTypeDefOrRef(TypeDefOrRefSignature signature, MethodDefinition state)
+                => signature.Type.Resolve(state.DeclaringModule?.RuntimeContext).UnwrapOrDefault()?.IsByRefLike is true;
 
             public bool VisitFunctionPointerType(FunctionPointerTypeSignature signature, MethodDefinition state) => false;
         }

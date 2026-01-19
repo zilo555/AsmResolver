@@ -346,15 +346,15 @@ namespace AsmResolver.DotNet.Bundles
             switch (MajorVersion)
             {
                 case 1:
-                    targetRuntime = new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(3, 1));
+                    targetRuntime = DotNetRuntimeInfo.NetCoreApp(3, 1);
                     return true;
 
                 case 2:
-                    targetRuntime = new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(5, 0));
+                    targetRuntime = DotNetRuntimeInfo.NetCoreApp(5, 0);
                     return true;
 
                 case 6:
-                    targetRuntime = new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(6, 0));
+                    targetRuntime = DotNetRuntimeInfo.NetCoreApp(6, 0);
                     return true;
             }
 

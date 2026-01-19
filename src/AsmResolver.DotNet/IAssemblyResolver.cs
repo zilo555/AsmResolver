@@ -6,11 +6,11 @@ namespace AsmResolver.DotNet
     public interface IAssemblyResolver
     {
         /// <summary>
-        /// Resolves a reference to an assembly. 
+        /// Resolves a reference to an assembly.
         /// </summary>
         /// <param name="assembly">The reference to the assembly.</param>
         /// <returns>The resolved assembly, or <c>null</c> if the resolution failed.</returns>
-        AssemblyDefinition? Resolve(AssemblyDescriptor assembly);
+        Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly);
 
         /// <summary>
         /// Adds the assembly to the cache.
