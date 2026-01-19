@@ -369,7 +369,7 @@ namespace AsmResolver.DotNet
             set;
         }
 
-        Result<FieldDefinition> IFieldDescriptor.Resolve(RuntimeContext context) => Result.Success(this);
+        Result<FieldDefinition> IFieldDescriptor.Resolve(RuntimeContext? context) => Result.Success(this);
 
         Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Result.Success<IMemberDefinition>(this);
 

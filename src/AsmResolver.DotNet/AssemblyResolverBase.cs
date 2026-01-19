@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using AsmResolver.DotNet.Serialized;
@@ -105,6 +104,7 @@ namespace AsmResolver.DotNet
         /// Probes all search directories in <see cref="SearchDirectories"/> for the provided assembly.
         /// </summary>
         /// <param name="assembly">The assembly descriptor to search.</param>
+        /// <param name="originModule">The module to assume the assembly was referenced in.</param>
         /// <returns>The path to the assembly, or <c>null</c> if none was found.</returns>
         protected string? ProbeSearchDirectories(AssemblyDescriptor assembly, ModuleDefinition? originModule)
         {

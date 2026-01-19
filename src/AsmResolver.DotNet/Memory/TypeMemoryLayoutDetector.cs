@@ -19,6 +19,7 @@ namespace AsmResolver.DotNet.Memory
         /// <summary>
         /// Creates a new instance of the <see cref="TypeMemoryLayoutDetector"/>.
         /// </summary>
+        /// <param name="runtimeContext">The runtime to assume when determining the layout.</param>
         /// <param name="is32Bit">Determines whether memory addresses are 32 bit or 64 bit wide.</param>
         public TypeMemoryLayoutDetector(RuntimeContext runtimeContext, bool is32Bit)
             : this(runtimeContext, new GenericContext(), is32Bit)
@@ -29,6 +30,7 @@ namespace AsmResolver.DotNet.Memory
         /// <summary>
         /// Creates a new instance of the <see cref="TypeMemoryLayoutDetector"/>.
         /// </summary>
+        /// <param name="runtimeContext">The runtime to assume when determining the layout.</param>
         /// <param name="currentGenericContext">The current generic context to use.</param>
         /// <param name="is32Bit">Determines whether memory addresses are 32 bit or 64 bit wide.</param>
         public TypeMemoryLayoutDetector(RuntimeContext runtimeContext, GenericContext currentGenericContext, bool is32Bit)

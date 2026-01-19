@@ -55,7 +55,7 @@ namespace AsmResolver.DotNet.Tests
 
             var resolver = new DotNetCoreAssemblyResolver(new Version(3, 1, 0), new ModuleReaderParameters(service));
             Assert.Empty(service.GetOpenedFiles());
-            Assert.NotNull(resolver.Resolve(assemblyRef));
+            Assert.True(resolver.Resolve(assemblyRef).IsSuccess);
             Assert.NotEmpty(service.GetOpenedFiles());
         }
 

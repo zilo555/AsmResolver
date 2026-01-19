@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 
 namespace AsmResolver.DotNet
@@ -19,7 +17,7 @@ namespace AsmResolver.DotNet
         /// A target framework name used in some legacy architectures.
         /// </summary>
         /// <remarks>
-        /// This should not be confused with <see cref="NetCoreApp"/>, which is the correct name for applications targeting .NET or .NET Core.
+        /// This should not be confused with <see cref="NetCoreName"/>, which is the correct name for applications targeting .NET or .NET Core.
         /// </remarks>
         public const string NetCoreName = ".NETCore";
 
@@ -81,7 +79,7 @@ namespace AsmResolver.DotNet
         public bool IsNetCoreApp => Name == NetCoreAppName;
 
         /// <summary>
-        /// Gets a value indicating whether or not the application is targeting a legacy architecture that uses <see cref="NetCore"/>.
+        /// Gets a value indicating whether or not the application is targeting a legacy architecture that uses .NET Core (.NET Native).
         /// </summary>
         /// <remarks>
         /// This should not be confused with <see cref="IsNetCoreApp"/>, which is the correct property for whether or not an application is targeting .NET or .NET Core.
@@ -103,18 +101,67 @@ namespace AsmResolver.DotNet
         /// </summary>
         public bool IsNetPortable => Name == NetPortableName;
 
+        /// <summary>
+        /// Constructs a runtime info record referencing legacy .NET Framework.
+        /// </summary>
+        /// <param name="major">The major version</param>
+        /// <param name="minor">The minor version</param>
+        /// <returns>The runtime info record.</returns>
         public static DotNetRuntimeInfo NetFramework(int major, int minor) => NetFramework(new Version(major, minor));
 
+        /// <summary>
+        /// Constructs a runtime info record referencing legacy .NET Framework.
+        /// </summary>
+        /// <param name="major">The major version</param>
+        /// <param name="minor">The minor version</param>
+        /// <param name="patch">The patch version</param>
+        /// <returns>The runtime info record.</returns>
         public static DotNetRuntimeInfo NetFramework(int major, int minor, int patch) => NetFramework(new Version(major, minor, patch));
+
+        /// <summary>
+        /// Constructs a runtime info record referencing legacy .NET Framework.
+        /// </summary>
+        /// <param name="version">The version</param>
+        /// <returns>The runtime info record.</returns>
         public static DotNetRuntimeInfo NetFramework(Version version) => new(NetFrameworkName, version);
 
+        /// <summary>
+        /// Constructs a runtime info record referencing .NET Standard.
+        /// </summary>
+        /// <param name="major">The major version</param>
+        /// <param name="minor">The minor version</param>
+        /// <returns>The runtime info record.</returns>
         public static DotNetRuntimeInfo NetStandard(int major, int minor) => NetStandard(new Version(major, minor));
+
+        /// <summary>
+        /// Constructs a runtime info record referencing .NET Standard.
+        /// </summary>
+        /// <param name="version">The version</param>
+        /// <returns>The runtime info record.</returns>
         public static DotNetRuntimeInfo NetStandard(Version version) => new(NetStandardName, version);
 
+        /// <summary>
+        /// Constructs a runtime info record referencing .NET Standard.
+        /// </summary>
+        /// <param name="major">The major version</param>
+        /// <param name="minor">The minor version</param>
+        /// <returns>The runtime info record.</returns>
         public static DotNetRuntimeInfo NetCoreApp(int major, int minor) => NetCoreApp(new Version(major, minor));
 
+        /// <summary>
+        /// Constructs a runtime info record referencing .NET Standard.
+        /// </summary>
+        /// <param name="major">The major version</param>
+        /// <param name="minor">The minor version</param>
+        /// <param name="patch">The patch version</param>
+        /// <returns>The runtime info record.</returns>
         public static DotNetRuntimeInfo NetCoreApp(int major, int minor, int patch) => NetCoreApp(new Version(major, minor, patch));
 
+        /// <summary>
+        /// Constructs a runtime info record referencing .NET Core and .NET.
+        /// </summary>
+        /// <param name="version">The version</param>
+        /// <returns>The runtime info record.</returns>
         public static DotNetRuntimeInfo NetCoreApp(Version version) => new(NetCoreAppName, version);
 
         /// <summary>

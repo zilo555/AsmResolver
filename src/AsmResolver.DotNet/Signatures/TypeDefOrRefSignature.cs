@@ -16,6 +16,7 @@ namespace AsmResolver.DotNet.Signatures
         /// Creates a new type signature referencing a type in a type metadata table.
         /// </summary>
         /// <param name="type">The type to reference.</param>
+        ///<param name="context">The runtime context that is assumed when creating the type signature.</param>
         public TypeDefOrRefSignature(ITypeDefOrRef type, RuntimeContext? context)
             : this(type, type.GetIsValueType(context))
         {
@@ -52,13 +53,24 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override ModuleDefinition? ContextModule => Type.ContextModule;
 
+        /// <inheritdoc />
         public override bool IsValueType => _isValueType;
 
+        /// <summary>
+        /// Updates the underlying type and value type tag.
+        /// </summary>
+        /// <param name="type">The new type.</param>
+        /// <param name="context">The runtime context to assume when updating the type.</param>
         public void SetUnderlyingType(ITypeDefOrRef type, RuntimeContext? context)
         {
             SetUnderlyingType(type, type.GetIsValueType(context));
         }
 
+        /// <summary>
+        /// Updates the underlying type and value type tag.
+        /// </summary>
+        /// <param name="type">The new type.</param>
+        /// <param name="isValueType">Indicates the type is a value type or not.</param>
         public void SetUnderlyingType(ITypeDefOrRef type, bool isValueType)
         {
             _type = type;

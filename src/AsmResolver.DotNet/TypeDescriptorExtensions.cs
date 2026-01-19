@@ -8,124 +8,30 @@ namespace AsmResolver.DotNet
     /// </summary>
     public static class TypeDescriptorExtensions
     {
-        /// <summary>
-        /// Determines whether a type matches a namespace and name pair.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="ns">The namespace.</param>
-        /// <param name="name">The name.</param>
-        /// <returns><c>true</c> if the name and the namespace of the type matches the provided values,
-        /// <c>false</c> otherwise.</returns>
-        public static bool IsTypeOf(this ITypeDescriptor type, string? ns, string? name)
-            => type.Name == name && type.Namespace == ns;
-
-        /// <summary>
-        /// Determines whether a type matches a namespace and name pair.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="ns">The namespace.</param>
-        /// <param name="name">The name.</param>
-        /// <returns><c>true</c> if the name and the namespace of the type matches the provided values,
-        /// <c>false</c> otherwise.</returns>
-        public static bool IsTypeOfUtf8(this ITypeDefOrRef type, Utf8String? ns, Utf8String? name)
-            => type.Name == name && type.Namespace == ns;
-
-        /// <summary>
-        /// Determines whether a type matches a namespace and name pair.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="ns">The namespace.</param>
-        /// <param name="name">The name.</param>
-        /// <returns><c>true</c> if the name and the namespace of the type matches the provided values,
-        /// <c>false</c> otherwise.</returns>
-        public static bool IsTypeOfUtf8(this ExportedType type, Utf8String? ns, Utf8String? name)
-            => type.Name == name && type.Namespace == ns;
-        //
-        // /// <summary>
-        // /// Constructs a new single-dimension, zero based array signature with the provided type descriptor
-        // /// as element type.
-        // /// </summary>
-        // /// <param name="type">The element type.</param>
-        // /// <returns>The constructed array type signature.</returns>
-        // public static SzArrayTypeSignature MakeSzArrayType(this ITypeDescriptor type) => new(type.ToTypeSignature());
-        //
-        // /// <summary>
-        // /// Constructs a new single-dimension, zero based array signature with the provided type descriptor
-        // /// as element type.
-        // /// </summary>
-        // /// <param name="type">The element type.</param>
-        // /// <param name="dimensionCount">The number of dimensions in the array.</param>
-        // /// <returns>The constructed array type signature.</returns>
-        // public static ArrayTypeSignature MakeArrayType(this ITypeDescriptor type, int dimensionCount)
-        //     => new(type.ToTypeSignature(), dimensionCount);
-        //
-        // /// <summary>
-        // /// Constructs a new single-dimension, zero based array signature with the provided type descriptor
-        // /// as element type.
-        // /// </summary>
-        // /// <param name="type">The element type.</param>
-        // /// <param name="dimensions">The dimensions of the array.</param>
-        // /// <returns>The constructed array type signature.</returns>
-        // public static ArrayTypeSignature MakeArrayType(this ITypeDescriptor type, params ArrayDimension[] dimensions)
-        //     => new(type.ToTypeSignature(), dimensions);
-        //
-        // /// <summary>
-        // /// Constructs a new boxed type signature with the provided type descriptor as element type.
-        // /// as element type.
-        // /// </summary>
-        // /// <param name="type">The element type.</param>
-        // /// <returns>The constructed boxed type signature.</returns>
-        // public static BoxedTypeSignature MakeBoxedType(this ITypeDescriptor type) => new(type.ToTypeSignature());
-        //
-        // /// <summary>
-        // /// Constructs a new by-reference type signature with the provided type descriptor as element type.
-        // /// as element type.
-        // /// </summary>
-        // /// <param name="type">The element type.</param>
-        // /// <returns>The constructed by-reference type signature.</returns>
-        // public static ByReferenceTypeSignature MakeByReferenceType(this ITypeDescriptor type) => new(type.ToTypeSignature());
-        //
-        // /// <summary>
-        // /// Constructs a new pinned type signature with the provided type descriptor as element type.
-        // /// as element type.
-        // /// </summary>
-        // /// <param name="type">The element type.</param>
-        // /// <returns>The constructed by-reference type signature.</returns>
-        // public static PinnedTypeSignature MakePinnedType(this ITypeDescriptor type) => new(type.ToTypeSignature());
-        //
-        // /// <summary>
-        // /// Constructs a new pointer type signature with the provided type descriptor as element type.
-        // /// as element type.
-        // /// </summary>
-        // /// <param name="type">The element type.</param>
-        // /// <returns>The constructed by-reference type signature.</returns>
-        // public static PointerTypeSignature MakePointerType(this ITypeDescriptor type) => new(type.ToTypeSignature());
-        //
-        // /// <summary>
-        // /// Constructs a new pointer type signature with the provided type descriptor as element type.
-        // /// as element type.
-        // /// </summary>
-        // /// <param name="type">The element type.</param>
-        // /// <param name="modifierType">The modifier type to add.</param>
-        // /// <param name="isRequired">Indicates whether the modifier is required or optional.</param>
-        // /// <returns>The constructed by-reference type signature.</returns>
-        // public static CustomModifierTypeSignature MakeModifierType(
-        //     this ITypeDescriptor type, ITypeDefOrRef modifierType, bool isRequired)
-        // {
-        //     return new CustomModifierTypeSignature(modifierType, isRequired, type.ToTypeSignature());
-        // }
-
-        /// <summary>
-        /// Constructs a new generic instance type signature with the provided type descriptor as element type.
-        /// as element type.
-        /// </summary>
         /// <param name="type">The element type.</param>
-        /// <param name="typeArguments">The arguments to instantiate the type with.</param>
-        /// <returns>The constructed by-reference type signature.</returns>
-        public static GenericInstanceTypeSignature MakeGenericInstanceType(
-            this ITypeDescriptor type, RuntimeContext? context, params TypeSignature[] typeArguments)
+        extension(ITypeDescriptor type)
         {
-            return type.ToTypeDefOrRef().MakeGenericInstanceType(type.GetIsValueType(context), typeArguments);
+            /// <summary>
+            /// Constructs a new generic instance type signature with the provided type descriptor as element type.
+            /// as element type.
+            /// </summary>
+            /// <param name="context">The runtime context to assume when constructing the signature, if any.</param>
+            /// <param name="typeArguments">The arguments to instantiate the type with.</param>
+            /// <returns>The constructed by-reference type signature.</returns>
+            public GenericInstanceTypeSignature MakeGenericInstanceType(RuntimeContext? context, params TypeSignature[] typeArguments)
+            {
+                return type.ToTypeDefOrRef().MakeGenericInstanceType(type.GetIsValueType(context), typeArguments);
+            }
+
+            /// <summary>
+            /// Determines whether a type matches a namespace and name pair.
+            /// </summary>
+            /// <param name="ns">The namespace.</param>
+            /// <param name="name">The name.</param>
+            /// <returns><c>true</c> if the name and the namespace of the type matches the provided values,
+            /// <c>false</c> otherwise.</returns>
+            public bool IsTypeOf(string? ns, string? name)
+                => type.Name == name && type.Namespace == ns;
         }
 
         /// <param name="type">The element type.</param>
@@ -150,7 +56,7 @@ namespace AsmResolver.DotNet
             /// Transforms the type descriptor to an instance of a <see cref="TypeSignature"/>, which can be used in
             /// blob signatures.
             /// </summary>
-            /// <param name="isValueType"><c>true</c> if the type is a value type, <c>false</c> otherwise.</param>
+            /// <param name="context">The runtime context to assume when constructing the signature, if any.</param>
             /// <returns>The constructed type signature instance.</returns>
             /// <remarks>
             /// This function can be used to avoid type resolution on type references.
@@ -159,18 +65,14 @@ namespace AsmResolver.DotNet
             {
                 return type.ToTypeSignature(type.GetIsValueType(context));
             }
-        }
 
-        /// <param name="type">The enclosing type.</param>
-        extension(ITypeDefOrRef type)
-        {
             /// <summary>
             /// Constructs a reference to a nested type.
             /// </summary>
             /// <param name="nestedTypeName">The name of the nested type.</param>
             /// <returns>The constructed reference.</returns>
             /// <exception cref="ArgumentOutOfRangeException">
-            /// Occurs when <paramref name="type"/> cannot be used as a declaring type of a type reference.
+            /// Occurs when the type cannot be used as a declaring type of the reference.
             /// </exception>
             public TypeReference CreateTypeReference(string nestedTypeName)
             {
@@ -190,7 +92,7 @@ namespace AsmResolver.DotNet
             /// <param name="nestedTypeName">The name of the nested type.</param>
             /// <returns>The constructed reference.</returns>
             /// <exception cref="ArgumentOutOfRangeException">
-            /// Occurs when <paramref name="type"/> cannot be used as a declaring type of a type reference.
+            /// Occurs when the type cannot be used as a declaring type of the reference.
             /// </exception>
             public TypeReference CreateTypeReference(Utf8String nestedTypeName)
             {
@@ -203,6 +105,16 @@ namespace AsmResolver.DotNet
 
                 return new TypeReference(type.ContextModule, parent, null, nestedTypeName);
             }
+
+            /// <summary>
+            /// Determines whether a type matches a namespace and name pair.
+            /// </summary>
+            /// <param name="ns">The namespace.</param>
+            /// <param name="name">The name.</param>
+            /// <returns><c>true</c> if the name and the namespace of the type matches the provided values,
+            /// <c>false</c> otherwise.</returns>
+            public bool IsTypeOfUtf8(Utf8String? ns, Utf8String? name)
+                => type.Name == name && type.Namespace == ns;
         }
 
         /// <param name="scope">The scope the type is defined in.</param>

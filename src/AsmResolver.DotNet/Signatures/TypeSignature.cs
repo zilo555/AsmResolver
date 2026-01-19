@@ -43,6 +43,9 @@ namespace AsmResolver.DotNet.Signatures
             get;
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the type signature is encoded as a value type or a reference type.
+        /// </summary>
         public abstract bool IsValueType
         {
             get;
@@ -298,7 +301,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public virtual ITypeDefOrRef ToTypeDefOrRef() => new TypeSpecification(this);
 
-        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext context) => this;
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => this;
 
         /// <summary>
         /// Gets the underlying base type signature, without any extra adornments.
@@ -391,6 +394,7 @@ namespace AsmResolver.DotNet.Signatures
         /// Determines whether the current type is directly compatible with the provided type.
         /// </summary>
         /// <param name="other">The other type.</param>
+        /// <param name="context">The runtime context to assume when comparing the types.</param>
         /// <param name="comparer">The comparer to use for comparing type signatures.</param>
         /// <returns><c>true</c> if the types are directly compatible, <c>false</c> otherwise.</returns>
         /// <remarks>
@@ -406,6 +410,7 @@ namespace AsmResolver.DotNet.Signatures
         /// Determines whether the current type is compatible with the provided type.
         /// </summary>
         /// <param name="other">The other type.</param>
+        /// <param name="context">The runtime context to assume when comparing the types.</param>
         /// <returns><c>true</c> if the type is compatible with <paramref name="other" />, <c>false</c> otherwise.</returns>
         /// <remarks>
         /// Type compatibility is determined according to the rules in ECMA-335 I.8.7.1.
@@ -416,6 +421,7 @@ namespace AsmResolver.DotNet.Signatures
         /// Determines whether the current type is compatible with the provided type.
         /// </summary>
         /// <param name="other">The other type.</param>
+        /// <param name="context">The runtime context to assume when comparing the types.</param>
         /// <param name="comparer">The comparer to use for comparing type signatures.</param>
         /// <returns><c>true</c> if the type is compatible with <paramref name="other" />, <c>false</c> otherwise.</returns>
         /// <remarks>
@@ -451,6 +457,7 @@ namespace AsmResolver.DotNet.Signatures
         /// Determines whether the current type is assignable to the provided type.
         /// </summary>
         /// <param name="other">The other type.</param>
+        /// <param name="context">The runtime context to assume when comparing the types.</param>
         /// <returns><c>true</c> if the type is assignable to <paramref name="other" />, <c>false</c> otherwise.</returns>
         /// <remarks>
         /// Type compatibility is determined according to the rules in ECMA-335 I.8.7.3.
@@ -461,6 +468,7 @@ namespace AsmResolver.DotNet.Signatures
         /// Determines whether the current type is assignable to the provided type.
         /// </summary>
         /// <param name="other">The other type.</param>
+        /// <param name="context">The runtime context to assume when comparing the types.</param>
         /// <param name="comparer">The comparer to use for comparing type signatures.</param>
         /// <returns><c>true</c> if the type is assignable to <paramref name="other" />, <c>false</c> otherwise.</returns>
         /// <remarks>

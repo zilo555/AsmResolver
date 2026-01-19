@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 
@@ -15,6 +14,7 @@ namespace AsmResolver.DotNet
         /// Resolves a reference to a type.
         /// </summary>
         /// <param name="type">The type to resolve.</param>
+        /// <param name="originModule">The module the reference is assumed to be in.</param>
         /// <returns>The type definition, or <c>null</c> if the type could not be resolved.</returns>
         public Result<TypeDefinition> ResolveType(ITypeDescriptor? type, ModuleDefinition? originModule = null)
         {
@@ -88,6 +88,7 @@ namespace AsmResolver.DotNet
         /// Resolves a reference to a method.
         /// </summary>
         /// <param name="method">The method. to resolve.</param>
+        /// <param name="originModule">The module the reference is assumed to be in.</param>
         /// <returns>The method definition, or <c>null</c> if the method could not be resolved.</returns>
         public Result<MethodDefinition> ResolveMethod(IMethodDescriptor method, ModuleDefinition? originModule = null)
         {
@@ -110,6 +111,7 @@ namespace AsmResolver.DotNet
         /// Resolves a reference to a field.
         /// </summary>
         /// <param name="field">The field to resolve.</param>
+        /// <param name="originModule">The module the reference is assumed to be in.</param>
         /// <returns>The field definition, or <c>null</c> if the field could not be resolved.</returns>
         public Result<FieldDefinition> ResolveField(IFieldDescriptor field, ModuleDefinition? originModule = null)
         {

@@ -68,8 +68,12 @@ namespace AsmResolver.DotNet.Signatures
         public override ElementType ElementType => ElementType.GenericInst;
 
         /// <summary>
-        /// Gets or sets the underlying generic type definition or reference.
+        /// Gets the underlying generic type definition or reference.
         /// </summary>
+        /// <remarks>
+        /// To update the generic type, use <see cref="SetUnderlyingType(ITypeDefOrRef, RuntimeContext)"/>
+        /// or <see cref="SetUnderlyingType(ITypeDefOrRef, bool)"/>.
+        /// </remarks>
         public ITypeDefOrRef GenericType => _genericType;
 
         /// <summary>
@@ -99,11 +103,21 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override bool IsValueType => _isValueType;
 
+        /// <summary>
+        /// Updates the underlying type and value type tag.
+        /// </summary>
+        /// <param name="type">The new type.</param>
+        /// <param name="context">The runtime context to assume when updating the type.</param>
         public void SetUnderlyingType(ITypeDefOrRef type, RuntimeContext? context)
         {
             SetUnderlyingType(type, type.GetIsValueType(context));
         }
 
+        /// <summary>
+        /// Updates the underlying type and value type tag.
+        /// </summary>
+        /// <param name="type">The new type.</param>
+        /// <param name="isValueType">Indicates the type is a value type or not.</param>
         public void SetUnderlyingType(ITypeDefOrRef type, bool isValueType)
         {
             _genericType = type;

@@ -530,6 +530,9 @@ namespace AsmResolver.DotNet
 
         IResolutionScope? ITypeDescriptor.Scope => GetDeclaringScope();
 
+        /// <summary>
+        /// Gets a value indicating whether the type is considered a value type or a reference type.
+        /// </summary>
         [MemberNotNullWhen(true, nameof(BaseType))]
         public bool IsValueType
         {
@@ -855,9 +858,13 @@ namespace AsmResolver.DotNet
 
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
+        /// <summary>
+        /// Wraps the type reference in a signature.
+        /// </summary>
+        /// <returns>The new type signature.</returns>
         public TypeSignature ToTypeSignature() => ToTypeSignature(IsValueType);
 
-        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext context) => ToTypeSignature();
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => ToTypeSignature();
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType)

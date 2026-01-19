@@ -93,9 +93,13 @@ namespace AsmResolver.DotNet
 
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
+        /// <summary>
+        /// Wraps the type reference in a signature.
+        /// </summary>
+        /// <returns>The new type signature.</returns>
         public TypeSignature ToTypeSignature() => new TypeDefOrRefSignature(this, false);
 
-        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext context) => throw new InvalidOperationException();
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => ToTypeSignature();
 
         TypeSignature ITypeDefOrRef.ToTypeSignature(bool isValueType) => ToTypeSignature();
 

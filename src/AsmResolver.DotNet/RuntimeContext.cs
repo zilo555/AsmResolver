@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using AsmResolver.DotNet.Bundles;
@@ -46,7 +45,7 @@ public partial class RuntimeContext
     /// Creates a new runtime context.
     /// </summary>
     /// <param name="targetRuntime">The target runtime version.</param>
-    /// <param name="assemblyResolver">The assembly resolver to use when resolving assemblies into this context.</param>
+    /// <param name="searchDirectories">Additional search directories to assume when resolving dependencies.</param>
     public RuntimeContext(DotNetRuntimeInfo targetRuntime, IEnumerable<string> searchDirectories)
         : this(targetRuntime, null, null, null)
     {
@@ -145,6 +144,9 @@ public partial class RuntimeContext
         get;
     }
 
+    /// <summary>
+    /// Gets the default signature comparer to use in this runtime context.
+    /// </summary>
     public SignatureComparer SignatureComparer
     {
         get;
@@ -172,7 +174,7 @@ public partial class RuntimeContext
     }
 
     /// <summary>
-    /// Reads a .NET assembly from the provided input buffer.
+    /// Loads a .NET assembly into the context from the provided input buffer.
     /// </summary>
     /// <param name="buffer">The raw contents of the executable file to load.</param>
     /// <returns>The module.</returns>
@@ -181,7 +183,7 @@ public partial class RuntimeContext
         => GetOrAddAssembly(AssemblyDefinition.FromBytes(buffer, DefaultReaderParameters));
 
     /// <summary>
-    /// Reads a .NET assembly from the provided input stream.
+    /// Loads a .NET assembly into the context from the provided input stream.
     /// </summary>
     /// <param name="stream">The raw contents of the executable file to load.</param>
     /// <returns>The module.</returns>
@@ -190,7 +192,7 @@ public partial class RuntimeContext
         => GetOrAddAssembly(AssemblyDefinition.FromStream(stream, DefaultReaderParameters));
 
     /// <summary>
-    /// Reads a .NET assembly from the provided input file.
+    /// Loads a .NET assembly into the context from the provided input file.
     /// </summary>
     /// <param name="filePath">The file path to the input executable to load.</param>
     /// <returns>The module.</returns>
@@ -199,7 +201,7 @@ public partial class RuntimeContext
         => GetOrAddAssembly(AssemblyDefinition.FromFile(filePath, DefaultReaderParameters));
 
     /// <summary>
-    /// Reads a .NET assembly from the provided input file.
+    /// Loads a .NET assembly into the context from the provided input file.
     /// </summary>
     /// <param name="file">The portable executable file to load.</param>
     /// <returns>The module.</returns>
@@ -208,7 +210,7 @@ public partial class RuntimeContext
         => GetOrAddAssembly(AssemblyDefinition.FromFile(file, DefaultReaderParameters));
 
     /// <summary>
-    /// Reads a .NET assembly from the provided input file.
+    /// Loads a .NET assembly into the context from the provided input file.
     /// </summary>
     /// <param name="file">The portable executable file to load.</param>
     /// <returns>The module.</returns>
@@ -217,7 +219,7 @@ public partial class RuntimeContext
         => GetOrAddAssembly(AssemblyDefinition.FromFile(file, DefaultReaderParameters));
 
     /// <summary>
-    /// Reads a .NET assembly from an input stream.
+    /// Loads a .NET assembly into the context from an input stream.
     /// </summary>
     /// <param name="reader">The input stream pointing at the beginning of the executable to load.</param>
     /// <param name="mode">Indicates the input PE is mapped or unmapped.</param>
@@ -227,7 +229,7 @@ public partial class RuntimeContext
         => LoadAssembly(PEFile.FromReader(reader, mode));
 
     /// <summary>
-    /// Initializes a .NET assembly from a PE image.
+    /// Loads a .NET assembly into the context from a PE image.
     /// </summary>
     /// <param name="peImage">The image containing the .NET metadata.</param>
     /// <returns>The module.</returns>
@@ -241,6 +243,14 @@ public partial class RuntimeContext
             throw new ArgumentException($"Assembly {assembly.SafeToString()} is already added to another context.");
     }
 
+    /// <summary>
+    /// Registers an assembly in the context.
+    /// </summary>
+    /// <param name="assembly">The assembly to add</param>
+    /// <exception cref="ArgumentException">
+    /// Occurs when the assembly was already added to another context, or when there already exists an assembly with
+    /// the same name in the context.
+    /// </exception>
     public void AddAssembly(AssemblyDefinition assembly)
     {
         lock (_loadedAssemblies)
@@ -267,6 +277,10 @@ public partial class RuntimeContext
         }
     }
 
+    /// <summary>
+    /// Enumerates all assemblies that were loaded in the context.
+    /// </summary>
+    /// <returns>The assemblies.</returns>
     public IEnumerable<AssemblyDefinition> GetLoadedAssemblies()
     {
         lock (_loadedAssemblies)
@@ -275,6 +289,15 @@ public partial class RuntimeContext
         }
     }
 
+    /// <summary>
+    /// Resolves an assembly descriptor in the current context.
+    /// </summary>
+    /// <param name="assembly">The assembly to resolve.</param>
+    /// <param name="originModule">The module the assembly is assumed to be referenced in.</param>
+    /// <returns>The resolved assembly.</returns>
+    /// <remarks>
+    /// This method prefers the loaded assemblies before
+    /// </remarks>
     public Result<AssemblyDefinition> ResolveAssembly(AssemblyDescriptor assembly, ModuleDefinition? originModule)
     {
         lock (_loadedAssemblies)

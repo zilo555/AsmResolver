@@ -175,6 +175,9 @@ namespace AsmResolver.DotNet
             Version = version;
         }
 
+        /// <summary>
+        /// Gets the context the assembly was added to.
+        /// </summary>
         public RuntimeContext? RuntimeContext
         {
             get;

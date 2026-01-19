@@ -142,7 +142,8 @@ namespace AsmResolver.DotNet
 
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
-        public TypeSignature ToTypeSignature(RuntimeContext context) => ToTypeSignature(GetIsValueType(context));
+        /// <inheritdoc />
+        public TypeSignature ToTypeSignature(RuntimeContext? context) => ToTypeSignature(GetIsValueType(context));
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType)
