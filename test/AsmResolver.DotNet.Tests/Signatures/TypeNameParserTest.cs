@@ -13,12 +13,26 @@ namespace AsmResolver.DotNet.Tests.Signatures
 
         public TypeNameParserTest()
         {
-            _module = new ModuleDefinition("DummyModule", KnownCorLibs.SystemRuntime_v4_2_2_0)
+            _module = new ModuleDefinition("DummyModule", KnownCorLibs.SystemRuntime_v10_0_0_0)
             {
                 TopLevelTypes = { new TypeDefinition("System", "Action", TypeAttributes.Class) }
             };
             new AssemblyDefinition("DummyModule", new Version()).Modules.Add(_module);
             _comparer = new SignatureComparer();
+        }
+
+        private TypeDefinition CreateAndAddTypeDef(string ns, string name)
+        {
+            var type = new TypeDefinition(ns, name, TypeAttributes.Class, _module.CorLibTypeFactory.Object.Type);
+            _module.TopLevelTypes.Add(type);
+            return type;
+        }
+
+        private TypeDefinition CreateAndAddTypeDef(TypeDefinition declaringType, string name)
+        {
+            var type = new TypeDefinition(null, name, TypeAttributes.Class | TypeAttributes.NestedPublic, _module.CorLibTypeFactory.Object.Type);
+            declaringType.NestedTypes.Add(type);
+            return type;
         }
 
         [Theory]
@@ -27,7 +41,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [InlineData("\u0002\u2007\u2007")]
         public void SimpleTypeNoNamespace(string name)
         {
-            var expected = new TypeReference(null, null, name).ToTypeSignature(false);
+            var expected = CreateAndAddTypeDef(default(string), name).ToTypeSignature(false);
             var actual = TypeNameParser.Parse(_module, expected.Name!);
             Assert.Equal(expected, actual, _comparer);
         }
@@ -40,7 +54,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [InlineData("\u0002\u2007\u2007.\u0002\u2007\u2007")]
         public void SimpleTypeWithNamespace(string ns)
         {
-            var expected = new TypeReference(null, ns, "MyType").ToTypeSignature(false);
+            var expected = CreateAndAddTypeDef(ns, "MyType").ToTypeSignature(false);
             var actual = TypeNameParser.Parse(_module, expected.FullName);
             Assert.Equal(expected, actual, _comparer);
         }
@@ -51,9 +65,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [InlineData("\u0002\u2007\u2007", "\u0002\u2007\u2007", "\u0002\u2007\u2007")]
         public void NestedType(string ns, string name, string nestedType)
         {
-            var expected = new TypeReference(
-                    new TypeReference(_module, ns, name),
-                    null,
+            var expected = CreateAndAddTypeDef(
+                    CreateAndAddTypeDef(ns, name),
                     nestedType)
                 .ToTypeSignature(false);
 
@@ -67,9 +80,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [InlineData("\u0002\u2007\u2007", "\u0002\u2007\u2007")]
         public void NestedTypeNoNamespace(string name, string nestedType)
         {
-            var expected = new TypeReference(
-                    new TypeReference(_module, null, name),
-                    null,
+            var expected = CreateAndAddTypeDef(
+                    CreateAndAddTypeDef(default(string), name),
                     nestedType)
                 .ToTypeSignature(false);
 
@@ -143,7 +155,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             const string ns = "MyNamespace";
             const string name = "MyType";
 
-            var elementType = new TypeReference(_module, ns, name).ToTypeSignature(false);
+            var elementType = CreateAndAddTypeDef(ns, name).ToTypeSignature(false);
             var expected = new SzArrayTypeSignature(elementType);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[], {elementType.Scope}");
@@ -156,7 +168,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             const string ns = "MyNamespace";
             const string name = "MyType";
 
-            var elementType = new TypeReference(_module, ns, name).ToTypeSignature(false);
+            var elementType = CreateAndAddTypeDef(ns, name).ToTypeSignature(false);
             var expected = new ArrayTypeSignature(elementType, 4);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[,,,], {elementType.Scope}");
@@ -169,7 +181,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             const string ns = "MyNamespace";
             const string name = "MyType";
 
-            var elementType = new TypeReference(_module, ns, name);
+            ITypeDefOrRef elementType = CreateAndAddTypeDef(ns, name);
             var argumentType = _module.CorLibTypeFactory.Object;
 
             var expected = elementType.MakeGenericInstanceType(false, argumentType);
@@ -184,7 +196,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             const string ns = "MyNamespace";
             const string name = "MyType";
 
-            var elementType = new TypeReference(_module, ns, name);
+            ITypeDefOrRef elementType = CreateAndAddTypeDef(ns, name);
             var argumentType = _module.CorLibTypeFactory.Object;
             var argumentType2 = _module.CorLibTypeFactory.Int32;
 
@@ -204,10 +216,10 @@ namespace AsmResolver.DotNet.Tests.Signatures
             const string pname = "MyType+WithPlus";
 
 
-            var elementType = new TypeReference(_module, ns, name);
+            ITypeDefOrRef elementType = CreateAndAddTypeDef(ns, name);
             var argumentType = _module.CorLibTypeFactory.Object;
             // needs to be null scope for the comparison to work
-            var argumentType2 = new TypeReference(null, ns, pname).ToTypeSignature(false);
+            var argumentType2 = CreateAndAddTypeDef(ns, pname).ToTypeSignature(false);
 
             var expected = new GenericInstanceTypeSignature(elementType, false, argumentType, argumentType2);
 
@@ -224,9 +236,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
             const string ns = "MyNamespace";
             const string name = "MyType";
 
-            var elementType = new TypeReference(_module, ns, name);
-            var argumentType = new TypeReference(_module, _module, argNs, argName)
-                .ToTypeSignature(false);
+            ITypeDefOrRef elementType = CreateAndAddTypeDef(ns, name);
+            var argumentType = CreateAndAddTypeDef(argNs, argName).ToTypeSignature(false);
 
             var expected = new GenericInstanceTypeSignature(elementType, false, argumentType);
 
@@ -240,7 +251,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             const string ns = "MyNamespace";
             const string name = "MyType";
 
-            var elementType = new TypeReference(_module, ns, name);
+            ITypeDefOrRef elementType = CreateAndAddTypeDef(ns, name);
             var argumentType = _module.CorLibTypeFactory.Object;
             var argumentType2 = _module.CorLibTypeFactory.Int32;
             var fullName = _module.CorLibTypeFactory.CorLibScope.GetAssembly().FullName;
@@ -288,7 +299,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             const string escapedName = "MyType\\+WithPlus";
             const string name = "MyType+WithPlus";
 
-            var expected = new TypeReference(_module, ns, name).ToTypeSignature(false);
+            var expected = CreateAndAddTypeDef(ns, name).ToTypeSignature(false);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{escapedName}, {_module}");
             Assert.Equal(expected, actual, _comparer);
@@ -334,7 +345,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void ReadTypeShouldReuseScopeInstanceWhenAvailable()
         {
             var type = TypeNameParser.Parse(_module,
-                "System.Array, System.Runtime, Version=4.2.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
+                "System.Array, System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
             Assert.Contains(type.Scope!.GetAssembly(), _module.AssemblyReferences);
         }
 
@@ -354,8 +365,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
                     .Parse(module, typeof(TypeNameParserTest).AssemblyQualifiedName!)
                     .GetUnderlyingTypeDefOrRef()!;
 
-            Assert.NotNull(type.Resolve(module.RuntimeContext).Unwrap());
-            Assert.NotNull(type.ImportWith(module.DefaultImporter).Resolve(module.RuntimeContext).Unwrap());
+            Assert.True(type.TryResolve(module.RuntimeContext, out _));
+            Assert.True(type.ImportWith(module.DefaultImporter).TryResolve(module.RuntimeContext, out _));
         }
 
         [Fact]

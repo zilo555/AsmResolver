@@ -24,10 +24,11 @@ namespace AsmResolver.DotNet
         }
 
         /// <summary>
-        /// Resolves the reference to a field definition, assuming the provided module as resolution context.
+        /// Attempts to resolve the field reference to its definition, assuming the provided module as resolution context.
         /// </summary>
-        /// <param name="context">The module to assume as resolution context.</param>
-        /// <returns>The resolved field definition, or <c>null</c> if the field could not be resolved.</returns>
-        new Result<FieldDefinition> Resolve(RuntimeContext? context);
+        /// <param name="context">The context to assume when resolving the field.</param>
+        /// <param name="definition">The resolved field definition, or <c>null</c> if the field could not be resolved.</param>
+        /// <returns>A value describing the success or failure status of the field resolution.</returns>
+        ResolutionStatus Resolve(RuntimeContext? context, out FieldDefinition? definition);
     }
 }

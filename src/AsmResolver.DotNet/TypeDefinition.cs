@@ -850,8 +850,7 @@ namespace AsmResolver.DotNet
                     return true;
 
                 visited.Add(type);
-                type = type.BaseType?.Resolve(context).UnwrapOrDefault();
-            } while (type is not null);
+            } while (type.BaseType?.TryResolve(context, out type) is true);
 
             return false;
         }
@@ -938,7 +937,7 @@ namespace AsmResolver.DotNet
             //      class C : A {} // <-- `type` ( can access A+B )
             //
             if ((IsNestedFamily || IsNestedFamilyOrAssembly || IsNestedFamilyAndAssembly)
-                && type.BaseType?.Resolve(context) is {Value: { } baseType})
+                && type.BaseType?.TryResolve(context, out var baseType) is true)
             {
                 return (!IsNestedFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
             }
@@ -967,9 +966,17 @@ namespace AsmResolver.DotNet
 
         bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => IsValueType;
 
-        Result<TypeDefinition> ITypeDescriptor.Resolve(RuntimeContext? context) => Result.Success(this);
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Result.Success<IMemberDefinition>(this);
+        ResolutionStatus ITypeDescriptor.Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
         /// <summary>
         /// When this type is an enum, extracts the underlying enum type.

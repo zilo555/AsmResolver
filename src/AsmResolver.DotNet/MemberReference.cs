@@ -163,30 +163,78 @@ namespace AsmResolver.DotNet
         /// <summary>
         /// Resolves the reference to a member definition.
         /// </summary>
-        /// <returns>The resolved member definition, or <c>null</c> if the member could not be resolved.</returns>
+        /// <returns>The resolved member definition.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Occurs when the member reference has an invalid signature.</exception>
-        public Result<IMemberDefinition> Resolve(RuntimeContext? context)
+        public IMemberDefinition Resolve(RuntimeContext? context)
         {
             if (IsMethod)
-                return ((IMethodDescriptor) this).Resolve(context).Into<IMemberDefinition>();
+                return ((IMethodDescriptor) this).Resolve(context);
             if (IsField)
-                return ((IFieldDescriptor) this).Resolve(context).Into<IMemberDefinition>();
+                return ((IFieldDescriptor) this).Resolve(context);
 
             throw new ArgumentOutOfRangeException();
         }
 
-        Result<FieldDefinition> IFieldDescriptor.Resolve(RuntimeContext? context)
+        /// <summary>
+        /// Attempts to resolve the member descriptor to its definition in the provided context.
+        /// </summary>
+        /// <param name="context">The context to assume when resolving the member.</param>
+        /// <param name="definition">The resolved member definition, or <c>null</c> if resolution failed.</param>
+        /// <returns><c>true</c> if the resolution was successful, <c>false</c> otherwise.</returns>
+        public bool TryResolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
-            return IsField
-                ? context?.ResolveField(this, ContextModule) ?? Result.Fail<FieldDefinition>()
-                : throw new InvalidOperationException("Member reference must reference a field.");
+            if (IsMethod && ((IMethodDescriptor) this).TryResolve(context, out var method))
+                definition = method;
+            else if (IsField && ((IFieldDescriptor) this).TryResolve(context, out var field))
+                definition = field;
+
+            definition = null;
+            return definition is not null;
         }
 
-        Result<MethodDefinition> IMethodDescriptor.Resolve(RuntimeContext? context)
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
-            return IsMethod
-                ? context?.ResolveMethod(this, ContextModule) ?? Result.Fail<MethodDefinition>()
-                : throw new InvalidOperationException("Member reference must reference a method.");
+            if (IsMethod)
+                return ((IMethodDescriptor) this).Resolve(context, out definition);
+            if (IsField)
+                return ((IFieldDescriptor) this).Resolve(context, out definition);
+
+            definition = null;
+            return ResolutionStatus.InvalidReference;
+        }
+
+        ResolutionStatus IFieldDescriptor.Resolve(RuntimeContext? context, out FieldDefinition? definition)
+        {
+            if (!IsField)
+            {
+                definition = null;
+                return ResolutionStatus.InvalidReference;
+            }
+
+            if (context is null)
+            {
+                definition = null;
+                return ResolutionStatus.AssemblyNotFound;
+            }
+
+            return context.ResolveField(this, ContextModule, out definition);
+        }
+
+        ResolutionStatus IMethodDescriptor.Resolve(RuntimeContext? context, out MethodDefinition? definition)
+        {
+            if (!IsMethod)
+            {
+                definition = null;
+                return ResolutionStatus.InvalidReference;
+            }
+
+            if (context is null)
+            {
+                definition = null;
+                return ResolutionStatus.AssemblyNotFound;
+            }
+
+            return context.ResolveMethod(this, ContextModule, out definition);
         }
 
         /// <summary>

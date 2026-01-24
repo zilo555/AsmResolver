@@ -37,8 +37,8 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
 
-            var reference = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Object");
-            var definition = _fwContext.ResolveType(reference).Unwrap();
+            var reference = module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "Object");
+            var definition = reference.Resolve(_fwContext);
 
             Assert.Equal((ITypeDefOrRef) reference, definition, _fwComparer);
         }
@@ -48,8 +48,8 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld_NetCore, TestReaderParameters);
 
-            var reference = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Object");
-            var definition = _coreContext.ResolveType(reference).Unwrap();
+            var reference = module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "Object");
+            var definition = reference.Resolve(_coreContext);
 
             Assert.NotNull(definition);
             Assert.True(definition.IsTypeOf(reference.Namespace, reference.Name));
@@ -59,7 +59,7 @@ namespace AsmResolver.DotNet.Tests
         public void ResolveCorLibTypeSignature()
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
-            var definition = _fwContext.ResolveType(module.CorLibTypeFactory.Object).Unwrap();
+            var definition = module.CorLibTypeFactory.Object.Resolve(_fwContext);
 
             Assert.Equal(module.CorLibTypeFactory.Object.Type, definition, _fwComparer);
         }
@@ -69,10 +69,10 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromFile(typeof(TopLevelClass1).Assembly.Location, TestReaderParameters);
 
-            var topLevelClass1 = new TypeReference(new AssemblyReference(module.Assembly!),
-                typeof(TopLevelClass1).Namespace, nameof(TopLevelClass1));
+            var topLevelClass1 = module.Assembly!.ToAssemblyReference()
+                .CreateTypeReference(typeof(TopLevelClass1).Namespace, nameof(TopLevelClass1));
 
-            var definition = _coreContext.ResolveType(topLevelClass1).Unwrap();
+            var definition = topLevelClass1.Resolve(_coreContext);
             Assert.Equal((ITypeDefOrRef) topLevelClass1, definition, _fwComparer);
         }
 
@@ -81,8 +81,8 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = new ModuleDefinition("SomeModule.dll");
 
-            var consoleType = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Console");
-            Assert.Same(_fwContext.ResolveType(consoleType).Unwrap(), _fwContext.ResolveType(consoleType).Unwrap());
+            var consoleType = module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "Console");
+            Assert.Same(consoleType.Resolve(_fwContext), consoleType.Resolve(_fwContext));
         }
 
         [Fact]
@@ -90,11 +90,11 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = new ModuleDefinition("SomeModule.dll");
 
-            ITypeDefOrRef expected = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Object");
-            var reference = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Object");
-            Assert.Equal(expected, _fwContext.ResolveType(reference).Unwrap(), _fwComparer);
+            ITypeDefOrRef expected = module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "Object");
+            var reference = module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "Object");
+            Assert.Equal(expected, reference.Resolve(_fwContext), _fwComparer);
             reference.Name = "String";
-            Assert.NotEqual(expected, _fwContext.ResolveType(reference).Unwrap(), _fwComparer);
+            Assert.NotEqual(expected, reference.Resolve(_fwContext), _fwComparer);
         }
 
         [Fact]
@@ -102,14 +102,14 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = new ModuleDefinition("SomeModule.dll");
 
-            ITypeDefOrRef expected = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Object");
-            var reference = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Object");
+            ITypeDefOrRef expected = module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "Object");
+            var reference = module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "Object");
 
-            var definition = _fwContext.ResolveType(reference).Unwrap();
+            var definition = reference.Resolve(_fwContext);
             Assert.Equal(expected, definition, _fwComparer);
 
             definition.Name = "Foo";
-            Assert.False(_fwContext.ResolveType(reference).IsSuccess);
+            Assert.False(reference.TryResolve(_fwContext, out _));
         }
 
         [Fact]
@@ -117,13 +117,13 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromFile(typeof(TopLevelClass1).Assembly.Location, TestReaderParameters);
 
-            var topLevelClass1 = new TypeReference(new AssemblyReference(module.Assembly!),
-                typeof(TopLevelClass1).Namespace, nameof(TopLevelClass1));
-            var nested1 = new TypeReference(topLevelClass1,null, nameof(TopLevelClass1.Nested1));
+            var topLevelClass1 = module.Assembly!.ToAssemblyReference()
+                .CreateTypeReference(typeof(TopLevelClass1).Namespace, nameof(TopLevelClass1));
+            var nested1 = topLevelClass1.CreateTypeReference(nameof(TopLevelClass1.Nested1));
 
-            var definition = _coreContext.ResolveType(nested1).Unwrap();
+            var definition = nested1.Resolve(_coreContext);
 
-            Assert.Equal((ITypeDefOrRef) nested1, definition, _fwComparer);
+            Assert.Equal((ITypeDefOrRef) nested1, definition, _coreComparer);
         }
 
         [Fact]
@@ -131,12 +131,12 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromFile(typeof(TopLevelClass1).Assembly.Location, TestReaderParameters);
 
-            var topLevelClass1 = new TypeReference(new AssemblyReference(module.Assembly!),
-                typeof(TopLevelClass1).Namespace, nameof(TopLevelClass1));
-            var nested1 = new TypeReference(topLevelClass1,null, nameof(TopLevelClass1.Nested1));
-            var nested1nested1 = new TypeReference(nested1,null, nameof(TopLevelClass1.Nested1.Nested1Nested1));
+            var topLevelClass1 = module.Assembly!.ToAssemblyReference()
+                .CreateTypeReference(typeof(TopLevelClass1).Namespace, nameof(TopLevelClass1));
+            var nested1 = topLevelClass1.CreateTypeReference(nameof(TopLevelClass1.Nested1));
+            var nested1nested1 = nested1.CreateTypeReference(nameof(TopLevelClass1.Nested1.Nested1Nested1));
 
-            var definition = _fwContext.ResolveType(nested1nested1).Unwrap();
+            var definition = nested1nested1.Resolve(_fwContext);
 
             Assert.Equal((ITypeDefOrRef) nested1nested1, definition, _fwComparer);
         }
@@ -148,7 +148,7 @@ namespace AsmResolver.DotNet.Tests
             var original = module.TopLevelTypes.First(t => t.Name == "Program");
             var reference = module.TopLevelTypes.First(t => t.Name == "Program").ToTypeReference();
 
-            var definition = reference.Resolve(module.RuntimeContext).Unwrap();
+            var definition = reference.Resolve(module.RuntimeContext);
 
             Assert.Same(original, definition);
         }
@@ -158,9 +158,9 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var original = module.TopLevelTypes.First(t => t.Name == "Program");
-            var reference = new TypeReference(module.Assembly!.ToAssemblyReference(), original.Namespace, original.Name);
+            var reference = module.Assembly!.ToAssemblyReference().CreateTypeReference(original.Namespace, original.Name!);
 
-            var definition = reference.Resolve(module.RuntimeContext).Unwrap();
+            var definition = reference.Resolve(module.RuntimeContext);
 
             Assert.Same(original, definition);
         }
@@ -171,7 +171,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromBytes(Properties.Resources.TypeRefModuleScope, TestReaderParameters);
             var reference = module.LookupMember<TypeReference>(new MetadataToken(TableIndex.TypeRef, 2));
 
-            var definition = reference.Resolve(module.RuntimeContext).Unwrap();
+            var definition = reference.Resolve(module.RuntimeContext);
 
             Assert.NotNull(definition);
             Assert.Same(module, definition.DeclaringModule);
@@ -183,7 +183,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromBytes(Properties.Resources.TypeRefNullScope_CurrentModule, TestReaderParameters);
             var reference = module.LookupMember<TypeReference>(new MetadataToken(TableIndex.TypeRef, 2));
 
-            var definition = reference.Resolve(module.RuntimeContext).Unwrap();
+            var definition = reference.Resolve(module.RuntimeContext);
 
             Assert.NotNull(definition);
             Assert.Same(module, definition.DeclaringModule);
@@ -195,7 +195,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromBytes(Properties.Resources.TypeRefNullScope_ExportedType, TestReaderParameters);
             var reference = module.LookupMember<TypeReference>(new MetadataToken(TableIndex.TypeRef, 1));
 
-            var definition = reference.Resolve(module.RuntimeContext).Unwrap();
+            var definition = reference.Resolve(module.RuntimeContext);
 
             Assert.NotNull(definition);
             Assert.Equal("mscorlib", definition.DeclaringModule!.Assembly!.Name);
@@ -206,11 +206,13 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = new ModuleDefinition("SomeModule.dll");
 
-            var consoleType = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "Console");
-            var writeLineMethod = new MemberReference(consoleType, "WriteLine",
-                MethodSignature.CreateStatic(module.CorLibTypeFactory.Void, module.CorLibTypeFactory.String));
+            var consoleType = module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "Console");
+            var writeLineMethod = consoleType.CreateMethodReference(
+                "WriteLine",
+                MethodSignature.CreateStatic(module.CorLibTypeFactory.Void, module.CorLibTypeFactory.String)
+            );
 
-            var definition = _fwContext.ResolveMethod(writeLineMethod).Unwrap();
+            var definition = writeLineMethod.Resolve(_fwContext);
 
             Assert.Equal(writeLineMethod.Name, definition.Name);
             Assert.Equal(writeLineMethod.Signature, definition.Signature, _fwComparer);
@@ -221,13 +223,10 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = new ModuleDefinition("SomeModule.dll");
 
-            var stringType = new TypeReference(module.CorLibTypeFactory.CorLibScope, "System", "String");
-            var emptyField = new MemberReference(
-                stringType,
-                "Empty",
-                new FieldSignature(module.CorLibTypeFactory.String));
+            var stringType = module.CorLibTypeFactory.CorLibScope.CreateTypeReference("System", "String");
+            var emptyField = stringType.CreateFieldReference("Empty", module.CorLibTypeFactory.String);
 
-            var definition = _fwContext.ResolveField(emptyField).Unwrap();
+            var definition = emptyField.Resolve(_fwContext);
 
             Assert.Equal(emptyField.Name, definition.Name);
             Assert.Equal(emptyField.Signature, definition.Signature, _fwComparer);
@@ -248,7 +247,7 @@ namespace AsmResolver.DotNet.Tests
 
             // Resolve
             var instructions = module.ManagedEntryPointMethod!.CilMethodBody!.Instructions;
-            Assert.NotNull(((IMethodDescriptor) instructions[0].Operand!).Resolve(module.RuntimeContext).Unwrap());
+            Assert.True(((IMethodDescriptor) instructions[0].Operand!).TryResolve(module.RuntimeContext, out _));
         }
 
         [Fact]
@@ -267,7 +266,7 @@ namespace AsmResolver.DotNet.Tests
                 .First(t => t.Name == "SomeName");
 
             // Attempt to resolve. The test here is that it should not result in an infinite loop / stack overflow.
-            Assert.Null(reference.Resolve(module.RuntimeContext).Value);
+            Assert.False(reference.TryResolve(module.RuntimeContext, out _));
         }
 
         [Fact]
@@ -288,7 +287,7 @@ namespace AsmResolver.DotNet.Tests
                     i => i.OpCode == CilOpCodes.Callvirt && ((IMethodDescriptor) i.Operand)?.Name == "ThrowMe")
                 .Operand!;
 
-            var resolved = reference.Resolve(mainApp.RuntimeContext).Unwrap();
+            var resolved = reference.Resolve(mainApp.RuntimeContext);
             Assert.Equal(definition, resolved);
         }
 
@@ -307,7 +306,7 @@ namespace AsmResolver.DotNet.Tests
             var helloWorld = ModuleDefinition.FromFile(typeof(HelloWorldVB.Program).Assembly.Location, TestReaderParameters);
             var resolved = helloWorld.ManagedEntryPointMethod!.CilMethodBody!.Instructions
                 .Where(x => x.OpCode == CilOpCodes.Call)
-                .Select(x => ((IMethodDescriptor) x.Operand!).Resolve(classLibrary.RuntimeContext).UnwrapOrDefault())
+                .Select(x => ((IMethodDescriptor) x.Operand!).Resolve(classLibrary.RuntimeContext))
                 .ToArray();
 
             Assert.Equal(definitions, resolved, new SignatureComparer());

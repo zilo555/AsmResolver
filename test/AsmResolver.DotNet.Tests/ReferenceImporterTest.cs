@@ -518,7 +518,7 @@ namespace AsmResolver.DotNet.Tests
 
             var importer = new ReferenceImporter(module);
             var imported = importer.ImportField(fieldInfo);
-            var resolved = imported.Resolve(module.RuntimeContext).Unwrap();
+            var resolved = imported.Resolve(module.RuntimeContext);
 
             Assert.Equal(field, Assert.IsAssignableFrom<IFieldDescriptor>(resolved), Comparer);
         }

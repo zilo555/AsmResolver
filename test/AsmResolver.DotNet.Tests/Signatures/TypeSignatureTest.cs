@@ -665,7 +665,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [Fact]
         public void ResolveTypeDefSignatureShouldReturnSameInstance()
         {
-            Assert.Same(_dummyType, _dummyType.ToTypeSignature(false).Resolve(null).Unwrap());
+            Assert.Same(_dummyType, _dummyType.ToTypeSignature(false).Resolve(null));
         }
     }
 }

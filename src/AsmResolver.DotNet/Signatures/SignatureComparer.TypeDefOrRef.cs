@@ -102,8 +102,8 @@ namespace AsmResolver.DotNet.Signatures
                 return true;
 
             // It can still be an exported type, we need to resolve the type then and check if the definitions match.
-            return x.Resolve(RuntimeContext) is {Value: { } definition1}
-                && y.Resolve(RuntimeContext) is {Value: { } definition2}
+            return x.TryResolve(RuntimeContext, out var definition1)
+                && y.TryResolve(RuntimeContext, out var definition2)
                 && Equals(definition1.DeclaringModule!.Assembly, definition2.DeclaringModule!.Assembly)
                 && Equals(definition1.DeclaringType, definition2.DeclaringType);
         }

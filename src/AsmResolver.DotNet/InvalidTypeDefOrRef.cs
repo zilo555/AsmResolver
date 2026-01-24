@@ -47,14 +47,6 @@ namespace AsmResolver.DotNet
 
         ITypeDescriptor? IMemberDescriptor.DeclaringType => null;
 
-        bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => false;
-
-        Result<TypeDefinition> ITypeDescriptor.Resolve(RuntimeContext? context)
-            => Result.InvalidOperation<TypeDefinition>("Type is invalid.");
-
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context)
-            => Result.InvalidOperation<IMemberDefinition>("Type is invalid.");
-
         ITypeDefOrRef? ITypeDefOrRef.DeclaringType => null;
 
         /// <inheritdoc />
@@ -84,6 +76,19 @@ namespace AsmResolver.DotNet
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module) => false;
+
+        bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => false;
+
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            return ((ITypeDescriptor) this).Resolve(context, out definition);
+        }
+
+        ResolutionStatus ITypeDescriptor.Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        {
+            definition = null;
+            return ResolutionStatus.InvalidReference;
+        }
 
         /// <inheritdoc />
         ITypeDefOrRef ITypeDefOrRef.ImportWith(ReferenceImporter importer) => throw new InvalidOperationException();

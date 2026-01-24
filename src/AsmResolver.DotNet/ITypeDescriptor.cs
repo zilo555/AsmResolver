@@ -31,10 +31,12 @@ namespace AsmResolver.DotNet
         bool GetIsValueType(RuntimeContext? context);
 
         /// <summary>
-        /// Resolves the reference to a method definition, assuming the provided module as resolution context.
+        /// Attempts to resolve the type reference to its definition, assuming the provided module as resolution context.
         /// </summary>
-        /// <returns>The resolved method definition, or <c>null</c> if the method could not be resolved.</returns>
-        new Result<TypeDefinition> Resolve(RuntimeContext? context);
+        /// <param name="context">The context to assume when resolving the type.</param>
+        /// <param name="definition">The resolved type definition, or <c>null</c> if the type could not be resolved.</param>
+        /// <returns>A value describing the success or failure status of the type resolution.</returns>
+        ResolutionStatus Resolve(RuntimeContext? context, out TypeDefinition? definition);
 
         /// <summary>
         /// Transforms the type descriptor to an instance of a <see cref="ITypeDefOrRef"/>, which can be referenced by

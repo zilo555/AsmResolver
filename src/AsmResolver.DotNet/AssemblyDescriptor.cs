@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
@@ -259,10 +261,42 @@ namespace AsmResolver.DotNet
         }
 
         /// <summary>
-        /// Resolves the reference to the assembly to an assembly definition.
+        /// Resolves the assembly reference to its definition.
         /// </summary>
-        /// <returns>The assembly definition, or <c>null</c> if the resolution failed.</returns>
-        public abstract Result<AssemblyDefinition> Resolve(RuntimeContext? context);
+        /// <returns>The assembly definition.</returns>
+        public AssemblyDefinition Resolve(RuntimeContext? context)
+        {
+            var status = Resolve(context, out var assembly);
+            return status == ResolutionStatus.Success ? assembly! : ThrowStatusError(this, status);
+
+            [DoesNotReturn]
+            static AssemblyDefinition ThrowStatusError(AssemblyDescriptor assembly, ResolutionStatus status) => status switch
+            {
+                ResolutionStatus.InvalidReference => throw new ArgumentException($"The assembly reference is invalid"),
+                ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the assembly {assembly.SafeToString()}."),
+                ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The assembly {assembly.SafeToString()} is in an invalid format."),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        /// <summary>
+        /// Attempts to resolve the assembly reference to its definition.
+        /// </summary>
+        /// <param name="context">The context to assume when resolving the assembly.</param>
+        /// <param name="assembly">The resolved assembly, or <c>null</c> if resolution failed.</param>
+        /// <returns><c>true</c> if the resolution succeeded, <c>false</c> otherwise.</returns>
+        public bool TryResolve(RuntimeContext? context, [NotNullWhen(true)] out AssemblyDefinition? assembly)
+        {
+            return Resolve(context, out assembly) == ResolutionStatus.Success;
+        }
+
+        /// <summary>
+        /// Attempts to resolve the assembly reference to its definition.
+        /// </summary>
+        /// <param name="context">The context to assume when resolving the assembly.</param>
+        /// <param name="assembly">The resolved assembly, or <c>null</c> if resolution failed.</param>
+        /// <returns>A value describing the success or failure status of the assembly resolution.</returns>
+        protected abstract ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly);
 
         /// <summary>
         /// Constructs a new assembly reference based on the descriptor.

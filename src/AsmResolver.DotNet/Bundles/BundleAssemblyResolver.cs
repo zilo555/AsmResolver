@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using AsmResolver.DotNet.Serialized;
 
@@ -21,17 +20,18 @@ public class BundleAssemblyResolver : IAssemblyResolver
     }
 
     /// <inheritdoc />
-    public Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule)
+    public ResolutionStatus Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule, out AssemblyDefinition? definition)
     {
         // Prefer embedded files before we forward to the default assembly resolution algorithm.
 
-        var result = TryResolveFromEmbeddedFiles(assembly);
-        return result.IsSuccess
-            ? result
-            : _baseResolver.Resolve(assembly, originModule);
+        var result = TryResolveFromEmbeddedFiles(assembly, out definition);
+        if (result != ResolutionStatus.Success)
+            result = _baseResolver.Resolve(assembly, originModule, out definition);
+
+        return result;
     }
 
-    private Result<AssemblyDefinition> TryResolveFromEmbeddedFiles(AssemblyDescriptor assembly)
+    private ResolutionStatus TryResolveFromEmbeddedFiles(AssemblyDescriptor assembly, out AssemblyDefinition? definition)
     {
         try
         {
@@ -42,14 +42,19 @@ public class BundleAssemblyResolver : IAssemblyResolver
                     continue;
 
                 if (Path.GetFileNameWithoutExtension(file.RelativePath) == assembly.Name)
-                    return Result.Success(AssemblyDefinition.FromBytes(file.GetData(), _baseResolver.ReaderParameters));
+                {
+                    definition = AssemblyDefinition.FromBytes(file.GetData(), _baseResolver.ReaderParameters);
+                    return ResolutionStatus.Success;
+                }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            return Result.Fail<AssemblyDefinition>(ex);
+            definition = null;
+            return ResolutionStatus.AssemblyBadImage;
         }
 
-        return Result.Fail<AssemblyDefinition>();
+        definition = null;
+        return ResolutionStatus.MemberNotFound;
     }
 }

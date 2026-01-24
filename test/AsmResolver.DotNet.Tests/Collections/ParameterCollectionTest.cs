@@ -203,7 +203,7 @@ namespace AsmResolver.DotNet.Tests.Collections
         public void ThisParameterOfCorLibShouldResultInCorLibTypeSignature()
         {
             var module = ModuleDefinition.FromFile(typeof(object).Assembly.Location, TestReaderParameters);
-            var type = module.CorLibTypeFactory.Object.Type.Resolve(module.RuntimeContext).Unwrap();
+            var type = module.CorLibTypeFactory.Object.Type.Resolve(module.RuntimeContext);
             var instanceMethod = type.Methods.First(t => !t.IsStatic);
             var signature = Assert.IsAssignableFrom<CorLibTypeSignature>(instanceMethod.Parameters.ThisParameter?.ParameterType);
             Assert.Same(module.CorLibTypeFactory.Object, signature);

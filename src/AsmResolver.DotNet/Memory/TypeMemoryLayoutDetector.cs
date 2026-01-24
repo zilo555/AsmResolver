@@ -176,7 +176,7 @@ namespace AsmResolver.DotNet.Memory
 
         private TypeMemoryLayout VisitTypeReference(TypeReference type)
         {
-            return VisitTypeDefinition(type.Resolve(_runtimeContext).Unwrap());
+            return VisitTypeDefinition(type.Resolve(_runtimeContext));
         }
 
         private TypeMemoryLayout VisitTypeDefinition(TypeDefinition type)

@@ -105,7 +105,7 @@ namespace AsmResolver.DotNet.Memory
 
         private uint VisitTypeReference(TypeReference type)
         {
-            return VisitTypeDefinition(type.Resolve(_runtimeContext).Unwrap());
+            return VisitTypeDefinition(type.Resolve(_runtimeContext));
         }
 
         public uint VisitTypeDefinition(TypeDefinition type)

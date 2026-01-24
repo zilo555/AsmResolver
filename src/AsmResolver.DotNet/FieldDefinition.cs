@@ -369,9 +369,17 @@ namespace AsmResolver.DotNet
             set;
         }
 
-        Result<FieldDefinition> IFieldDescriptor.Resolve(RuntimeContext? context) => Result.Success(this);
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Result.Success<IMemberDefinition>(this);
+        ResolutionStatus IFieldDescriptor.Resolve(RuntimeContext? context, out FieldDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
@@ -419,7 +427,7 @@ namespace AsmResolver.DotNet
 
             // Family (protected in C#) fields are accessible by any base type.
             if ((IsFamily || IsFamilyOrAssembly || IsFamilyAndAssembly)
-                && type.BaseType?.Resolve(context) is {Value: { } baseType})
+                && type.BaseType?.TryResolve(context, out var baseType) is true)
             {
                 return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
             }

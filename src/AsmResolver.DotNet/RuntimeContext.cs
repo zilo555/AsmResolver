@@ -106,9 +106,14 @@ public partial class RuntimeContext
         TargetRuntime = manifest.GetTargetRuntime();
         DefaultReaderParameters = new ModuleReaderParameters(readerParameters) {RuntimeContext = this};
         AssemblyResolver = new BundleAssemblyResolver(manifest, DefaultReaderParameters);
-        RuntimeCorLib = AssemblyResolver.Resolve(TargetRuntime.GetDefaultCorLib(), null).UnwrapOrDefault()?
-            .ManifestModule?.CorLibTypeFactory.Object.Resolve(this).UnwrapOrDefault()?
-            .DeclaringModule?.Assembly;
+
+        if (ResolveAssembly(TargetRuntime.GetDefaultCorLib(), null, out var corlib) == ResolutionStatus.Success
+            && corlib!.ManifestModule?.CorLibTypeFactory.Object.TryResolve(this, out var type) is true)
+        {
+            RuntimeCorLib = type.DeclaringModule?.Assembly;
+            ;
+        }
+
         SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
     }
 
@@ -286,34 +291,6 @@ public partial class RuntimeContext
         lock (_loadedAssemblies)
         {
             return _loadedAssemblies.Values.ToArray();
-        }
-    }
-
-    /// <summary>
-    /// Resolves an assembly descriptor in the current context.
-    /// </summary>
-    /// <param name="assembly">The assembly to resolve.</param>
-    /// <param name="originModule">The module the assembly is assumed to be referenced in.</param>
-    /// <returns>The resolved assembly.</returns>
-    /// <remarks>
-    /// This method prefers the loaded assemblies before
-    /// </remarks>
-    public Result<AssemblyDefinition> ResolveAssembly(AssemblyDescriptor assembly, ModuleDefinition? originModule)
-    {
-        lock (_loadedAssemblies)
-        {
-            if (_loadedAssemblies.TryGetValue(assembly, out var resolved))
-                return Result.Success(resolved);
-
-            var result = AssemblyResolver.Resolve(assembly, originModule);
-            if (result.IsSuccess)
-            {
-                var definition = result.Value;
-                AddAssembly(definition);
-                return Result.Success(definition);
-            }
-
-            return result;
         }
     }
 

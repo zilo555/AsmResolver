@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using AsmResolver.Collections;
@@ -138,7 +137,7 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public bool GetIsValueType(RuntimeContext? context) => Resolve(context).UnwrapOrDefault()?.IsValueType is true;
+        public bool GetIsValueType(RuntimeContext? context) => this.TryResolve(context, out var definition) && definition.IsValueType;
 
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
@@ -166,14 +165,21 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
-        /// <inheritdoc />
-        public Result<TypeDefinition> Resolve(RuntimeContext? context)
+        ResolutionStatus ITypeDescriptor.Resolve(RuntimeContext? context, out TypeDefinition? definition)
         {
-            return context?.ResolveType(this, ContextModule)
-                ?? Result.InvalidOperation<TypeDefinition>("No runtime context provided.");
+            if (context is null)
+            {
+                definition = null;
+                return ResolutionStatus.AssemblyNotFound;
+            }
+
+            return context.ResolveType(this, ContextModule, out definition);
         }
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            return ((ITypeDescriptor) this).Resolve(context, out definition);
+        }
 
         /// <summary>
         /// Obtains the name of the type reference.

@@ -22,7 +22,7 @@ namespace AsmResolver.DotNet.Tests
         public void ResolveDependencyShouldUseSameRuntimeContext()
         {
             var main = AssemblyDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
-            var dependency = main.ManifestModule!.CorLibTypeFactory.CorLibScope.GetAssembly()!.Resolve(main.RuntimeContext).Unwrap()!;
+            var dependency = main.ManifestModule!.CorLibTypeFactory.CorLibScope.GetAssembly()!.Resolve(main.RuntimeContext);
 
             Assert.Same(main.RuntimeContext, dependency.RuntimeContext);
 
@@ -38,7 +38,7 @@ namespace AsmResolver.DotNet.Tests
             service.OpenBytesAsFile("HelloWorld.dll", Properties.Resources.HelloWorld);
 
             var main = ModuleDefinition.FromFile("HelloWorld.dll", new ModuleReaderParameters(service));
-            var dependency = main.CorLibTypeFactory.CorLibScope.GetAssembly()!.Resolve(main.RuntimeContext).Unwrap().ManifestModule!;
+            var dependency = main.CorLibTypeFactory.CorLibScope.GetAssembly()!.Resolve(main.RuntimeContext).ManifestModule!;
 
             Assert.Contains(main.FilePath, service.GetOpenedFiles());
             Assert.Contains(dependency.FilePath, service.GetOpenedFiles());
@@ -81,7 +81,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromFile(typeof(Class).Assembly.Location, new ModuleReaderParameters(context));
 
             Assert.Equal(context.TargetRuntime, module.RuntimeContext.TargetRuntime);
-            Assert.Equal("mscorlib", module.CorLibTypeFactory.Object.Resolve(module.RuntimeContext).Unwrap().DeclaringModule?.Assembly?.Name);
+            Assert.Equal("mscorlib", module.CorLibTypeFactory.Object.Resolve(module.RuntimeContext).DeclaringModule?.Assembly?.Name);
         }
 
         [Fact]
@@ -91,7 +91,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromFile(typeof(Class).Assembly.Location, new ModuleReaderParameters(context));
 
             Assert.Equal(context.TargetRuntime, module.RuntimeContext.TargetRuntime);
-            Assert.Equal("System.Private.CoreLib", module.CorLibTypeFactory.Object.Resolve(module.RuntimeContext).Unwrap().DeclaringModule?.Assembly?.Name);
+            Assert.Equal("System.Private.CoreLib", module.CorLibTypeFactory.Object.Resolve(module.RuntimeContext).DeclaringModule?.Assembly?.Name);
         }
 
         [Fact]
@@ -101,8 +101,8 @@ namespace AsmResolver.DotNet.Tests
             var context = module1.RuntimeContext;
             var module2 = context.LoadAssembly(typeof(SingleMethod).Assembly.Location).ManifestModule!;
 
-            var object1 = module1.CorLibTypeFactory.Object.Resolve(context).Unwrap();
-            var object2 = module2.CorLibTypeFactory.Object.Resolve(module2.RuntimeContext).Unwrap();
+            var object1 = module1.CorLibTypeFactory.Object.Resolve(context);
+            var object2 = module2.CorLibTypeFactory.Object.Resolve(module2.RuntimeContext);
 
             Assert.Same(object1, object2);
         }

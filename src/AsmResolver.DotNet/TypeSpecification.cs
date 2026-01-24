@@ -122,14 +122,21 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
-        /// <inheritdoc />
-        public Result<TypeDefinition> Resolve(RuntimeContext? context)
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
-            return Signature?.Resolve(context)
-                ?? Result.Fail<TypeDefinition>();
+            return ((ITypeDescriptor) this).Resolve(context, out definition);
         }
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
+        ResolutionStatus ITypeDescriptor.Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        {
+            if (Signature is null)
+            {
+                definition = null;
+                return ResolutionStatus.InvalidReference;
+            }
+
+            return ((ITypeDescriptor) Signature).Resolve(context, out definition);
+        }
 
         /// <summary>
         /// Obtains the signature the type specification is referencing.

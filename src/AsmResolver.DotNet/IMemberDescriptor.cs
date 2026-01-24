@@ -17,7 +17,8 @@ namespace AsmResolver.DotNet
         /// Resolves the reference to a member definition, assuming the provided module as resolution context.
         /// </summary>
         /// <param name="context">The module to assume as resolution context.</param>
-        /// <returns>The resolved member definition, or <c>null</c> if the member could not be resolved.</returns>
-        Result<IMemberDefinition> Resolve(RuntimeContext? context);
+        /// <param name="definition">The resolved member definition, or <c>null</c> if the member could not be resolved.</param>
+        /// <returns>A value describing the success or failure status of the member resolution.</returns>
+        ResolutionStatus Resolve(RuntimeContext? context, out IMemberDefinition? definition);
     }
 }

@@ -141,13 +141,24 @@ namespace AsmResolver.DotNet
             }
         }
 
-        /// <inheritdoc />
-        public Result<TypeDefinition> Resolve(RuntimeContext? context) => throw new NotImplementedException();
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            return ((ITypeDescriptor) this).Resolve(context, out definition);
+        }
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
+        ResolutionStatus ITypeDescriptor.Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        {
+            if (context is null)
+            {
+                definition = null;
+                return ResolutionStatus.AssemblyNotFound;
+            }
+
+            return context.ResolveType(this, ContextModule, out definition);
+        }
 
         /// <inheritdoc />
-        public bool GetIsValueType(RuntimeContext? context) => Resolve(context).UnwrapOrDefault()?.IsValueType is true;
+        public bool GetIsValueType(RuntimeContext? context) => this.Resolve(context).IsValueType;
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)

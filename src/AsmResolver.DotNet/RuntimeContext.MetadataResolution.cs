@@ -11,77 +11,136 @@ namespace AsmResolver.DotNet
     public partial class RuntimeContext
     {
         /// <summary>
+        /// Resolves an assembly descriptor in the current context.
+        /// </summary>
+        /// <param name="assembly">The assembly to resolve.</param>
+        /// <param name="originModule">The module the assembly is assumed to be referenced in.</param>
+        /// <param name="definition">The resolved assembly, or <c>null</c> if resolution failed.</param>
+        /// <returns>A value describing the success or failure status of the assembly resolution.</returns>
+        public ResolutionStatus ResolveAssembly(AssemblyDescriptor assembly, ModuleDefinition? originModule, out AssemblyDefinition? definition)
+        {
+            lock (_loadedAssemblies)
+            {
+                if (_loadedAssemblies.TryGetValue(assembly, out var resolved))
+                {
+                    definition = resolved;
+                    return ResolutionStatus.Success;
+                }
+
+                var result = AssemblyResolver.Resolve(assembly, originModule, out definition);
+                if (result == ResolutionStatus.Success)
+                    AddAssembly(definition!);
+
+                return result;
+            }
+        }
+
+        /// <summary>
         /// Resolves a reference to a type.
         /// </summary>
         /// <param name="type">The type to resolve.</param>
         /// <param name="originModule">The module the reference is assumed to be in.</param>
-        /// <returns>The type definition, or <c>null</c> if the type could not be resolved.</returns>
-        public Result<TypeDefinition> ResolveType(ITypeDescriptor? type, ModuleDefinition? originModule = null)
+        /// <param name="definition">The type definition, or <c>null</c> if the type could not be resolved.</param>
+        /// <returns>A value describing the success or failure status of the type resolution.</returns>
+        public ResolutionStatus ResolveType(ITypeDescriptor? type, ModuleDefinition? originModule, out TypeDefinition? definition)
         {
-            return type switch
+            switch (type)
             {
-                TypeDefinition definition when definition.DeclaringModule == originModule => Result.Success(definition),
-                TypeDefinition definition => ResolveTypeReference(definition, originModule),
-                TypeReference reference => ResolveTypeReference(reference, originModule),
-                TypeSpecification specification => ResolveType(specification.Signature, originModule),
-                TypeSignature signature => ResolveTypeSignature(signature, originModule),
-                ExportedType exportedType => ResolveExportedType(exportedType, originModule),
-                _ => Result.Fail<TypeDefinition>()
-            };
+                case TypeDefinition def when def.DeclaringModule == originModule:
+                    definition = def;
+                    return ResolutionStatus.Success;
+
+                case TypeDefinition def:
+                    return ResolveTypeReference(def, originModule, out definition);
+
+                case TypeReference reference:
+                    return ResolveTypeReference(reference, originModule, out definition);
+
+                case TypeSpecification { Signature: { } signature }:
+                    return ResolveTypeSignature(signature, originModule, out definition);
+
+                case TypeSignature signature:
+                    return ResolveTypeSignature(signature, originModule, out definition);
+
+                case ExportedType exportedType:
+                    return ResolveExportedType(exportedType, originModule, out definition);
+
+                default:
+                    definition = null;
+                    return ResolutionStatus.InvalidReference;
+            }
         }
 
-        private TypeDefinition? LookupInCache(ITypeDescriptor type)
+        private TypeDefinition? LookupTypeInCache(ITypeDescriptor type)
         {
             if (_typeCache.TryGetValue(type, out var typeDef))
             {
                 // Check if type definition has changed since last lookup.
                 if (typeDef.IsTypeOf(type.Namespace, type.Name))
                     return typeDef;
+
                 _typeCache.TryRemove(type, out _);
             }
 
             return null;
         }
 
-        private Result<TypeDefinition> ResolveTypeReference(ITypeDefOrRef reference, ModuleDefinition? originModule)
+        private ResolutionStatus ResolveTypeReference(ITypeDefOrRef reference, ModuleDefinition? originModule, out TypeDefinition? definition)
         {
-            if (LookupInCache(reference) is { } cachedType)
-                return Result.Success(cachedType);
+            if (LookupTypeInCache(reference) is { } cachedType)
+            {
+                definition = cachedType;
+                return ResolutionStatus.Success;
+            }
 
             var resolution = new TypeResolution(this);
-            var result = resolution.ResolveTypeReference(reference, originModule);
-            if (result.IsSuccess)
-                _typeCache[reference] = result.Value;
+            var result = resolution.ResolveTypeReference(reference, originModule, out definition);
+            if (result == ResolutionStatus.Success)
+                _typeCache[reference] = definition!;
 
             return result;
         }
 
-        private Result<TypeDefinition> ResolveExportedType(ExportedType exportedType, ModuleDefinition? originModule)
+        private ResolutionStatus ResolveExportedType(ExportedType exportedType, ModuleDefinition? originModule, out TypeDefinition? definition)
         {
-            if (LookupInCache(exportedType) is { } cachedType)
-                return Result.Success(cachedType);
+            if (LookupTypeInCache(exportedType) is { } cachedType)
+            {
+                definition = cachedType;
+                return ResolutionStatus.Success;
+            }
 
             var resolution = new TypeResolution(this);
-            var result = resolution.ResolveExportedType(exportedType, originModule);
-            if (result.IsSuccess)
-                _typeCache[exportedType] = result.Value;
+            var result = resolution.ResolveExportedType(exportedType, originModule, out definition);
+            if (result == ResolutionStatus.Success)
+                _typeCache[exportedType] = definition!;
 
             return result;
         }
 
-        private Result<TypeDefinition> ResolveTypeSignature(TypeSignature? signature, ModuleDefinition? originModule)
+        private ResolutionStatus ResolveTypeSignature(TypeSignature? signature, ModuleDefinition? originModule, out TypeDefinition? definition)
         {
             var type = signature?.GetUnderlyingTypeDefOrRef();
             if (type is null)
-                return Result.Fail<TypeDefinition>();
-
-            return type.MetadataToken.Table switch
             {
-                TableIndex.TypeDef => Result.Success((TypeDefinition) type),
-                TableIndex.TypeRef => ResolveTypeReference((TypeReference) type, originModule),
-                TableIndex.TypeSpec => ResolveTypeSignature(((TypeSpecification) type).Signature, originModule),
-                _ => throw new ArgumentOutOfRangeException(nameof(type))
-            };
+                definition = null;
+                return ResolutionStatus.InvalidReference;
+            }
+
+            switch (type.MetadataToken.Table)
+            {
+                case TableIndex.TypeDef:
+                    definition = (TypeDefinition) type;
+                    return ResolutionStatus.Success;
+
+                case TableIndex.TypeRef:
+                    return ResolveTypeReference((TypeReference) type, originModule, out definition);
+
+                case TableIndex.TypeSpec:
+                    return ResolveTypeSignature(((TypeSpecification) type).Signature, originModule, out definition);
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type));
+            }
         }
 
         /// <summary>
@@ -89,22 +148,29 @@ namespace AsmResolver.DotNet
         /// </summary>
         /// <param name="method">The method. to resolve.</param>
         /// <param name="originModule">The module the reference is assumed to be in.</param>
-        /// <returns>The method definition, or <c>null</c> if the method could not be resolved.</returns>
-        public Result<MethodDefinition> ResolveMethod(IMethodDescriptor method, ModuleDefinition? originModule = null)
+        /// <param name="definition">The method definition, or <c>null</c> if the method could not be resolved.</param>
+        /// <returns>A value describing the success or failure status of the method resolution.</returns>
+        public ResolutionStatus ResolveMethod(IMethodDescriptor method, ModuleDefinition? originModule, out MethodDefinition? definition)
         {
-            var result = ResolveType(method.DeclaringType, originModule);
-            if (!result.IsSuccess)
-                return result.Into<MethodDefinition>();
+            var result = ResolveType(method.DeclaringType, originModule, out var declaringType);
+            if (result != ResolutionStatus.Success)
+            {
+                definition = null;
+                return result;
+            }
 
-            var declaringType = result.Value;
-            for (int i = 0; i < declaringType.Methods.Count; i++)
+            for (int i = 0; i < declaringType!.Methods.Count; i++)
             {
                 var candidate = declaringType.Methods[i];
                 if (candidate.Name == method.Name && SignatureComparer.Equals(method.Signature, candidate.Signature))
-                    return Result.Success(candidate);
+                {
+                    definition = candidate;
+                    return ResolutionStatus.Success;
+                }
             }
 
-            return Result.InvalidOperation<MethodDefinition>($"Matching method definition could not be found in the resolved declaring type.");
+            definition = null;
+            return ResolutionStatus.MemberNotFound;
         }
 
         /// <summary>
@@ -112,25 +178,32 @@ namespace AsmResolver.DotNet
         /// </summary>
         /// <param name="field">The field to resolve.</param>
         /// <param name="originModule">The module the reference is assumed to be in.</param>
-        /// <returns>The field definition, or <c>null</c> if the field could not be resolved.</returns>
-        public Result<FieldDefinition> ResolveField(IFieldDescriptor field, ModuleDefinition? originModule = null)
+        /// <param name="definition">The field definition, or <c>null</c> if the field could not be resolved.</param>
+        /// <returns>A value describing the success or failure status of the field resolution.</returns>
+        public ResolutionStatus ResolveField(IFieldDescriptor field, ModuleDefinition? originModule, out FieldDefinition? definition)
         {
-            var result = ResolveType(field.DeclaringType, originModule);
-            if (!result.IsSuccess)
-                return result.Into<FieldDefinition>();
+            var result = ResolveType(field.DeclaringType, originModule, out var declaringType);
+            if (result != ResolutionStatus.Success)
+            {
+                definition = null;
+                return result;
+            }
 
-            var declaringType = result.Value;
-            for (int i = 0; i < declaringType.Fields.Count; i++)
+            for (int i = 0; i < declaringType!.Fields.Count; i++)
             {
                 var candidate = declaringType.Fields[i];
                 if (candidate.Name == field.Name && SignatureComparer.Equals(field.Signature, candidate.Signature))
-                    return Result.Success(candidate);
+                {
+                    definition = candidate;
+                    return ResolutionStatus.Success;
+                }
             }
 
-            return Result.InvalidOperation<FieldDefinition>($"Matching field definition could not be found in the resolved declaring type.");
+            definition = null;
+            return ResolutionStatus.MemberNotFound;
         }
 
-        private struct TypeResolution
+        private readonly struct TypeResolution
         {
             private readonly RuntimeContext _context;
             private readonly Stack<IResolutionScope> _scopeStack;
@@ -143,154 +216,177 @@ namespace AsmResolver.DotNet
                 _implementationStack = new Stack<IImplementation>();
             }
 
-            public Result<TypeDefinition> ResolveTypeReference(ITypeDefOrRef? reference, ModuleDefinition? originModule)
+            public ResolutionStatus ResolveTypeReference(ITypeDefOrRef? reference, ModuleDefinition? originModule, out TypeDefinition? definition)
             {
+                definition = null;
                 if (reference is null)
-                    return Result.InvalidOperation<TypeDefinition>($"Type reference to resolve is null.");
+                    return ResolutionStatus.InvalidReference;
 
                 var scope = reference.Scope ?? reference.ContextModule;
                 if (reference.Name is null || scope is null)
-                    return Result.InvalidOperation<TypeDefinition>($"Type reference {reference.SafeToString()} is incomplete.");
+                    return ResolutionStatus.InvalidReference;
                 if (_scopeStack.Contains(scope))
-                    return Result.InvalidOperation<TypeDefinition>($"Type reference {reference.SafeToString()} defines a recursive resolution scope.");
+                    return ResolutionStatus.CircularResolutionScope;
 
                 _scopeStack.Push(scope);
 
                 switch (scope.MetadataToken.Table)
                 {
                     case TableIndex.AssemblyRef:
+                    {
                         var assemblyRefScope = scope.GetAssembly();
 
                         // Are we referencing the current assembly the reference was declared in?
                         if (reference.ContextModule?.Assembly is { } referenceAssembly
                             && SignatureComparer.Default.Equals(assemblyRefScope, referenceAssembly))
                         {
-                            return FindTypeInModule(reference.ContextModule, reference.Namespace, reference.Name);
+                            return FindTypeInModule(reference.ContextModule, reference.Namespace, reference.Name, out definition);
                         }
 
                         // Are we referencing the current assembly of the resolver itself?
                         if (originModule?.Assembly is { } resolverAssembly
                             && SignatureComparer.Default.Equals(assemblyRefScope, resolverAssembly))
                         {
-                            return FindTypeInModule(originModule, reference.Namespace, reference.Name);
+                            return FindTypeInModule(originModule, reference.Namespace, reference.Name, out definition);
                         }
 
                         // Otherwise, resolve the assembly first.
-                        var assemblyDefScope= _context.ResolveAssembly((AssemblyReference) scope, originModule);
-                        return assemblyDefScope.IsSuccess
-                            ? FindTypeInAssembly(assemblyDefScope.Value, reference.Namespace, reference.Name)
-                            : assemblyDefScope.Into<TypeDefinition>();
+                        var status = _context.ResolveAssembly((AssemblyReference) scope, originModule, out var assemblyDefScope);
+                        return status == ResolutionStatus.Success
+                            ? FindTypeInAssembly(assemblyDefScope!, reference.Namespace, reference.Name, out definition)
+                            : status;
+                    }
 
                     case TableIndex.Module:
-                        return FindTypeInModule((ModuleDefinition) scope, reference.Namespace, reference.Name);
+                        return FindTypeInModule((ModuleDefinition) scope, reference.Namespace, reference.Name, out definition);
 
                     case TableIndex.TypeRef:
-                        var typeDefScope = ResolveTypeReference((TypeReference) scope, originModule);
-                        return typeDefScope.IsSuccess
-                            ? FindTypeInType(typeDefScope.Value, reference.Name)
-                            : typeDefScope.Into<TypeDefinition>();
+                    {
+                        var status = ResolveTypeReference((TypeReference) scope, originModule, out var typeDefScope);
+                        return status == ResolutionStatus.Success
+                            ? FindTypeInType(typeDefScope!, reference.Name, out definition)
+                            : status;
+                    }
 
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
             }
 
-            public Result<TypeDefinition> ResolveExportedType(ExportedType? exportedType, ModuleDefinition? originModule)
+            public ResolutionStatus ResolveExportedType(ExportedType? exportedType, ModuleDefinition? originModule, out TypeDefinition? definition)
             {
+                definition = null;
+
                 var implementation = exportedType?.Implementation;
-                if (exportedType?.Name is null || implementation is null || _implementationStack.Contains(implementation))
-                    return Result.Fail<TypeDefinition>();
+                if (exportedType?.Name is null || implementation is null)
+                    return ResolutionStatus.InvalidReference;
+
+                if (_implementationStack.Contains(implementation))
+                    return ResolutionStatus.CircularResolutionScope;
 
                 _implementationStack.Push(implementation);
 
                 switch (implementation.MetadataToken.Table)
                 {
                     case TableIndex.AssemblyRef:
-                        var assembly = _context.ResolveAssembly((AssemblyReference) implementation, originModule);
-                        return assembly.IsSuccess
-                            ? FindTypeInAssembly(assembly.Value, exportedType.Namespace, exportedType.Name)
-                            : assembly.Into<TypeDefinition>();
+                    {
+                        var status = _context.ResolveAssembly((AssemblyReference) implementation, originModule, out var assembly);
+                        return status == ResolutionStatus.Success
+                            ? FindTypeInAssembly(assembly!, exportedType.Namespace, exportedType.Name, out definition)
+                            : status;
+                    }
 
                     case TableIndex.File when !string.IsNullOrEmpty(implementation.Name):
-                        var module = FindModuleInAssembly(exportedType.ContextModule!.Assembly!, implementation.Name!);
-                        return module.IsSuccess
-                            ? FindTypeInModule(module.Value, exportedType.Namespace, exportedType.Name)
-                            : module.Into<TypeDefinition>();
+                    {
+                        var status = FindModuleInAssembly(exportedType.ContextModule!.Assembly!, implementation.Name!, out var module);
+                        return status == ResolutionStatus.Success
+                            ? FindTypeInModule(module!, exportedType.Namespace, exportedType.Name, out definition)
+                            : status;
+                    }
 
                     case TableIndex.ExportedType:
+                    {
                         var exportedDeclaringType = (ExportedType) implementation;
-                        var declaringType = ResolveExportedType(exportedDeclaringType, originModule);
-                        return declaringType.IsSuccess
-                            ? FindTypeInType(declaringType.Value, exportedType.Name)
-                            : declaringType.Into<TypeDefinition>();
+                        var status = ResolveExportedType(exportedDeclaringType, originModule, out var declaringType);
+                        return status == ResolutionStatus.Success
+                            ? FindTypeInType(declaringType!, exportedType.Name, out definition)
+                            : status;
+                    }
 
                     default:
+                    {
                         throw new ArgumentOutOfRangeException();
+                    }
                 }
             }
 
-            private Result<TypeDefinition> FindTypeInAssembly(AssemblyDefinition assembly, Utf8String? ns, Utf8String name)
+            private ResolutionStatus FindTypeInAssembly(AssemblyDefinition assembly, Utf8String? ns, Utf8String name, out TypeDefinition? definition)
             {
                 for (int i = 0; i < assembly.Modules.Count; i++)
                 {
                     var module = assembly.Modules[i];
-                    var type = FindTypeInModule(module, ns, name);
-                    if (type.IsSuccess)
-                        return type;
+                    var status = FindTypeInModule(module, ns, name, out definition);
+                    if (status ==  ResolutionStatus.Success)
+                        return status;
                 }
 
-                return Result.InvalidOperation<TypeDefinition>(
-                    $"Matching type definition could not be found in assembly {assembly.SafeToString()}."
-                );
+                definition = null;
+                return ResolutionStatus.TypeNotFound;
             }
 
-            private Result<TypeDefinition> FindTypeInModule(ModuleDefinition module, Utf8String? ns, Utf8String name)
+            private ResolutionStatus FindTypeInModule(ModuleDefinition module, Utf8String? ns, Utf8String name, out TypeDefinition? definition)
             {
                 for (int i = 0; i < module.TopLevelTypes.Count; i++)
                 {
-                    var type = module.TopLevelTypes[i];
-                    if (type.IsTypeOfUtf8(ns, name))
-                        return Result.Success(type);
+                    var candidate = module.TopLevelTypes[i];
+                    if (candidate.IsTypeOfUtf8(ns, name))
+                    {
+                        definition = candidate;
+                        return ResolutionStatus.Success;
+                    }
                 }
 
                 for (int i = 0; i < module.ExportedTypes.Count; i++)
                 {
-                    var exportedType = module.ExportedTypes[i];
-                    if (exportedType.IsTypeOfUtf8(ns, name))
-                        return ResolveExportedType(exportedType, module);
+                    var candidate = module.ExportedTypes[i];
+                    if (candidate.IsTypeOfUtf8(ns, name))
+                        return ResolveExportedType(candidate, module, out definition);
                 }
 
-                return Result.InvalidOperation<TypeDefinition>(
-                    $"Matching type definition could not be found in module {module.SafeToString()}."
-                );
+                definition = null;
+                return ResolutionStatus.TypeNotFound;
             }
 
-            private static Result<TypeDefinition> FindTypeInType(TypeDefinition enclosingType, Utf8String name)
+            private static ResolutionStatus FindTypeInType(TypeDefinition enclosingType, Utf8String name, out TypeDefinition? definition)
             {
                 for (int i = 0; i < enclosingType.NestedTypes.Count; i++)
                 {
-                    var type = enclosingType.NestedTypes[i];
-                    if (type.Name == name)
-                        return Result.Success(type);
+                    var candidate = enclosingType.NestedTypes[i];
+                    if (candidate.Name == name)
+                    {
+                        definition = candidate;
+                        return ResolutionStatus.Success;
+                    }
                 }
 
-                return Result.InvalidOperation<TypeDefinition>(
-                    $"Matching type definition with name {name.SafeToString()} could not be found in nested type {enclosingType.SafeToString()}."
-                );
+                definition = null;
+                return ResolutionStatus.TypeNotFound;
             }
 
-            private static Result<ModuleDefinition> FindModuleInAssembly(AssemblyDefinition assembly, Utf8String name)
+            private static ResolutionStatus FindModuleInAssembly(AssemblyDefinition assembly, Utf8String name, out ModuleDefinition? definition)
             {
                 for (int i = 0; i < assembly.Modules.Count; i++)
                 {
-                    var module = assembly.Modules[i];
-                    if (module.Name == name)
-                        return Result.Success(module);
+                    var candidate = assembly.Modules[i];
+                    if (candidate.Name == name)
+                    {
+                        definition = candidate;
+                        return ResolutionStatus.Success;
+                    }
                 }
 
-                return Result.InvalidOperation<ModuleDefinition>(
-                    $"Matching module definition with name {name.SafeToString()} could not be found in assembly {assembly.SafeToString()}."
-                );
+                definition = null;
+                return ResolutionStatus.ModuleNotFound;
             }
         }
     }

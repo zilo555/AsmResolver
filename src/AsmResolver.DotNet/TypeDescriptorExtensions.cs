@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using AsmResolver.DotNet.Signatures;
 
 namespace AsmResolver.DotNet
@@ -32,6 +34,41 @@ namespace AsmResolver.DotNet
             /// <c>false</c> otherwise.</returns>
             public bool IsTypeOf(string? ns, string? name)
                 => type.Name == name && type.Namespace == ns;
+
+            /// <summary>
+            /// Resolves the type descriptor to its definition given the provided runtime context.
+            /// </summary>
+            /// <param name="context">The context to assume when resolving the type.</param>
+            /// <returns>The resolved type definition.</returns>
+            /// <exception cref="InvalidOperationException">Occurs when the type could not be found.</exception>
+            /// <exception cref="FileNotFoundException">Occurs when the declaring assembly could not be found.</exception>
+            /// <exception cref="BadImageFormatException">Occurs when the declaring assembly is invalid.</exception>
+            public TypeDefinition Resolve(RuntimeContext? context)
+            {
+                var status = type.Resolve(context, out var definition);
+                return status == ResolutionStatus.Success ? definition! : ThrowStatusError(type, status);
+
+                [DoesNotReturn]
+                static TypeDefinition ThrowStatusError(ITypeDescriptor type, ResolutionStatus status) => status switch
+                {
+                    ResolutionStatus.InvalidReference => throw new InvalidOperationException($"The type reference is invalid."),
+                    ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the declaring assembly {type.Scope?.GetAssembly().SafeToString()} of type {type}"),
+                    ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The resolved declaring assembly for {type.Scope?.GetAssembly().SafeToString()} of type {type.SafeToString()} is in an incorrect format"),
+                    ResolutionStatus.TypeNotFound => throw new InvalidOperationException($"The type {type.SafeToString()} does not exist in the resolved declaring assembly."),
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+            }
+
+            /// <summary>
+            /// Attempts to resolve the type descriptor in the provided context.
+            /// </summary>
+            /// <param name="context">The context to assume when resolving the type.</param>
+            /// <param name="definition">The resolved type definition, or <c>null</c> if resolution failed.</param>
+            /// <returns><c>true</c> if the resolution was successful, <c>false</c> otherwise.</returns>
+            public bool TryResolve(RuntimeContext? context, [NotNullWhen(true)] out TypeDefinition? definition)
+            {
+                return type.Resolve(context, out definition) == ResolutionStatus.Success;
+            }
         }
 
         /// <param name="type">The element type.</param>
@@ -152,20 +189,120 @@ namespace AsmResolver.DotNet
             /// <param name="memberName">The name of the member to reference.</param>
             /// <param name="signature">The signature of the member to reference.</param>
             /// <returns>The constructed reference.</returns>
-            public MemberReference CreateMemberReference(string? memberName, MemberSignature? signature)
+            public MemberReference CreateMemberReference(Utf8String? memberName, MemberSignature? signature)
             {
                 return new MemberReference(parent, memberName, signature);
             }
 
             /// <summary>
-            /// Constructs a reference to a member declared within the provided parent member.
+            /// Constructs a reference to a field declared within the provided parent member.
             /// </summary>
-            /// <param name="memberName">The name of the member to reference.</param>
-            /// <param name="signature">The signature of the member to reference.</param>
+            /// <param name="fieldName">The name of the field to reference.</param>
+            /// <param name="fieldType">The type of the field to reference.</param>
             /// <returns>The constructed reference.</returns>
-            public MemberReference CreateMemberReference(Utf8String? memberName, MemberSignature? signature)
+            public IFieldDescriptor CreateFieldReference(Utf8String? fieldName, TypeSignature fieldType)
             {
-                return new MemberReference(parent, memberName, signature);
+                return new MemberReference(parent, fieldName, new FieldSignature(fieldType));
+            }
+
+            /// <summary>
+            /// Constructs a reference to a field declared within the provided parent member.
+            /// </summary>
+            /// <param name="fieldName">The name of the field to reference.</param>
+            /// <param name="signature">The signature of the field to reference.</param>
+            /// <returns>The constructed reference.</returns>
+            public IFieldDescriptor CreateFieldReference(Utf8String? fieldName, FieldSignature? signature)
+            {
+                return new MemberReference(parent, fieldName, signature);
+            }
+
+            /// <summary>
+            /// Constructs a reference to a method declared within the provided parent member.
+            /// </summary>
+            /// <param name="methodName">The name of the method to reference.</param>
+            /// <param name="signature">The signature of the method to reference.</param>
+            /// <returns>The constructed reference.</returns>
+            public IMethodDescriptor CreateMethodReference(Utf8String? methodName, MethodSignature? signature)
+            {
+                return new MemberReference(parent, methodName, signature);
+            }
+        }
+
+        extension(IMethodDescriptor method)
+        {
+            /// <summary>
+            /// Resolves the method descriptor to its definition given the provided runtime context.
+            /// </summary>
+            /// <param name="context">The context to assume when resolving the method.</param>
+            /// <returns>The resolved method definition.</returns>
+            /// <exception cref="InvalidOperationException">Occurs when the declaring type or the method within the declaring type could not be found.</exception>
+            /// <exception cref="FileNotFoundException">Occurs when the declaring assembly could not be found.</exception>
+            /// <exception cref="BadImageFormatException">Occurs when the declaring assembly is invalid.</exception>
+            public MethodDefinition Resolve(RuntimeContext? context)
+            {
+                var status = method.Resolve(context, out var definition);
+                return status == ResolutionStatus.Success ? definition! : ThrowStatusError(method, status);
+
+                [DoesNotReturn]
+                static MethodDefinition ThrowStatusError(IMethodDescriptor method, ResolutionStatus status) => status switch
+                {
+                    ResolutionStatus.InvalidReference => throw new InvalidOperationException($"The method reference is invalid."),
+                    ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the declaring assembly {method.DeclaringType?.Scope?.GetAssembly().SafeToString()} of method {method.SafeToString()}."),
+                    ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The resolved declaring assembly for {method.DeclaringType?.Scope?.GetAssembly().SafeToString()} of method {method.SafeToString()} is in an incorrect format."),
+                    ResolutionStatus.TypeNotFound => throw new InvalidOperationException($"The declaring type of {method.SafeToString()} does not exist in the resolved declaring assembly."),
+                    ResolutionStatus.MemberNotFound => throw new InvalidOperationException($"The method {method.SafeToString()} does not exist in the resolved declaring type."),
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+            }
+
+            /// <summary>
+            /// Attempts to resolve the method descriptor in the provided context.
+            /// </summary>
+            /// <param name="context">The context to assume when resolving the method.</param>
+            /// <param name="definition">The resolved method definition, or <c>null</c> if resolution failed.</param>
+            /// <returns><c>true</c> if the resolution was successful, <c>false</c> otherwise.</returns>
+            public bool TryResolve(RuntimeContext? context, out MethodDefinition? definition)
+            {
+                return method.Resolve(context, out definition) == ResolutionStatus.Success;
+            }
+        }
+
+        extension(IFieldDescriptor field)
+        {
+            /// <summary>
+            /// Resolves the field descriptor to its definition given the provided runtime context.
+            /// </summary>
+            /// <param name="context">The context to assume when resolving the field.</param>
+            /// <returns>The resolved field definition.</returns>
+            /// <exception cref="InvalidOperationException">Occurs when the declaring type or the field within the declaring type could not be found.</exception>
+            /// <exception cref="FileNotFoundException">Occurs when the declaring assembly could not be found.</exception>
+            /// <exception cref="BadImageFormatException">Occurs when the declaring assembly is invalid.</exception>
+            public FieldDefinition Resolve(RuntimeContext? context)
+            {
+                var status = field.Resolve(context, out var definition);
+                return status == ResolutionStatus.Success ? definition! : ThrowStatusError(field, status);
+
+                [DoesNotReturn]
+                static FieldDefinition ThrowStatusError(IFieldDescriptor field, ResolutionStatus status) => status switch
+                {
+                    ResolutionStatus.InvalidReference => throw new InvalidOperationException($"The method reference is invalid."),
+                    ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the declaring assembly {field.DeclaringType?.Scope?.GetAssembly().SafeToString()} of field {field.SafeToString()}."),
+                    ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The resolved declaring assembly for {field.DeclaringType?.Scope?.GetAssembly().SafeToString()} of field {field.SafeToString()} is in an incorrect format."),
+                    ResolutionStatus.TypeNotFound => throw new InvalidOperationException($"The declaring type of {field.SafeToString()} does not exist in the resolved declaring assembly."),
+                    ResolutionStatus.MemberNotFound => throw new InvalidOperationException($"The field {field.SafeToString()} does not exist in the resolved declaring type."),
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+            }
+
+            /// <summary>
+            /// Attempts to resolve the field descriptor in the provided context.
+            /// </summary>
+            /// <param name="context">The context to assume when resolving the field.</param>
+            /// <param name="definition">The resolved field definition, or <c>null</c> if resolution failed.</param>
+            /// <returns><c>true</c> if the resolution was successful, <c>false</c> otherwise.</returns>
+            public bool TryResolve(RuntimeContext? context, out FieldDefinition? definition)
+            {
+                return field.Resolve(context, out definition) == ResolutionStatus.Success;
             }
         }
 

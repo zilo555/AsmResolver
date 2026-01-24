@@ -199,7 +199,11 @@ namespace AsmResolver.DotNet
         public bool IsAccessibleFromType(TypeDefinition type) =>
             Semantics.Any(s => s.Method?.IsAccessibleFromType(type) ?? false);
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Result.Success<IMemberDefinition>(this);
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            definition = null;
+            return ResolutionStatus.Success;
+        }
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)

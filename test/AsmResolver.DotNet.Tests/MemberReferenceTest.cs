@@ -20,7 +20,7 @@ namespace AsmResolver.DotNet.Tests
                 .GetImportedMemberReferences()
                 .First(m => m.IsMethod && m.Name == "StaticMethod");
 
-            _ = reference.Resolve(module.RuntimeContext).Unwrap();
+            _ = reference.Resolve(module.RuntimeContext);
         }
 
         [Fact]

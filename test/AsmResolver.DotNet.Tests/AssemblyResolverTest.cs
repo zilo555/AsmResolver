@@ -1,10 +1,8 @@
 using System;
-using System.IO;
 using System.Runtime.InteropServices;
 using AsmResolver.DotNet.Config.Json;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
-using AsmResolver.DotNet.TestCases.NestedClasses;
 using AsmResolver.IO;
 using AsmResolver.PE.File;
 using Xunit;
@@ -26,9 +24,10 @@ namespace AsmResolver.DotNet.Tests
             var corlib = KnownCorLibs.FromRuntimeInfo(DotNetRuntimeInfo.NetFramework(major, minor));
 
             var resolver = new DotNetFrameworkAssemblyResolver();
-            var assemblyDef = resolver.Resolve(corlib).Unwrap();
+            var status = resolver.Resolve(corlib, null, out var assemblyDef);
 
-            Assert.Equal(corlib.Name, assemblyDef.Name);
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Equal(corlib.Name, assemblyDef!.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
         }
 
@@ -40,9 +39,10 @@ namespace AsmResolver.DotNet.Tests
             var corlib = KnownCorLibs.FromRuntimeInfo(DotNetRuntimeInfo.NetCoreApp(major, minor));
 
             var resolver = new DotNetCoreAssemblyResolver(new Version(major, minor, 0));
-            var assemblyDef = resolver.Resolve(corlib).Unwrap();
+            var status = resolver.Resolve(corlib, null, out var assemblyDef);
 
-            Assert.Equal(corlib.Name, assemblyDef.Name);
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Equal(corlib.Name, assemblyDef!.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
         }
 
@@ -51,11 +51,11 @@ namespace AsmResolver.DotNet.Tests
         {
             using var service = new ByteArrayFileService();
 
-            var assemblyRef = KnownCorLibs.SystemRuntime_v4_2_2_0;
+            var assemblyRef = KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0;
 
-            var resolver = new DotNetCoreAssemblyResolver(new Version(3, 1, 0), new ModuleReaderParameters(service));
+            var resolver = new DotNetCoreAssemblyResolver(new Version(10, 0), new ModuleReaderParameters(service));
             Assert.Empty(service.GetOpenedFiles());
-            Assert.True(resolver.Resolve(assemblyRef).IsSuccess);
+            Assert.Equal(ResolutionStatus.Success, resolver.Resolve(assemblyRef, null, out _));
             Assert.NotEmpty(service.GetOpenedFiles());
         }
 
@@ -79,9 +79,10 @@ namespace AsmResolver.DotNet.Tests
     }
 }");
             var resolver = new DotNetCoreAssemblyResolver(config, new Version(3, 1, 0));
-            var assemblyDef = resolver.Resolve(assemblyRef).Unwrap();
+            var status = resolver.Resolve(assemblyRef, null, out var assemblyDef);
 
-            Assert.Equal(assemblyName.Name, assemblyDef.Name);
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Equal(assemblyName.Name, assemblyDef!.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
             Assert.Contains("Microsoft.NETCore.App", assemblyDef.ManifestModule.FilePath);
         }
@@ -94,9 +95,10 @@ namespace AsmResolver.DotNet.Tests
             var assemblyName = typeof(object).Assembly.GetName();
             var assemblyRef = new AssemblyReference(
                 assemblyName.Name,
-                assemblyName.Version,
+                assemblyName.Version!,
                 false,
-                assemblyName.GetPublicKeyToken());
+                assemblyName.GetPublicKeyToken()
+            );
 
             var config = RuntimeConfiguration.FromJson(@"{
     ""runtimeOptions"": {
@@ -108,9 +110,10 @@ namespace AsmResolver.DotNet.Tests
     }
 }");
             var resolver = new DotNetCoreAssemblyResolver(config, new Version(3, 1, 0));
-            var assemblyDef = resolver.Resolve(assemblyRef).Unwrap();
+            var status = resolver.Resolve(assemblyRef, null, out var assemblyDef);
 
-            Assert.Equal(assemblyName.Name, assemblyDef.Name);
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Equal(assemblyName.Name, assemblyDef!.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
         }
 
@@ -135,9 +138,10 @@ namespace AsmResolver.DotNet.Tests
     }
 }");
             var resolver = new DotNetCoreAssemblyResolver(config, new Version(3, 1, 0));
-            var assemblyDef = resolver.Resolve(assemblyRef).Unwrap();
+            var status = resolver.Resolve(assemblyRef, null, out var assemblyDef);
 
-            Assert.Equal("WindowsBase", assemblyDef.Name);
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Equal("WindowsBase", assemblyDef!.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
             Assert.Contains("Microsoft.WindowsDesktop.App", assemblyDef.ManifestModule.FilePath);
         }
@@ -160,8 +164,7 @@ namespace AsmResolver.DotNet.Tests
 
             var resolved = module.CorLibTypeFactory.CorLibScope
                 .GetAssembly()!
-                .Resolve(module.RuntimeContext)
-                .Unwrap();
+                .Resolve(module.RuntimeContext);
 
             Assert.Contains("GAC_32", resolved.ManifestModule!.FilePath!);
         }
@@ -184,8 +187,7 @@ namespace AsmResolver.DotNet.Tests
 
             var resolved = module.CorLibTypeFactory.CorLibScope
                 .GetAssembly()!
-                .Resolve(module.RuntimeContext)
-                .Unwrap();
+                .Resolve(module.RuntimeContext);
 
             Assert.Contains("GAC_64", resolved.ManifestModule!.FilePath!);
         }
@@ -216,7 +218,7 @@ namespace AsmResolver.DotNet.Tests
             var module = new ModuleDefinition("Dummy", KnownCorLibs.SystemRuntime_v6_0_0_0);
             module.AssemblyReferences.Add(reference);
 
-            var definition = reference.Resolve(module.RuntimeContext).Unwrap();
+            var definition = reference.Resolve(module.RuntimeContext);
 
             Assert.Equal(reference.Name, definition.Name);
             Assert.NotNull(definition.ManifestModule!.FilePath);

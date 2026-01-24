@@ -160,14 +160,19 @@ namespace AsmResolver.DotNet
         public override bool IsImportedInModule(ModuleDefinition module) => ContextModule == module;
 
         /// <inheritdoc />
-        public override AssemblyReference ImportWith(ReferenceImporter importer) =>
-            (AssemblyReference) importer.ImportScope(this);
+        public override AssemblyReference ImportWith(ReferenceImporter importer)
+            => (AssemblyReference) importer.ImportScope(this);
 
         /// <inheritdoc />
-        public override Result<AssemblyDefinition> Resolve(RuntimeContext? context)
+        protected override ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly)
         {
-            return context?.ResolveAssembly(this, ContextModule)
-                ?? Result.Fail<AssemblyDefinition>();
+            if (context is null)
+            {
+                assembly = null;
+                return ResolutionStatus.AssemblyNotFound;
+            }
+
+            return context.ResolveAssembly(this, ContextModule, out assembly);
         }
 
         AssemblyDescriptor IResolutionScope.GetAssembly() => this;

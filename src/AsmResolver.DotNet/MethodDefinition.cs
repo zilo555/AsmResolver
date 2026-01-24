@@ -846,9 +846,17 @@ namespace AsmResolver.DotNet
             return ctor;
         }
 
-        Result<MethodDefinition> IMethodDescriptor.Resolve(RuntimeContext? context) => Result.Success(this);
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Result.Success<IMemberDefinition>(this);
+        ResolutionStatus IMethodDescriptor.Resolve(RuntimeContext? context, out MethodDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
@@ -912,7 +920,7 @@ namespace AsmResolver.DotNet
 
             // Family (protected in C#) methods are accessible by any base type.
             if ((IsFamily || IsFamilyOrAssembly || IsFamilyAndAssembly)
-                && type.BaseType?.Resolve(context) is {Value: { } baseType})
+                && type.BaseType?.TryResolve(context, out var baseType) is true)
             {
                 return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
             }
@@ -1056,7 +1064,10 @@ namespace AsmResolver.DotNet
                 => signature.BaseType.AcceptVisitor(this, state);
 
             public bool VisitGenericInstanceType(GenericInstanceTypeSignature signature, MethodDefinition state)
-                => signature.GenericType.Resolve(state.DeclaringModule?.RuntimeContext).UnwrapOrDefault()?.IsByRefLike is true;
+            {
+                return signature.GenericType.TryResolve(state.DeclaringModule?.RuntimeContext, out var definition)
+                    && definition.IsByRefLike;
+            }
 
             public bool VisitGenericParameter(GenericParameterSignature signature, MethodDefinition state)
             {
@@ -1076,7 +1087,10 @@ namespace AsmResolver.DotNet
             public bool VisitSzArrayType(SzArrayTypeSignature signature, MethodDefinition state) => false;
 
             public bool VisitTypeDefOrRef(TypeDefOrRefSignature signature, MethodDefinition state)
-                => signature.Type.Resolve(state.DeclaringModule?.RuntimeContext).UnwrapOrDefault()?.IsByRefLike is true;
+            {
+                return signature.Type.TryResolve(state.DeclaringModule?.RuntimeContext, out var definition)
+                    && definition.IsByRefLike;
+            }
 
             public bool VisitFunctionPointerType(FunctionPointerTypeSignature signature, MethodDefinition state) => false;
         }

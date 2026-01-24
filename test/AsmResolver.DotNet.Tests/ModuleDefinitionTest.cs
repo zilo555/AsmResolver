@@ -55,7 +55,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromBytes(File.ReadAllBytes(path), TestReaderParameters);
 
             var reference = module.AssemblyReferences.First(x => x.Name == "AsmResolver.DotNet");
-            Assert.False(reference.Resolve(module.RuntimeContext).IsSuccess);
+            Assert.False(reference.TryResolve(module.RuntimeContext, out _));
         }
 
         [Fact]
@@ -65,7 +65,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromFile(path, TestReaderParameters);
 
             var reference = module.AssemblyReferences.First(x => x.Name == "AsmResolver.DotNet");
-            Assert.True(reference.Resolve(module.RuntimeContext).IsSuccess);
+            Assert.True(reference.TryResolve(module.RuntimeContext, out _));
         }
 
         [Fact]
@@ -78,7 +78,7 @@ namespace AsmResolver.DotNet.Tests
             });
 
             var reference = module.AssemblyReferences.First(x => x.Name == "AsmResolver.DotNet");
-            Assert.True(reference.Resolve(module.RuntimeContext).IsSuccess);
+            Assert.True(reference.TryResolve(module.RuntimeContext, out _));
         }
 
         [Fact]

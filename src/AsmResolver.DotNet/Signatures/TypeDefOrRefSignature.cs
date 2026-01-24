@@ -89,9 +89,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override TypeSignature GetUnderlyingType(RuntimeContext? context)
         {
-            var type = Type.Resolve(context).UnwrapOrDefault();
-
-            if (type is {IsEnum: true})
+            if (Type.TryResolve(context, out var type) && type is {IsEnum: true})
                 return type.GetEnumUnderlyingType() ?? this;
 
             return this;
@@ -109,8 +107,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override TypeSignature? GetDirectBaseClass(RuntimeContext? context)
         {
-            var type = Type.Resolve(context).UnwrapOrDefault();
-            if (type is null)
+            if (!Type.TryResolve(context, out var type))
                 return null;
 
             // Interfaces have System.Object as direct base class.
@@ -122,8 +119,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces(RuntimeContext? context)
         {
-            var type = Type.Resolve(context).UnwrapOrDefault();
-            if (type is null)
+            if (!Type.TryResolve(context, out var type))
                 return Enumerable.Empty<TypeSignature>();
 
             return type.Interfaces.Select(i => i.Interface!.ToTypeSignature(false));

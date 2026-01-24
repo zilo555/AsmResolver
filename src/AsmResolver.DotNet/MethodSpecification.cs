@@ -11,7 +11,7 @@ namespace AsmResolver.DotNet
     /// </summary>
     public partial class MethodSpecification : MetadataMember, IMethodDescriptor, IHasCustomAttribute
     {
-                /// <summary> The internal custom attribute list. </summary>
+        /// <summary> The internal custom attribute list. </summary>
         /// <remarks> This value may not be initialized. Use <see cref="CustomAttributes"/> instead.</remarks>
         protected IList<CustomAttribute>? CustomAttributesInternal;
 
@@ -92,10 +92,21 @@ namespace AsmResolver.DotNet
             }
         }
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            return ((IMethodDescriptor) this).Resolve(context, out definition);
+        }
 
-        /// <inheritdoc />
-        public Result<MethodDefinition> Resolve(RuntimeContext? context) => Method?.Resolve(context) ?? Result.Fail<MethodDefinition>();
+        ResolutionStatus IMethodDescriptor.Resolve(RuntimeContext? context, out MethodDefinition? definition)
+        {
+            if (Method is null)
+            {
+                definition = null;
+                return ResolutionStatus.InvalidReference;
+            }
+
+            return Method.Resolve(context, out definition);
+        }
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)

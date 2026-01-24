@@ -191,6 +191,12 @@ namespace AsmResolver.DotNet
             set => SetSemanticMethods(GetMethod, value);
         }
 
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
+
         /// <summary>
         /// Clear <see cref="Semantics"/> and apply these methods to the property definition.
         /// </summary>
@@ -208,8 +214,6 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         public bool IsAccessibleFromType(TypeDefinition type) =>
             Semantics.Any(s => s.Method?.IsAccessibleFromType(type) ?? false);
-
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Result.Success<IMemberDefinition>(this);
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)

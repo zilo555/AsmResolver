@@ -312,7 +312,11 @@ namespace AsmResolver.DotNet
             (AssemblyReference) importer.ImportScope(new AssemblyReference(this));
 
         /// <inheritdoc />
-        public override Result<AssemblyDefinition> Resolve(RuntimeContext? context) => Result.Success(this);
+        protected override ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly)
+        {
+            assembly = this;
+            return ResolutionStatus.Success;
+        }
 
         /// <summary>
         /// Attempts to extract the target runtime from the <see cref="TryGetTargetFramework"/> attribute.

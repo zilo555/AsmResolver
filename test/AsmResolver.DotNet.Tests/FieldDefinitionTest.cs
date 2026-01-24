@@ -6,7 +6,6 @@ using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.TestCases.Fields;
 using AsmResolver.DotNet.TestCases.NestedClasses;
 using AsmResolver.DotNet.TestCases.Types.Structs;
-using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using Xunit;
 
@@ -121,7 +120,6 @@ namespace AsmResolver.DotNet.Tests
             initializer.FieldRva = new DataSegment(data);
             initializer.Signature!.FieldType
                 .Resolve(module.RuntimeContext)
-                .UnwrapOrDefault()?
                 .ClassLayout?.ClassSize = (uint) data.Length;
 
             var newInitializer = RebuildAndLookup(initializer);

@@ -13,8 +13,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
     {
         private readonly SignatureComparer _comparer;
 
-        private readonly AssemblyReference _someAssemblyReference =
-            new AssemblyReference("SomeAssembly", new Version(1, 2, 3, 4));
+        private readonly AssemblyReference _someAssemblyReference = new("SomeAssembly", new Version(1, 2, 3, 4));
 
         public SignatureComparerTest()
         {
@@ -179,8 +178,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var type1 = referencedTypes[0]!;
             var type2 = referencedTypes[1]!;
 
-            var resolvedType1 = type1.Resolve(context).Unwrap();
-            var resolvedType2 = type2.Resolve(context).Unwrap();
+            var resolvedType1 = type1.Resolve(context);
+            var resolvedType2 = type2.Resolve(context);
 
             var resolvedTypeReference1 = resolvedType1.ToTypeReference();
             var resolvedTypeReference2 = resolvedType2.ToTypeReference();
@@ -239,7 +238,10 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [Fact]
         public void CompareSimpleTypeDescriptors()
         {
-            var assembly = new DotNetFrameworkAssemblyResolver().Resolve(KnownCorLibs.MsCorLib_v4_0_0_0).Unwrap();
+            var status = new DotNetFrameworkAssemblyResolver().Resolve(KnownCorLibs.MsCorLib_v4_0_0_0, null, out var assembly);
+
+            Assert.Equal(ResolutionStatus.Success, status);
+
             var definition = assembly.ManifestModule!.TopLevelTypes.First(x => x.IsTypeOf("System.IO", "Stream"));
             var reference = definition.ToTypeReference();
             var signature = reference.ToTypeSignature(false);

@@ -420,7 +420,7 @@ namespace AsmResolver.DotNet.Tests.Bundles
                 manifest.Files.First(x => x.RelativePath == "MainApp.dll").GetData(),
                 new ModuleReaderParameters(context));
 
-            _ = module.AssemblyReferences.First(x => x.Name == "Library").Resolve(context).Unwrap();
+            _ = module.AssemblyReferences.First(x => x.Name == "Library").Resolve(context);
         }
     }
 }

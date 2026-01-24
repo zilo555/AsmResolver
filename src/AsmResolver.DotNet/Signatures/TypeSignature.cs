@@ -269,8 +269,7 @@ namespace AsmResolver.DotNet.Signatures
                         return;
                     }
 
-                    var typeDef = type.Resolve(context.ContextModule.RuntimeContext).UnwrapOrDefault();
-                    if (typeDef is null)
+                    if (!type.TryResolve(context.ContextModule.RuntimeContext, out var typeDef))
                     {
                         context.ErrorListener.MetadataBuilder(
                             $"Custom attribute argument type {type.SafeToString()} could not be resolved.");
@@ -289,14 +288,22 @@ namespace AsmResolver.DotNet.Signatures
 
         bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => IsValueType;
 
-        /// <inheritdoc />
-        public Result<TypeDefinition> Resolve(RuntimeContext? context)
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
-            return GetUnderlyingTypeDefOrRef()?.Resolve(context)
-                ?? Result.InvalidOperation<TypeDefinition>("Underlying type is null.");
+            return ((ITypeDescriptor) this).Resolve(context, out definition);
         }
 
-        Result<IMemberDefinition> IMemberDescriptor.Resolve(RuntimeContext? context) => Resolve(context).Into<IMemberDefinition>();
+        ResolutionStatus ITypeDescriptor.Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        {
+            var type = GetUnderlyingTypeDefOrRef();
+            if (type is null)
+            {
+                definition = null;
+                return ResolutionStatus.InvalidReference;
+            }
+
+            return type.Resolve(context, out definition);
+        }
 
         /// <inheritdoc />
         public virtual ITypeDefOrRef ToTypeDefOrRef() => new TypeSpecification(this);

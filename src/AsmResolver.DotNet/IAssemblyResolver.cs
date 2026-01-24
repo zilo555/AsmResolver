@@ -10,7 +10,8 @@ namespace AsmResolver.DotNet
         /// </summary>
         /// <param name="assembly">The reference to the assembly.</param>
         /// <param name="originModule">The module the assembly is assumed to be referenced in.</param>
-        /// <returns>The resolved assembly, or <c>null</c> if the resolution failed.</returns>
-        Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule);
+        /// <param name="result">The resolved assembly, or <c>null</c> if resolution failed.</param>
+        /// <returns>A value describing the success or failure status of the assembly resolution.</returns>
+        ResolutionStatus Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule, out AssemblyDefinition? result);
     }
 }

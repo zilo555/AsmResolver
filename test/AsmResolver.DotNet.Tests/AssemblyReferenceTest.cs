@@ -64,7 +64,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var assemblyRef = module.AssemblyReferences[0];
-            var assemblyDef = assemblyRef.Resolve(module.RuntimeContext).Unwrap();
+            var assemblyDef = assemblyRef.Resolve(module.RuntimeContext);
             Assert.Equal(assemblyDef.Name, assemblyDef.Name);
             Assert.Equal(assemblyDef.Version, assemblyDef.Version);
         }

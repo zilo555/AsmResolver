@@ -1,8 +1,6 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using AsmResolver.DotNet.Serialized;
-using AsmResolver.DotNet.Signatures;
 using AsmResolver.IO;
 using AsmResolver.Shims;
 
@@ -15,7 +13,6 @@ namespace AsmResolver.DotNet
     public abstract class AssemblyResolverBase : IAssemblyResolver
     {
         private static readonly string[] BinaryFileExtensions = {".dll", ".exe"};
-        private static readonly SignatureComparer Comparer = new(SignatureComparisonFlags.AcceptNewerVersions);
 
         /// <summary>
         /// Initializes the base of an assembly resolver.
@@ -58,8 +55,10 @@ namespace AsmResolver.DotNet
         } = new List<string>();
 
         /// <inheritdoc />
-        public Result<AssemblyDefinition> Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule = null)
+        public ResolutionStatus Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule, out AssemblyDefinition? result)
         {
+            result = null;
+
             // Prefer assemblies in the search directories, in case .NET libraries are shipped with the application.
             string? path = ProbeSearchDirectories(assembly, originModule);
 
@@ -71,22 +70,19 @@ namespace AsmResolver.DotNet
 
                 // If still no suitable file was found, abort.
                 if (string.IsNullOrEmpty(path))
-                {
-                    return Result.Fail<AssemblyDefinition>(new FileNotFoundException(
-                        $"Could not find the assembly file for {assembly.SafeToString()}."
-                    ));
-                }
+                    return ResolutionStatus.AssemblyNotFound;
             }
 
             // Attempt to load the file.
             try
             {
-                return Result.Success(LoadAssemblyFromFile(path!));
+                result = LoadAssemblyFromFile(path!);
+                return ResolutionStatus.Success;
             }
-            catch (Exception ex)
+            catch
             {
                 // Wrap into error object.
-                return Result.Fail<AssemblyDefinition>(ex);
+                return ResolutionStatus.AssemblyBadImage;
             }
         }
 

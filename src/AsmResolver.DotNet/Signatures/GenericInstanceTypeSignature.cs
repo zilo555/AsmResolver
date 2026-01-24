@@ -145,8 +145,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override TypeSignature? GetDirectBaseClass(RuntimeContext? context)
         {
-            var genericType = GenericType.Resolve(context).UnwrapOrDefault();
-            if (genericType is null)
+            if (!GenericType.TryResolve(context, out var genericType))
                 return null;
 
             // Interfaces have System.Object as direct base class.
@@ -169,8 +168,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces(RuntimeContext? context)
         {
-            var type = GenericType.Resolve(context).UnwrapOrDefault();
-            if (type is null)
+            if (!GenericType.TryResolve(context, out var type))
                 return Enumerable.Empty<TypeSignature>();
 
             var genericContext = GenericContext.FromType(this);
@@ -192,7 +190,7 @@ namespace AsmResolver.DotNet.Signatures
             }
 
             // If resolution fails, assume no parameter variance.
-            var genericType = GenericType.Resolve(context).UnwrapOrDefault();
+            GenericType.TryResolve(context, out var genericType);
 
             // Check that every type argument is compatible with each other.
             for (int i = 0; i < TypeArguments.Count; i++)
