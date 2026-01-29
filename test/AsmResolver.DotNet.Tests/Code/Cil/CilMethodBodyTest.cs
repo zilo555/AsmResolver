@@ -944,5 +944,35 @@ namespace AsmResolver.DotNet.Tests.Code.Cil
             Assert.True(newField.IsMethod);
             Assert.Equal<IMethodDescriptor>(sourceMethod, newField, SignatureComparer.Default);
         }
+
+        [Fact]
+        public void ExceptionHandlersShouldBeSorted()
+        {
+            CilInstructionLabel start1 = new(), start2 = new(), end1 = new(), end2 = new();
+            var handler1 = new CilExceptionHandler
+            {
+                TryStart = start1,
+                TryEnd = end1,
+            };
+            var handler2 = new CilExceptionHandler
+            {
+                TryStart = start2,
+                TryEnd = end2,
+            };
+            var body = new CilMethodBody
+            {
+                Instructions =
+                {
+                    (start1.Instruction = new CilInstruction(CilOpCodes.Nop)),
+                    (start2.Instruction = new CilInstruction(CilOpCodes.Nop)),
+                    (end2.Instruction = new CilInstruction(CilOpCodes.Nop)),
+                    (end1.Instruction = new CilInstruction(CilOpCodes.Nop)),
+                },
+                ExceptionHandlers = { handler1, handler2 },
+            };
+
+            body.SortExceptionHandlers();
+            Assert.Equal([handler2, handler1], body.ExceptionHandlers);
+        }
     }
 }

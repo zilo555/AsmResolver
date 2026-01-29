@@ -60,6 +60,27 @@ namespace AsmResolver.DotNet.Code.Cil
         } = null;
 
         /// <summary>
+        /// Gets or sets the value of an override switch indicating whether exception handlers should always be sorted or not.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// When this property is set to <c>true</c>, all method bodies will have their exception handlers sorted.
+        /// </para>
+        /// <para>
+        /// When this property is set to <c>false</c>, no method body will have their exception handlers sorted.
+        /// </para>
+        /// <para>
+        /// When this property is set to <c>null</c>, a method body will have its exception handlers sorted if
+        /// <see cref="CilMethodBody.SortExceptionHandlersOnBuild"/> is set to <c>true</c>.
+        /// </para>
+        /// </remarks>
+        public bool? SortExceptionHandlersOnBuildOverride
+        {
+            get;
+            set;
+        } = null;
+
+        /// <summary>
         /// Gets or sets a value indicating whether all method bodies should be fully verified and reassembled,
         /// including previously serialized method bodies that have not been modified.
         /// </summary>
@@ -292,6 +313,11 @@ namespace AsmResolver.DotNet.Code.Cil
 
         private byte[] SerializeExceptionHandlers(MethodBodySerializationContext context, CilMethodBody body, bool needsFatFormat)
         {
+            if (SortExceptionHandlersOnBuildOverride ?? body.SortExceptionHandlersOnBuild)
+            {
+                body.SortExceptionHandlers(false);
+            }
+
             var handlers = body.ExceptionHandlers;
 
             using var rentedWriter = _writerPool.Rent();
