@@ -974,5 +974,49 @@ namespace AsmResolver.DotNet.Tests.Code.Cil
             body.SortExceptionHandlers();
             Assert.Equal([handler2, handler1], body.ExceptionHandlers);
         }
+
+        [Fact]
+        public void ExceptionHandlersShouldSortOnBuild()
+        {
+            CilInstructionLabel start1 = new(), start2 = new(), end1 = new(), end2 = new(), fault1 = new(), fault2 = new(), endFault2 = new(), target = new();
+            var handler1 = new CilExceptionHandler
+            {
+                HandlerType = CilExceptionHandlerType.Fault,
+                TryStart = start1,
+                TryEnd = end1,
+                HandlerStart = fault1,
+                HandlerEnd = target,
+            };
+            var handler2 = new CilExceptionHandler
+            {
+                HandlerType = CilExceptionHandlerType.Fault,
+                TryStart = start2,
+                TryEnd = end2,
+                HandlerStart = fault2,
+                HandlerEnd = endFault2,
+            };
+            var module = new ModuleDefinition("DummyModule", KnownCorLibs.SystemRuntime_v8_0_0_0);
+            var method = new MethodDefinition("DummyMethod", MethodAttributes.Static,
+                MethodSignature.CreateStatic(module.CorLibTypeFactory.Void))
+            {
+                CilMethodBody = new CilMethodBody
+                {
+                    Instructions =
+                    {
+                        (start1.Instruction = new CilInstruction(CilOpCodes.Nop)),
+                        (start2.Instruction = new CilInstruction(CilOpCodes.Leave, target)),
+                        (end2.Instruction = fault2.Instruction = new CilInstruction(CilOpCodes.Endfinally)),
+                        (endFault2.Instruction = new CilInstruction(CilOpCodes.Nop)),
+                        (end1.Instruction = fault1.Instruction = new CilInstruction(CilOpCodes.Endfinally)),
+                        (target.Instruction = new CilInstruction(CilOpCodes.Ret)),
+                    },
+                    ExceptionHandlers = { handler1, handler2 },
+                },
+            };
+            module.GetOrCreateModuleType().Methods.Add(method);
+
+            var newBody = RebuildAndLookup(method.CilMethodBody, false);
+            Assert.Equal([handler2.ToString(), handler1.ToString()], newBody.ExceptionHandlers.Select(eh => eh.ToString()));
+        }
     }
 }
