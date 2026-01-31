@@ -64,7 +64,11 @@ namespace AsmResolver.PE.Tls
         /// <inheritdoc />
         protected override ReferenceTable GetCallbackFunctions()
         {
-            var result = base.GetCallbackFunctions();
+            var result = new ReferenceTable(
+                ReferenceTableAttributes.Va
+                | ReferenceTableAttributes.Adaptive
+                | ReferenceTableAttributes.ZeroTerminated
+            );
 
             var file = _context.File;
             var optionalHeader = file.OptionalHeader;
@@ -76,6 +80,8 @@ namespace AsmResolver.PE.Tls
                 _context.BadImage($"TLS callback function table start address 0x{_addressOfCallbacks:X8} is invalid.");
                 return result;
             }
+
+            result.UpdateOffsets(_context.GetRelocation(reader.Offset, reader.Rva));
 
             while (true)
             {

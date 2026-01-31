@@ -46,23 +46,30 @@ namespace AsmResolver.Tests.Runners
             );
         }
 
-        public string GetTestDirectory(string testClass, string testName)
+        public string GetTestDirectory(
+            [CallerFilePath] string testClass = "File",
+            [CallerMemberName] string testName = "Test")
         {
+            testClass = Path.GetFileNameWithoutExtension(testClass);
             string path = Path.Combine(BasePath, testClass, testName);
             if (!Directory.Exists(path))
                 Directory.CreateDirectory(path);
             return path;
         }
 
-        public string GetTestExecutablePath(string testClass, string testMethod, string fileName)
+        public string GetTestExecutablePath(
+            string fileName,
+            [CallerFilePath] string testClass = "File",
+            [CallerMemberName] string testMethod = "Test")
         {
             return Path.ChangeExtension(Path.Combine(GetTestDirectory(testClass, testMethod), fileName), ExecutableExtension);
         }
 
-        public string Rebuild(PEFile peFile, string fileName, string testClass, string testMethod)
+        public string Rebuild(PEFile peFile, string fileName,
+            [CallerFilePath] string testClass = "File",
+            [CallerMemberName] string testMethod = "Test")
         {
-            testClass = Path.GetFileNameWithoutExtension(testClass);
-            string fullPath = GetTestExecutablePath(testClass, testMethod, fileName);
+            string fullPath = GetTestExecutablePath(fileName, testClass, testMethod);
 
             using var fileStream = File.Create(fullPath);
             peFile.Write(new BinaryStreamWriter(fileStream));
@@ -76,7 +83,7 @@ namespace AsmResolver.Tests.Runners
             [CallerMemberName] string testMethod = "Test")
         {
             testClass = Path.GetFileNameWithoutExtension(testClass);
-            string testExecutablePath = GetTestExecutablePath(testClass, testMethod, fileName);
+            string testExecutablePath = GetTestExecutablePath(fileName, testClass, testMethod);
             File.WriteAllBytes(testExecutablePath, contents);
             return RunAndCaptureOutput(testExecutablePath, arguments, timeout);
         }
