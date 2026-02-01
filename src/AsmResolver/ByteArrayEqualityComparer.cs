@@ -36,6 +36,9 @@ namespace AsmResolver
             if (x == null || y == null || x.Length != y.Length)
                 return false;
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_1_OR_GREATER
+            return x.AsSpan().SequenceEqual(y);
+#else
             fixed (byte* p1 = x, p2 = y)
             {
                 byte* x1 = p1;
@@ -74,6 +77,7 @@ namespace AsmResolver
 
                 return true;
             }
+#endif
         }
 
         /// <inheritdoc />
