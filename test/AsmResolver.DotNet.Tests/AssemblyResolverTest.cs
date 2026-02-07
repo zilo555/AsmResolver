@@ -7,7 +7,6 @@ using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.IO;
 using AsmResolver.PE.DotNet.Metadata.Tables;
-using AsmResolver.PE.File;
 using AsmResolver.Tests.Runners;
 using Xunit;
 
@@ -39,6 +38,9 @@ namespace AsmResolver.DotNet.Tests
             Assert.Equal(ResolutionStatus.Success, status);
             Assert.Equal(corlib.Name, assemblyDef!.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
+
+            // mscorlib always resolves to the default install directory.
+            Assert.DoesNotContain("gac", assemblyDef.ManifestModule!.FilePath!, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -196,18 +198,17 @@ namespace AsmResolver.DotNet.Tests
         {
             Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows), NonWindowsPlatform);
 
-            var module = new ModuleDefinition("SomeAssembly", legacy
-                ? KnownCorLibs.MsCorLib_v2_0_0_0
-                : KnownCorLibs.MsCorLib_v4_0_0_0);
+            var context = new RuntimeContext(
+                legacy ? DotNetRuntimeInfo.NetFramework(2, 0) : DotNetRuntimeInfo.NetFramework(4, 0),
+                is32Bit: true
+            );
 
-            module.IsBit32Preferred = true;
-            module.IsBit32Required = true;
-            module.MachineType = MachineType.I386;
-            module.PEKind = OptionalHeaderMagic.PE32;
-
-            var resolved = module.CorLibTypeFactory.CorLibScope
-                .GetAssembly()!
-                .Resolve(module.RuntimeContext);
+            var resolved = new AssemblyReference(
+                    name: "System.Web",
+                    version: legacy ? new Version(2, 0, 0, 0) : new Version(4, 0, 0, 0),
+                    publicKey: false,
+                    publicKeyOrToken: [0xb0, 0x3f, 0x5f, 0x7f, 0x11, 0xd5, 0x0a, 0x3a]
+                ).Resolve(context);
 
             Assert.Contains("GAC_32", resolved.ManifestModule!.FilePath!);
         }
@@ -219,20 +220,40 @@ namespace AsmResolver.DotNet.Tests
         {
             Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows), NonWindowsPlatform);
 
-            var module = new ModuleDefinition("SomeAssembly", legacy
-                ? KnownCorLibs.MsCorLib_v2_0_0_0
-                : KnownCorLibs.MsCorLib_v4_0_0_0);
+            var context = new RuntimeContext(
+                legacy ? DotNetRuntimeInfo.NetFramework(2, 0) : DotNetRuntimeInfo.NetFramework(4, 0),
+                is32Bit: false
+            );
 
-            module.IsBit32Preferred = false;
-            module.IsBit32Required = false;
-            module.MachineType = MachineType.Amd64;
-            module.PEKind = OptionalHeaderMagic.PE32Plus;
-
-            var resolved = module.CorLibTypeFactory.CorLibScope
-                .GetAssembly()!
-                .Resolve(module.RuntimeContext);
+            var resolved = new AssemblyReference(
+                name: "System.Web",
+                version: legacy ? new Version(2, 0, 0, 0) : new Version(4, 0, 0, 0),
+                publicKey: false,
+                publicKeyOrToken: [0xb0, 0x3f, 0x5f, 0x7f, 0x11, 0xd5, 0x0a, 0x3a]
+            ).Resolve(context);
 
             Assert.Contains("GAC_64", resolved.ManifestModule!.FilePath!);
+        }
+
+        [SkippableTheory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void ResolveFromGacMsil(bool legacy)
+        {
+            Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows), NonWindowsPlatform);
+
+            var context = new RuntimeContext(
+                legacy ? DotNetRuntimeInfo.NetFramework(2, 0) : DotNetRuntimeInfo.NetFramework(4, 0)
+            );
+
+            var resolved = new AssemblyReference(
+                name: "System",
+                version: legacy ? new Version(2, 0, 0, 0) : new Version(4, 0, 0, 0),
+                publicKey: false,
+                publicKeyOrToken: [0xB7, 0x7A, 0x5C, 0x56, 0x19, 0x34, 0xE0, 0x89]
+            ).Resolve(context);
+
+            Assert.Contains("GAC_MSIL", resolved.ManifestModule!.FilePath!);
         }
 
         [Fact]
