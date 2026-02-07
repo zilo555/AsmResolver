@@ -31,7 +31,7 @@ internal sealed class ParsedTypeFullName(TypeName name)
         }
         else
         {
-            signature = baseTypeDefOrRef.ToTypeSignature(contextModule.RuntimeContext);
+            signature = baseTypeDefOrRef.ToTypeSignature(baseTypeDefOrRef.TryGetIsValueType(contextModule.RuntimeContext) ?? false);
         }
 
         // Go over all type annotations and annotate the type signature accordingly.

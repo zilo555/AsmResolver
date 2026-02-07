@@ -964,7 +964,7 @@ namespace AsmResolver.DotNet
             return DeclaringType.ToTypeReference();
         }
 
-        bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => IsValueType;
+        bool? ITypeDescriptor.TryGetIsValueType(RuntimeContext? context) => IsValueType;
 
         ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {

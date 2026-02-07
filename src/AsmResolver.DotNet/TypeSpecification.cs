@@ -94,7 +94,7 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public bool GetIsValueType(RuntimeContext? context) => Signature?.IsValueType is true;
+        public bool? TryGetIsValueType(RuntimeContext? context) => Signature?.IsValueType;
 
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 

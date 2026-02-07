@@ -22,7 +22,10 @@ namespace AsmResolver.DotNet
             /// <returns>The constructed by-reference type signature.</returns>
             public GenericInstanceTypeSignature MakeGenericInstanceType(RuntimeContext? context, params TypeSignature[] typeArguments)
             {
-                return type.ToTypeDefOrRef().MakeGenericInstanceType(type.GetIsValueType(context), typeArguments);
+                return type.ToTypeDefOrRef().MakeGenericInstanceType(
+                    type.TryGetIsValueType(context) ?? throw new ArgumentException($"Could not determine whether {type.SafeToString()} is a value type or not."),
+                    typeArguments
+                );
             }
 
             /// <summary>
@@ -69,6 +72,20 @@ namespace AsmResolver.DotNet
             {
                 return type.Resolve(context, out definition) == ResolutionStatus.Success;
             }
+
+            /// <summary>
+            /// Determines whether a type is a value type or not.
+            /// </summary>
+            /// <param name="context">The runtime context that is assumed.</param>
+            /// <returns><c>true</c> when the type is considered a value type, <c>false</c> when it is a reference type.</returns>
+            /// <exception cref="ArgumentException">
+            /// Occurs when it could not be determined whether the type descriptor is a value or reference type.
+            /// </exception>
+            public bool GetIsValueType(RuntimeContext? context)
+            {
+                return type.TryGetIsValueType(context)
+                    ?? throw new ArgumentException($"Could not determine whether {type.SafeToString()} is a value type or not.");
+            }
         }
 
         /// <param name="type">The element type.</param>
@@ -99,9 +116,7 @@ namespace AsmResolver.DotNet
             /// This function can be used to avoid type resolution on type references.
             /// </remarks>
             public TypeSignature ToTypeSignature(RuntimeContext? context)
-            {
-                return type.ToTypeSignature(type.GetIsValueType(context));
-            }
+                => type.ToTypeSignature(type.GetIsValueType(context));
 
             /// <summary>
             /// Constructs a reference to a nested type.

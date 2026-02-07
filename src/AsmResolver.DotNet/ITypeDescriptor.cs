@@ -27,8 +27,8 @@ namespace AsmResolver.DotNet
         /// Determines whether the type is considered a value type or reference type by the runtime.
         /// </summary>
         /// <param name="context">The runtime context that is assumed.</param>
-        /// <returns><c>true</c> when the type is considered a value type, <c>false</c> when it is a reference type.</returns>
-        bool GetIsValueType(RuntimeContext? context);
+        /// <returns><c>true</c> when the type is considered a value type, <c>false</c> when it is a reference type, <c>null</c> when unknown.</returns>
+        bool? TryGetIsValueType(RuntimeContext? context);
 
         /// <summary>
         /// Attempts to resolve the type reference to its definition, assuming the provided module as resolution context.

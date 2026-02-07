@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using AsmResolver.Collections;
@@ -137,12 +138,14 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public bool GetIsValueType(RuntimeContext? context) => this.TryResolve(context, out var definition) && definition.IsValueType;
+        public bool? TryGetIsValueType(RuntimeContext? context) => this.TryResolve(context, out var definition)
+            ? definition.IsValueType
+            : null;
 
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
         /// <inheritdoc />
-        public TypeSignature ToTypeSignature(RuntimeContext? context) => ToTypeSignature(GetIsValueType(context));
+        public TypeSignature ToTypeSignature(RuntimeContext? context) => ToTypeSignature(this.GetIsValueType(context));
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType)

@@ -77,7 +77,7 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module) => false;
 
-        bool ITypeDescriptor.GetIsValueType(RuntimeContext? context) => false;
+        bool? ITypeDescriptor.TryGetIsValueType(RuntimeContext? context) => null;
 
         ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {

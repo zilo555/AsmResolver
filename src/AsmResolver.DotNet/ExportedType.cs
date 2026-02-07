@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using AsmResolver.Collections;
@@ -158,7 +157,9 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public bool GetIsValueType(RuntimeContext? context) => this.Resolve(context).IsValueType;
+        public bool? TryGetIsValueType(RuntimeContext? context) => this.TryResolve(context, out var definition)
+            ? definition.IsValueType
+            : null;
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
