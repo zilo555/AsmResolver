@@ -37,7 +37,6 @@ public sealed class DotNetFrameworkPathProvider : DotNetFxPathProvider
                 [
                     new(Path.Combine(systemGac, "GAC")),
                     new(Path.Combine(systemGac, "GAC_32")),
-                    new(Path.Combine(systemGac, "NativeImages_v2.0.50727_32")),
                 ],
                 [
                     new(Path.Combine(systemGac, "GAC_MSIL"))
@@ -45,12 +44,14 @@ public sealed class DotNetFrameworkPathProvider : DotNetFxPathProvider
             ),
             new GacGroup(
                 [
+                    new(Path.Combine(frameworkGac, "GAC"), "v4.0_"),
+                    new(Path.Combine(frameworkGac, "GAC_32"), "v4.0_"),
                     new(Path.Combine(systemGac, "GAC")),
-                    new(Path.Combine(systemGac, "GAC_64")),
-                    new(Path.Combine(systemGac, "NativeImages_v2.0.50727_64")),
+                    new(Path.Combine(systemGac, "GAC_32")),
                 ],
                 [
-                    new(Path.Combine(systemGac, "GAC_MSIL"))
+                    new(Path.Combine(systemGac, "GAC_MSIL")),
+                    new(Path.Combine(frameworkGac, "GAC_MSIL"), "v4.0_"),
                 ]
             )
         );
@@ -59,14 +60,10 @@ public sealed class DotNetFrameworkPathProvider : DotNetFxPathProvider
             PathShim.Combine(windowsDirectory, "Microsoft.NET", "Framework64"),
             new GacGroup(
                 [
-                    new(Path.Combine(frameworkGac, "GAC"), "v4.0_"),
-                    new(Path.Combine(frameworkGac, "GAC_32"), "v4.0_"),
                     new(Path.Combine(systemGac, "GAC")),
-                    new(Path.Combine(systemGac, "GAC_32")),
-                    new(Path.Combine(systemGac, "NativeImages_v4.0.30319_32")),
+                    new(Path.Combine(systemGac, "GAC_64")),
                 ],
                 [
-                    new(Path.Combine(frameworkGac, "GAC_MSIL"), "v4.0_"),
                     new(Path.Combine(systemGac, "GAC_MSIL"))
                 ]
             ),
@@ -76,7 +73,6 @@ public sealed class DotNetFrameworkPathProvider : DotNetFxPathProvider
                     new(Path.Combine(frameworkGac, "GAC_64"), "v4.0_"),
                     new(Path.Combine(systemGac, "GAC")),
                     new(Path.Combine(systemGac, "GAC_64")),
-                    new(Path.Combine(systemGac, "NativeImages_v4.0.30319_64")),
                 ],
                 [
                     new(Path.Combine(frameworkGac, "GAC_MSIL"), "v4.0_"),
