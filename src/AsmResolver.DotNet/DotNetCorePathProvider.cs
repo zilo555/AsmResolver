@@ -223,18 +223,25 @@ namespace AsmResolver.DotNet
 
         private static string? FindWindowsDotNetPath()
         {
+            // Probe default locations for installation folder of dotnet.
+            foreach (string path in DefaultDotNetWindowsPaths)
+            {
+                if (IsValidDotNetFolder(path, ".exe"))
+                    return path;
+            }
+
+            // Try DOTNET_ROOT.
+            if (Environment.GetEnvironmentVariable("DOTNET_ROOT") is { } root
+                && IsValidDotNetFolder(root, ".exe"))
+            {
+                return root;
+            }
+
             // Probe PATH for installation folder of dotnet.
             string[] paths = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(Path.PathSeparator);
             foreach (string path in paths)
             {
-                if (File.Exists(Path.Combine(path, "dotnet.exe")))
-                    return path;
-            }
-
-            // Probe default locations for installation folder of dotnet.
-            foreach (string path in DefaultDotNetWindowsPaths)
-            {
-                if (File.Exists(Path.Combine(path, "dotnet.exe")))
+                if (IsValidDotNetFolder(path, ".exe"))
                     return path;
             }
 
@@ -246,7 +253,7 @@ namespace AsmResolver.DotNet
             // Probe default locations for installation folder of dotnet.
             foreach (string path in DefaultDotNetUnixPaths)
             {
-                if (File.Exists(Path.Combine(path, "dotnet")))
+                if (IsValidDotNetFolder(path, null))
                     return path;
             }
 
@@ -256,8 +263,15 @@ namespace AsmResolver.DotNet
             {
                 using var fs = File.OpenText(DotNetDefaultLocationRegistry);
                 string? path = fs.ReadLine()?.TrimEnd();
-                if (!string.IsNullOrEmpty(path) && File.Exists(Path.Combine(path, "dotnet")))
+                if (IsValidDotNetFolder(path, null))
                     return path;
+            }
+
+            // Try DOTNET_ROOT.
+            if (Environment.GetEnvironmentVariable("DOTNET_ROOT") is { } root
+                && IsValidDotNetFolder(root, null))
+            {
+                return root;
             }
 
             // If we're running on nix, we need to get it from the nix package.
@@ -280,14 +294,20 @@ namespace AsmResolver.DotNet
                 if (File.Exists(candidateDotNetPath)
                     && NativeMethods.RealPath(candidateDotNetPath) is { } binaryPath
                     && Path.GetDirectoryName(binaryPath) is { } rootPath
-                    && PathShim.Combine(rootPath, "shared") is { } sharedPath // Check if we have a "shared" directory.
-                    && Directory.Exists(sharedPath))
+                    && IsValidDotNetFolder(rootPath, null))
                 {
                     return rootPath;
                 }
             }
 
             return null;
+        }
+
+        private static bool IsValidDotNetFolder(string? basePath, string? extension)
+        {
+            return !string.IsNullOrEmpty(basePath) && Directory.Exists(basePath)
+                && File.Exists(Path.Combine(basePath, $"dotnet{extension}"))
+                && Directory.Exists(Path.Combine(basePath, "shared"));
         }
 
         /// <summary>

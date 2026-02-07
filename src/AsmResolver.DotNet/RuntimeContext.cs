@@ -185,15 +185,19 @@ public partial class RuntimeContext
     /// Creates a new runtime context.
     /// </summary>
     /// <param name="manifest">The bundle to create the runtime context for.</param>
+    /// <param name="assemblyResolver">The assembly resolver to use when resolving assemblies into this context, or the default resolver if null.</param>
     /// <param name="readerParameters">The parameters to use when reading modules in this context.</param>
-    public RuntimeContext(BundleManifest manifest, ModuleReaderParameters? readerParameters = null)
+    public RuntimeContext(
+        BundleManifest manifest,
+        IAssemblyResolver? assemblyResolver = null,
+        ModuleReaderParameters? readerParameters = null)
     {
         DefaultReaderParameters = readerParameters is not null
             ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
             : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
 
         TargetRuntime = manifest.GetTargetRuntime();
-        AssemblyResolver = new BundleAssemblyResolver(manifest, DefaultReaderParameters);
+        AssemblyResolver = new BundleAssemblyResolver(manifest, DefaultReaderParameters, assemblyResolver);
 
         if (ResolveAssembly(TargetRuntime.GetDefaultCorLib(), null, out var corlib) == ResolutionStatus.Success
             && corlib!.ManifestModule?.CorLibTypeFactory.Object.TryResolve(this, out var type) is true)
