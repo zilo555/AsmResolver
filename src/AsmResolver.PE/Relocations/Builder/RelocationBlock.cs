@@ -37,9 +37,9 @@ namespace AsmResolver.PE.Relocations.Builder
         /// <inheritdoc />
         public override uint GetPhysicalSize()
         {
-            // Ensure the ending zero entry is included in the size.
-            int totalCount = Entries.Count + (Entries[Entries.Count - 1].IsEmpty ? 0 : 1);
-            return (uint) totalCount * sizeof(ushort) + 2 * sizeof(uint);
+            // Align item count to even number (blocks are 32-bit aligned).
+            uint totalCount = ((uint) Entries.Count).Align(2);
+            return totalCount * sizeof(ushort) + 2 * sizeof(uint);
         }
 
         /// <inheritdoc />
@@ -53,8 +53,8 @@ namespace AsmResolver.PE.Relocations.Builder
             for (int i = 0; i < Entries.Count; i++)
                 Entries[i].Write(writer);
 
-            // Ensure block ends with zero entry.
-            if (!Entries[Entries.Count - 1].IsEmpty)
+            // Ensure block ends on aligned 32-bit address.
+            if (Entries.Count % 2 == 1)
                 default(RelocationEntry).Write(writer);
         }
 

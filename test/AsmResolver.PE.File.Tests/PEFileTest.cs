@@ -77,7 +77,7 @@ namespace AsmResolver.PE.File.Tests
             // Read the new file.
             var newPEFile = PEFile.FromFile(_fixture
                 .GetRunner<FrameworkPERunner>()
-                .GetTestExecutablePath(nameof(PEFileTest), nameof(RebuildNetPEAddSection), fileName));
+                .GetTestExecutablePath(fileName));
 
             // Verify the section and its data is present:
             var newSection = newPEFile.Sections.First(s => s.Name == sectionName);

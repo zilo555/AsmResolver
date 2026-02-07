@@ -497,7 +497,7 @@ namespace AsmResolver.IO
         {
             byte[] data = ReadBytesUntil(0, false);
             return data.Length != 0
-                ? new Utf8String(data)
+                ? Utf8String.CreateUnsafe(data)
                 : Utf8String.Empty;
         }
 
@@ -674,8 +674,8 @@ namespace AsmResolver.IO
                 return null;
 
             byte[] data = new byte[length];
-            length = (uint) ReadBytes(data, 0, (int) length);
-            return new Utf8String(data, 0, (int)length);
+            int actualLength = ReadBytes(data, 0, (int) length);
+            return actualLength == length ? Utf8String.CreateUnsafe(data) : new Utf8String(data, 0, actualLength);
         }
 
         /// <summary>

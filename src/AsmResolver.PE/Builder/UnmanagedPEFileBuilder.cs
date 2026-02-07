@@ -7,6 +7,7 @@ using AsmResolver.PE.DotNet.Metadata;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using AsmResolver.PE.File;
 using AsmResolver.PE.Imports;
+using AsmResolver.PE.Relocations;
 using AsmResolver.PE.Tls;
 
 namespace AsmResolver.PE.Builder;
@@ -206,7 +207,7 @@ public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.Build
         header.SetDataDirectory(DataDirectoryIndex.DebugDirectory, !context.DebugDirectory.IsEmpty ? context.DebugDirectory : null);
         header.SetDataDirectory(DataDirectoryIndex.ResourceDirectory, !context.ResourceDirectory.IsEmpty ? context.ResourceDirectory : null);
         header.SetDataDirectory(DataDirectoryIndex.ClrDirectory, context.Image.DotNetDirectory);
-        header.SetDataDirectory(DataDirectoryIndex.TlsDirectory, context.Image.TlsDirectory);
+        header.SetDataDirectory(DataDirectoryIndex.TlsDirectory, context.TlsDirectory);
         header.SetDataDirectory(DataDirectoryIndex.BaseRelocationDirectory, !context.RelocationsDirectory.IsEmpty ? context.RelocationsDirectory : null);
     }
 
@@ -332,7 +333,7 @@ public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.Build
         var contents = new SegmentBuilder();
 
         // Add TLS data directory and contents.
-        if (image.TlsDirectory is { } directory)
+        if (context.TlsDirectory is { } directory)
         {
             var originalDirectory = context.BaseImage?.TlsDirectory;
             AddOrPatch(directory, originalDirectory);
@@ -386,7 +387,7 @@ public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.Build
                 contents.Add(fixups[i].Tokens, (uint) context.Platform.PointerSize);
         }
 
-        if (image.TlsDirectory is { } directory)
+        if (context.TlsDirectory is { } directory)
         {
             // Add TLS index segment.
             if (directory.Index is not PESegmentReference
@@ -502,13 +503,38 @@ public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.Build
         // are initialized before any other user-code is called.
         if (context.ImportTrampolines.DataInitializerSymbol is { } initializerSymbol)
         {
-            var tls = context.Image.TlsDirectory ??= new TlsDirectory();
-            tls.UpdateOffsets(new RelocationParameters(0, 0, 0, context.Platform.Is32Bit));
+            // We clone the existing TLS directory when present so as not to modify the existing instance directly.
+            var tls = new TlsDirectory();
+            if (context.TlsDirectory is not null)
+            {
+                tls.TemplateData = context.TlsDirectory.TemplateData;
+                tls.Index = context.TlsDirectory.Index;
+                foreach (var item in tls.CallbackFunctions)
+                    tls.CallbackFunctions.Add(item);
+                tls.SizeOfZeroFill = context.TlsDirectory.SizeOfZeroFill;
+                tls.Characteristics = context.TlsDirectory.Characteristics;
+            }
+            context.TlsDirectory = tls;
+
+            tls.UpdateOffsets(new RelocationParameters(
+                context.Image.ImageBase,
+                tls.Offset,
+                tls.Rva,
+                context.Platform.Is32Bit
+            ));
 
             if (tls.Index == SegmentReference.Null)
                 tls.Index = new ZeroesSegment(sizeof(ulong)).ToReference();
 
             tls.CallbackFunctions.Insert(0, initializerSymbol.GetReference()!);
+
+            // Add the required relocs to the buffer if dynamic base is set.
+            if ((context.Image.DllCharacteristics & DllCharacteristics.DynamicBase) != 0)
+            {
+                // TODO: can we deduplicate existing relocs?
+                foreach (var reloc in tls.GetRequiredBaseRelocations())
+                    context.RelocationsDirectory.Add(reloc);
+            }
         }
 
         // Rebuild import directory as normal.
@@ -569,18 +595,12 @@ public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.Build
     {
         base.CreateRelocationsDirectory(context);
 
-        // We may have some extra relocations for the newly generated code of our trampolines and TLS-backed initializers.
+        // We may have some extra relocations for the newly generated code of our trampolines initializers.
         foreach (var reloc in context.ImportTrampolines.GetRequiredBaseRelocations())
             context.RelocationsDirectory.Add(reloc);
 
         foreach (var reloc in context.VTableTrampolines.GetRequiredBaseRelocations())
             context.RelocationsDirectory.Add(reloc);
-
-        if (context.Image.TlsDirectory is { } tls)
-        {
-            foreach (var reloc in tls.GetRequiredBaseRelocations())
-                context.RelocationsDirectory.Add(reloc);
-        }
     }
 
     private void CreateDotNetDirectories(BuilderContext context)
@@ -804,6 +824,7 @@ public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.Build
 
             ImportTrampolines = new TrampolineTableBuffer(Platform);
             VTableTrampolines = new TrampolineTableBuffer(Platform);
+            TlsDirectory = image.TlsDirectory;
         }
 
         /// <summary>
@@ -825,6 +846,13 @@ public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.Build
         /// Gets the trampolines table for all fixed up managed method addresses.
         /// </summary>
         public TrampolineTableBuffer VTableTrampolines { get; }
+
+        /// <summary>
+        /// Gets the TLS directory to use in the final PE file. This is not necessarily the same as the image's
+        /// TLS directory in case the directory needed to be augmented (e.g., when extra TLS initialization is required
+        /// by import trampolines).
+        /// </summary>
+        public TlsDirectory? TlsDirectory { get; set; }
 
         /// <summary>
         /// Searches for a cloned section containing the provided RVA.
