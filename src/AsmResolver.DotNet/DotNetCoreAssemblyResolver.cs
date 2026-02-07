@@ -92,9 +92,16 @@ namespace AsmResolver.DotNet
                             SearchDirectories.Add(path);
                     }
                 }
+
+                // Infer fallback version from runtimeconfig when there is no fallback specified.
+                // This is necessary because some runtimeconfig.json files may only specify one
+                // framework (e.g., "Microsoft.WindowsDesktop.App") but still implicitly use
+                // assemblies from the base "Microsoft.NETCore.App" framework which we want to include.
+                if (fallbackVersion is null && configuration!.TryGetTargetRuntime(out var runtime))
+                    fallbackVersion = runtime.Version;
             }
 
-            // If no directories where found, use the fallback .NET version.
+            // Include the fallback .NET version.
             if (fallbackVersion is not null && pathProvider.HasRuntimeInstalled(fallbackVersion))
             {
                 if (_runtimeDirectories.Count == 0)
