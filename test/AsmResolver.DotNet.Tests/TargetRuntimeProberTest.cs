@@ -9,8 +9,8 @@ public class TargetRuntimeProberTest
     public void DetectTargetNetFramework40()
     {
         var image = PEImage.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters.PEReaderParameters);
-        var targetRuntime = TargetRuntimeProber.GetLikelyTargetRuntime(image);
 
+        Assert.True(TargetRuntimeProber.TryGetLikelyTargetRuntime(image, out var targetRuntime));
         Assert.True(targetRuntime.IsNetFramework);
         Assert.Contains(DotNetRuntimeInfo.NetFrameworkName, targetRuntime.Name);
         Assert.Equal(4, targetRuntime.Version.Major);
@@ -21,8 +21,8 @@ public class TargetRuntimeProberTest
     public void DetectTargetNetCore()
     {
         var image = PEImage.FromBytes(Properties.Resources.HelloWorld_NetCore, TestReaderParameters.PEReaderParameters);
-        var targetRuntime = TargetRuntimeProber.GetLikelyTargetRuntime(image);
 
+        Assert.True(TargetRuntimeProber.TryGetLikelyTargetRuntime(image, out var targetRuntime));
         Assert.True(targetRuntime.IsNetCoreApp);
         Assert.Contains(DotNetRuntimeInfo.NetCoreAppName, targetRuntime.Name);
         Assert.Equal(2, targetRuntime.Version.Major);
@@ -33,8 +33,8 @@ public class TargetRuntimeProberTest
     public void DetectTargetStandard()
     {
         var image = PEImage.FromFile(typeof(TestCases.Types.Class).Assembly.Location, TestReaderParameters.PEReaderParameters);
-        var targetRuntime = TargetRuntimeProber.GetLikelyTargetRuntime(image);
 
+        Assert.True(TargetRuntimeProber.TryGetLikelyTargetRuntime(image, out var targetRuntime));
         Assert.True(targetRuntime.IsNetStandard);
         Assert.Contains(DotNetRuntimeInfo.NetStandardName, targetRuntime.Name);
         Assert.Equal(2, targetRuntime.Version.Major);

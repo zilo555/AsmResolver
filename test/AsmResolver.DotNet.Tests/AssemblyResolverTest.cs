@@ -1,10 +1,12 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using AsmResolver.DotNet.Config.Json;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.IO;
+using AsmResolver.PE.DotNet.Metadata.Tables;
 using AsmResolver.PE.File;
 using AsmResolver.Tests.Runners;
 using Xunit;
@@ -263,6 +265,145 @@ namespace AsmResolver.DotNet.Tests
 
             Assert.Equal(reference.Name, definition.Name);
             Assert.NotNull(definition.ManifestModule!.FilePath);
+        }
+
+        [Fact]
+        public void ResolveNonRuntimeDependencyInSameDirectory()
+        {
+            string basePath = _fixture.GetRunner<CorePERunner>().GetTestDirectory();
+            PrepareTestEnvironment(basePath);
+
+            var module = ModuleDefinition.FromFile(Path.Combine(basePath, "Main.dll"));
+            var dependency = module.AssemblyReferences.First(x => x.Name == "Dependency").Resolve(module.RuntimeContext);
+
+            Assert.Equal(basePath, Path.GetDirectoryName(dependency.ManifestModule!.FilePath));
+            return;
+
+            static void PrepareTestEnvironment(string basePath)
+            {
+                var dependencyAssembly = new AssemblyDefinition("Dependency", new Version(1, 0, 0, 0));
+                var dependencyModule = new ModuleDefinition("Dependency.dll", KnownCorLibs.SystemRuntime_v10_0_0_0);
+                dependencyAssembly.Modules.Add(dependencyModule);
+                var dependencyType = new TypeDefinition(
+                    "Dependency",
+                    "Type",
+                    TypeAttributes.Public,
+                    dependencyModule.CorLibTypeFactory.Object.Type
+                );
+                dependencyModule.TopLevelTypes.Add(dependencyType);
+                dependencyModule.Write(Path.Combine(basePath, "Dependency.dll"));
+
+                var mainAssembly = new AssemblyDefinition("Main", new Version(1, 0, 0, 0));
+                var mainModule = new ModuleDefinition("Main.dll", KnownCorLibs.SystemRuntime_v10_0_0_0);
+                mainAssembly.Modules.Add(mainModule);
+                mainModule.GetOrCreateModuleType().Fields.Add(new FieldDefinition(
+                    "Foo",
+                    FieldAttributes.Static,
+                    dependencyType.ToTypeSignature()
+                ));
+
+                mainAssembly.Write(Path.Combine(basePath, "Main.dll"));
+
+                File.WriteAllText(Path.Combine(basePath, "Main.runtimeconfig.json"),
+                    """
+                    {
+                        "runtimeOptions": {
+                            "tfm": "net10.0",
+                            "includedFrameworks": [{
+                                "name": "Microsoft.NETCore.App",
+                                "version": "10.0.0"
+                            }]
+                        }
+                    }
+                    """
+                );
+            }
+        }
+
+        [Fact]
+        public void ResolveRuntimeDependencyLookalikeNonSelfContainedShouldPreferSystemDirectory()
+        {
+            string basePath = _fixture.GetRunner<CorePERunner>().GetTestDirectory();
+            PrepareTestEnvironment(basePath);
+
+            var module = ModuleDefinition.FromFile(Path.Combine(basePath, "Main.dll"));
+            var dependency = module.AssemblyReferences.First(x => x.Name == "System.Private.CoreLib").Resolve(module.RuntimeContext);
+
+            Assert.NotEqual(basePath, Path.GetDirectoryName(dependency.ManifestModule!.FilePath));
+            return;
+
+            static void PrepareTestEnvironment(string basePath)
+            {
+                File.Copy(typeof(object).Assembly.Location, Path.Combine(basePath, "System.Private.CoreLib.dll"));
+
+                var mainAssembly = new AssemblyDefinition("Main", new Version(1, 0, 0, 0));
+                var mainModule = new ModuleDefinition("Main.dll", KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0);
+                mainAssembly.Modules.Add(mainModule);
+                mainModule.GetOrCreateModuleType().Fields.Add(new FieldDefinition(
+                    "Foo",
+                    FieldAttributes.Static,
+                    KnownCorLibs.SystemRuntime_v10_0_0_0.CreateTypeReference("System.IO", "Stream").ToTypeSignature(false)
+                ));
+
+                mainAssembly.Write(Path.Combine(basePath, "Main.dll"));
+
+                File.WriteAllText(Path.Combine(basePath, "Main.runtimeconfig.json"),
+                    """
+                    {
+                        "runtimeOptions": {
+                            "tfm": "net10.0",
+                            "includedFrameworks": [{
+                                "name": "Microsoft.NETCore.App",
+                                "version": "10.0.0"
+                            }]
+                        }
+                    }
+                    """
+                );
+            }
+        }
+
+        [Fact]
+        public void ResolveRuntimeDependencySelfContainedShouldPreferSameDirectory()
+        {
+            string basePath = _fixture.GetRunner<CorePERunner>().GetTestDirectory();
+            PrepareTestEnvironment(basePath);
+
+            var module = ModuleDefinition.FromFile(Path.Combine(basePath, "Main.dll"));
+            var dependency = module.AssemblyReferences.First(x => x.Name == "System.Private.CoreLib").Resolve(module.RuntimeContext);
+
+            Assert.Equal(basePath, Path.GetDirectoryName(dependency.ManifestModule!.FilePath));
+            return;
+
+            static void PrepareTestEnvironment(string basePath)
+            {
+                File.Copy(typeof(object).Assembly.Location, Path.Combine(basePath, "System.Private.CoreLib.dll"));
+
+                var mainAssembly = new AssemblyDefinition("Main", new Version(1, 0, 0, 0));
+                var mainModule = new ModuleDefinition("Main.dll", KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0);
+                mainAssembly.Modules.Add(mainModule);
+                mainModule.GetOrCreateModuleType().Fields.Add(new FieldDefinition(
+                    "Foo",
+                    FieldAttributes.Static,
+                    KnownCorLibs.SystemRuntime_v10_0_0_0.CreateTypeReference("System.IO", "Stream").ToTypeSignature(false)
+                ));
+
+                mainAssembly.Write(Path.Combine(basePath, "Main.dll"));
+
+                File.WriteAllText(Path.Combine(basePath, "Main.runtimeconfig.json"),
+                    """
+                    {
+                        "runtimeOptions": {
+                            "tfm": "net10.0",
+                            "framework": {
+                                "name": "Microsoft.NETCore.App",
+                                "version": "10.0.0"
+                            }
+                        }
+                    }
+                    """
+                );
+            }
         }
     }
 }

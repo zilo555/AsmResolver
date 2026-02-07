@@ -1,4 +1,3 @@
-using System.IO;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE;
@@ -13,49 +12,59 @@ namespace AsmResolver.DotNet;
 public static class TargetRuntimeProber
 {
     /// <summary>
-    /// Obtians the name and version of the .NET runtime a provided PE image likely is targeting.
+    /// Obtains the name and version of the .NET runtime a provided PE image likely is targeting.
     /// </summary>
     /// <param name="image">The image to classify.</param>
-    /// <returns>The likely target .NET runtime version.</returns>
-    public static DotNetRuntimeInfo GetLikelyTargetRuntime(PEImage image)
+    /// <param name="targetRuntime">The likely target .NET runtime version.</param>
+    /// <returns><c>true</c> if the runtime could be determined, <c>false</c> otherwise.</returns>
+    public static bool TryGetLikelyTargetRuntime(PEImage image, out DotNetRuntimeInfo targetRuntime)
     {
+        targetRuntime = default;
+
         if (image.DotNetDirectory?.Metadata is not { } metadata)
-            return DotNetRuntimeInfo.NetFramework(4, 0);
+            return false;
 
         var streams = metadata.GetImpliedStreamSelection();
-        if (streams is not {TablesStream: not null, StringsStream: not null})
-            return DotNetRuntimeInfo.NetFramework(4, 0);
+        if (streams is not { TablesStream: not null, StringsStream: not null })
+            return false;
 
-        var bestMatch = DotNetRuntimeInfo.NetFramework(0, 0);
-
-        // Check if we're corlib ourselves, then we can infer it directly from the definition.
-        TraverseAssemblyDefinitions(ref streams, ref bestMatch);
-        if (bestMatch.Version.Major != 0)
-            return bestMatch;
-
-        // Try inferring based on assembly references and TargetFrameworkAttribute on the assemblydef.
-        TraverseAssemblyReferences(ref streams, ref bestMatch);
-        TraverseTargetRuntimeAttribute(ref streams, ref bestMatch);
-
-        if (bestMatch.Version.Major == 0)
-            bestMatch = DotNetRuntimeInfo.NetFramework(4, 0);
-
-        return bestMatch;
+        return TryGetLikelyTargetRuntime(in streams, out targetRuntime);
     }
 
-    private static void TraverseAssemblyDefinitions(ref readonly MetadataStreamSelection streams, ref DotNetRuntimeInfo bestMatch)
+    /// <summary>
+    /// Obtains the name and version of the .NET runtime a provided metadata stream selection likely is targeting.
+    /// </summary>
+    /// <param name="streams">The metadata streams to classify.</param>
+    /// <param name="targetRuntime">The likely target .NET runtime version.</param>
+    /// <returns><c>true</c> if the runtime could be determined, <c>false</c> otherwise.</returns>
+    /// <returns>The likely target .NET runtime version.</returns>
+    public static bool TryGetLikelyTargetRuntime(in MetadataStreamSelection streams, out DotNetRuntimeInfo targetRuntime)
+    {
+        targetRuntime = default;
+
+        // Check if we're corlib ourselves, then we can infer it directly from the definition.
+        if (TraverseAssemblyDefinitions(in streams, ref targetRuntime))
+            return true;
+
+        // Try inferring based on assembly references and on TargetFrameworkAttribute on the assemblydef.
+        // Note this is deliberately using a single `|` to ensure the best match is found.
+        return TraverseAssemblyReferences(in streams, ref targetRuntime)
+            | TraverseTargetRuntimeAttribute(in streams, ref targetRuntime);
+    }
+
+    private static bool TraverseAssemblyDefinitions(in MetadataStreamSelection streams, ref DotNetRuntimeInfo bestMatch)
     {
         var assemblyDefTable = streams.TablesStream!.GetTable<AssemblyDefinitionRow>(TableIndex.Assembly);
         if (assemblyDefTable.Count == 0)
-            return;
+            return false;
 
         var row = assemblyDefTable.GetByRid(1);
         var name = streams.StringsStream!.GetStringByIndex(row.Name);
         if (Utf8String.IsNullOrEmpty(name))
-            return;
+            return false;
 
         if (!KnownCorLibs.KnownCorLibNames.Contains(name))
-            return;
+            return false;
 
         var newMatch = ToDotNetRuntimeInfo(
             name,
@@ -65,12 +74,17 @@ public static class TargetRuntimeProber
             row.RevisionNumber
         );
 
-        if (bestMatch.Version < newMatch.Version)
-            bestMatch = newMatch;
+        if (bestMatch.Version >= newMatch.Version)
+            return false;
+
+        bestMatch = newMatch;
+        return true;
     }
 
-    private static void TraverseAssemblyReferences(ref readonly MetadataStreamSelection streams, ref DotNetRuntimeInfo dotNetRuntimeInfo)
+    private static bool TraverseAssemblyReferences(in MetadataStreamSelection streams, ref DotNetRuntimeInfo dotNetRuntimeInfo)
     {
+        bool updated = false;
+
         var assemblyRefTable = streams.TablesStream!.GetTable<AssemblyReferenceRow>(TableIndex.AssemblyRef);
         for (uint rid = 1; rid <= assemblyRefTable.Count; rid++)
         {
@@ -92,18 +106,23 @@ public static class TargetRuntimeProber
             );
 
             if (dotNetRuntimeInfo.Version < newMatch.Version)
+            {
                 dotNetRuntimeInfo = newMatch;
+                updated = true;
+            }
         }
+
+        return updated;
     }
 
-    private static void TraverseTargetRuntimeAttribute(ref readonly MetadataStreamSelection streams, ref DotNetRuntimeInfo bestMatch)
+    private static bool TraverseTargetRuntimeAttribute(in MetadataStreamSelection streams, ref DotNetRuntimeInfo bestMatch)
     {
         var tablesStream = streams.TablesStream!;
         var stringsStream = streams.StringsStream!;
 
         var blobStream = streams.BlobStream;
         if (blobStream is null)
-            return;
+            return false;
 
         // Get relevant tables.
         var caTable = tablesStream.GetTable<CustomAttributeRow>(TableIndex.CustomAttribute);
@@ -118,7 +137,7 @@ public static class TargetRuntimeProber
         // Find CAs that are owned by the assembly def.
         uint expectedOwner = hasCaDecoder.EncodeToken(new MetadataToken(TableIndex.Assembly, 1));
         if (!caTable.TryGetRidByKey(0 /* Parent */, expectedOwner, out uint startRid))
-            return;
+            return false;
 
         // We may not have found the first one (TryGetRidByKey performs binary search).
         // Move back until we are at the first CA of the assembly.
@@ -126,6 +145,7 @@ public static class TargetRuntimeProber
             startRid--;
 
         // Traverse all CAs.
+        bool updated = false;
         for (uint rid = startRid; rid <= caTable.Count; rid++)
         {
             // Check if we're still a CA of the current assembly def.
@@ -161,8 +181,13 @@ public static class TargetRuntimeProber
             // Read first argument (target runtime string).
             var element = reader.ReadSerString();
             if (!Utf8String.IsNullOrEmpty(element) && DotNetRuntimeInfo.TryParse(element, out var info))
+            {
                 bestMatch = info;
+                updated = true;
+            }
         }
+
+        return updated;
     }
 
     /// <summary>

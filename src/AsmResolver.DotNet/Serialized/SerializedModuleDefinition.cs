@@ -38,9 +38,9 @@ namespace AsmResolver.DotNet.Serialized
             if (metadata is null)
                 throw new BadImageFormatException("Input PE image does not contain a .NET metadata directory.");
 
-            ReaderContext = new ModuleReaderContext(peImage, this, readerParameters);
+            var streams = metadata.GetImpliedStreamSelection();
 
-            var tablesStream = ReaderContext.Streams.TablesStream;
+            var tablesStream = streams.TablesStream;
             if (tablesStream is null)
                 throw new BadImageFormatException(".NET metadata directory does not define a tables stream.");
 
@@ -61,16 +61,30 @@ namespace AsmResolver.DotNet.Serialized
             Generation = _row.Generation;
             Attributes = peImage.DotNetDirectory!.Flags;
 
+            // If we cannot determine the target runtime the image was compiled against, assume .netfx 4.0 since it's
+            // the most common case for standalone binaries.
+            OriginalTargetRuntime = TargetRuntimeProber.TryGetLikelyTargetRuntime(peImage, out var originalTargetRuntime)
+                ? originalTargetRuntime
+                : DotNetRuntimeInfo.NetFramework(4, 0);
+
+            // Inherit or create new runtime context.
+            if (readerParameters.RuntimeContext is not null)
+            {
+                RuntimeContext = readerParameters.RuntimeContext;
+            }
+            else
+            {
+                RuntimeContext = new RuntimeContext(peImage, readerParameters);
+                readerParameters = new ModuleReaderParameters(RuntimeContext.DefaultReaderParameters);
+            }
+
             // Initialize member factory.
+            ReaderContext = new ModuleReaderContext(peImage, this, readerParameters);
             _memberFactory = new CachedSerializedMemberFactory(ReaderContext);
 
             // Find assembly definition and corlib assembly.
             Assembly = FindParentAssembly();
             CorLibTypeFactory = CreateCorLibTypeFactory();
-            OriginalTargetRuntime = TargetRuntimeProber.GetLikelyTargetRuntime(peImage);
-
-            // Inherit or create new runtime context.
-            RuntimeContext = readerParameters.RuntimeContext ?? new RuntimeContext(peImage, readerParameters);
 
             // Prepare lazy RID lists.
             _fieldLists = new LazyRidListRelation<TypeDefinitionRow>(metadata, TableIndex.Field, TableIndex.TypeDef,

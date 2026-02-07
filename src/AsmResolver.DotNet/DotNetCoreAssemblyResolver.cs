@@ -125,15 +125,10 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         protected override string? ProbeAssemblyFilePath(AssemblyDescriptor assembly, ModuleDefinition? originModule)
         {
-            // Prefer assemblies in the search directories, in case .NET libraries are shipped with the application.
-            string? path = ProbeSearchDirectories(assembly, originModule);
+            string? path = null;
 
-            if (path is null)
-            {
-                // If failed, probe the runtime installation directories.
-                if (assembly.GetPublicKeyToken() is not null)
-                    path = ProbeRuntimeDirectories(assembly);
-            }
+            path ??= ProbeRuntimeDirectories(assembly);
+            path ??= ProbeSearchDirectories(assembly, originModule);
 
             return path;
         }

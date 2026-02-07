@@ -26,28 +26,68 @@ public partial class RuntimeContext
     private readonly ConcurrentDictionary<ITypeDescriptor, TypeDefinition> _typeCache = new();
 
     /// <summary>
-    /// Creates a new runtime context.
+    /// Creates a new .NET (Core) runtime context.
     /// </summary>
-    /// <param name="baseImage">The executable file to base the runtime context on.</param>
+    /// <param name="configuration">The configuration file to base the runtime context on.</param>
+    /// <param name="sourceDirectory">The source directory to assume the main assemblies are stored in.</param>
     /// <param name="readerParameters">The parameters to use when reading modules in this context.</param>
     /// <param name="searchDirectories">Additional search directories to be added to the assembly resolution system.</param>
     public RuntimeContext(
-        PEImage baseImage,
+        RuntimeConfiguration configuration,
+        string? sourceDirectory = null,
         ModuleReaderParameters? readerParameters = null,
         IEnumerable<string>? searchDirectories = null)
     {
-        if (baseImage.DotNetDirectory is null)
+        if (!configuration.TryGetTargetRuntime(out var runtime))
+            throw new ArgumentException("Could not infer target runtime from the runtime configuration.");
+        if (!runtime.IsNetCoreApp)
+            throw new ArgumentException("Runtime specified by the configuration is not a .NET or .NET Core runtime.");
+
+        DefaultReaderParameters = readerParameters is not null
+            ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
+            : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
+
+        TargetRuntime = runtime;
+
+        var resolver = new DotNetCoreAssemblyResolver(
+            configuration,
+            sourceDirectory: sourceDirectory,
+            readerParameters: DefaultReaderParameters
+        );
+        AddSearchDirectories(resolver, searchDirectories);
+        AssemblyResolver = resolver;
+
+        RuntimeCorLib = TargetRuntime.GetAssumedImplCorLib();
+        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
+    }
+
+    /// <summary>
+    /// Creates a new runtime context based on a PE image.
+    /// </summary>
+    /// <param name="image">The executable file to base the runtime context on.</param>
+    /// <param name="readerParameters">The parameters to use when reading modules in this context.</param>
+    /// <param name="searchDirectories">Additional search directories to be added to the assembly resolution system.</param>
+    public RuntimeContext(
+        PEImage image,
+        ModuleReaderParameters? readerParameters = null,
+        IEnumerable<string>? searchDirectories = null)
+    {
+        if (image.DotNetDirectory is null)
             throw new ArgumentException("PE does not have a .NET data directory.");
 
         DefaultReaderParameters = readerParameters is not null
             ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
             : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
 
-        TargetRuntime = TargetRuntimeProber.GetLikelyTargetRuntime(baseImage);
+        // If we cannot determine the target runtime the image was compiled against, assume .netfx 4.0 since it's
+        // the most common case for standalone binaries.
+        TargetRuntime = TargetRuntimeProber.TryGetLikelyTargetRuntime(image, out var originalTargetRuntime)
+            ? originalTargetRuntime
+            : DotNetRuntimeInfo.NetFramework(4, 0);
 
         // If this image was created from a file, check if we have a runtimeconfig.json file in the same directory
         // that we can use to determine the intended target runtime for.
-        if (baseImage.FilePath is { Length: > 0 } path
+        if (image.FilePath is { Length: > 0 } path
             && Path.ChangeExtension(path, ".runtimeconfig.json") is { } runtimeConfigPath
             && File.Exists(runtimeConfigPath))
         {
@@ -56,14 +96,19 @@ public partial class RuntimeContext
                 var config = RuntimeConfiguration.FromFile(runtimeConfigPath);
                 if (config?.TryGetTargetRuntime(out var runtime) is true)
                 {
-                    // This must be a .NET (Core) image load.
-                    AssemblyResolver = new DotNetCoreAssemblyResolver(
+                    // This image is loaded using .NET (Core).
+                    var resolver = new DotNetCoreAssemblyResolver(
                         config,
                         sourceDirectory: Path.GetFullPath(Path.GetDirectoryName(path)!),
                         fallbackVersion: TargetRuntime.IsNetCoreApp ? TargetRuntime.Version : null, // In case config is incomplete.
                         readerParameters: DefaultReaderParameters
                     );
+                    AssemblyResolver = resolver;
 
+                    // ReSharper disable once PossibleMultipleEnumeration
+                    AddSearchDirectories(resolver, searchDirectories);
+
+                    // Assume the runtimeconfig.json file is leading.
                     TargetRuntime = runtime;
                 }
             }
@@ -77,11 +122,12 @@ public partial class RuntimeContext
         if (AssemblyResolver is null)
         {
             // AnyCPU or platform specific?
-            bool? is32Bit = (baseImage.DotNetDirectory.Flags & DotNetDirectoryFlags.ILOnly) == 0
-                && Platform.TryGet(baseImage.MachineType, out var platform)
+            bool? is32Bit = (image.DotNetDirectory.Flags & DotNetDirectoryFlags.ILOnly) == 0
+                && Platform.TryGet(image.MachineType, out var platform)
                     ? platform.Is32Bit
                     : null;
 
+            // ReSharper disable once PossibleMultipleEnumeration
             AssemblyResolver = CreateAssemblyResolver(TargetRuntime, is32Bit, DefaultReaderParameters, searchDirectories);
         }
 
@@ -241,13 +287,21 @@ public partial class RuntimeContext
                 break;
         }
 
-        if (searchDirectories is not null)
-        {
-            foreach (string path in searchDirectories)
-                resolver.SearchDirectories.Add(path);
-        }
+        AddSearchDirectories(resolver, searchDirectories);
 
         return resolver;
+    }
+
+    private static void AddSearchDirectories(AssemblyResolverBase resolver, IEnumerable<string>? searchDirectories)
+    {
+        if (searchDirectories is not null)
+        {
+            foreach (string? path in searchDirectories)
+            {
+                if (path is not null)
+                    resolver.SearchDirectories.Add(path);
+            }
+        }
     }
 
     /// <summary>
