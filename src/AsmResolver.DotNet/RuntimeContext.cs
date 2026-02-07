@@ -4,11 +4,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using AsmResolver.DotNet.Bundles;
+using AsmResolver.DotNet.Config.Json;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.IO;
 using AsmResolver.PE;
+using AsmResolver.PE.DotNet;
 using AsmResolver.PE.File;
+using AsmResolver.PE.Platforms;
 
 namespace AsmResolver.DotNet;
 
@@ -25,43 +28,88 @@ public partial class RuntimeContext
     /// <summary>
     /// Creates a new runtime context.
     /// </summary>
-    /// <param name="targetRuntime">The target runtime version.</param>
-    public RuntimeContext(DotNetRuntimeInfo targetRuntime)
-        : this(targetRuntime, null, null, null)
-    {
-    }
-
-    /// <summary>
-    /// Creates a new runtime context.
-    /// </summary>
-    /// <param name="targetRuntime">The target runtime version.</param>
+    /// <param name="baseImage">The executable file to base the runtime context on.</param>
     /// <param name="readerParameters">The parameters to use when reading modules in this context.</param>
-    public RuntimeContext(DotNetRuntimeInfo targetRuntime, ModuleReaderParameters readerParameters)
-        : this(targetRuntime, null, null, readerParameters)
+    /// <param name="searchDirectories">Additional search directories to be added to the assembly resolution system.</param>
+    public RuntimeContext(
+        PEImage baseImage,
+        ModuleReaderParameters? readerParameters = null,
+        IEnumerable<string>? searchDirectories = null)
     {
+        if (baseImage.DotNetDirectory is null)
+            throw new ArgumentException("PE does not have a .NET data directory.");
+
+        DefaultReaderParameters = readerParameters is not null
+            ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
+            : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
+
+        TargetRuntime = TargetRuntimeProber.GetLikelyTargetRuntime(baseImage);
+
+        // If this image was created from a file, check if we have a runtimeconfig.json file in the same directory
+        // that we can use to determine the intended target runtime for.
+        if (baseImage.FilePath is { Length: > 0 } path
+            && Path.ChangeExtension(path, ".runtimeconfig.json") is { } runtimeConfigPath
+            && File.Exists(runtimeConfigPath))
+        {
+            try
+            {
+                var config = RuntimeConfiguration.FromFile(runtimeConfigPath);
+                if (config?.TryGetTargetRuntime(out var runtime) is true)
+                {
+                    // This must be a .NET (Core) image load.
+                    AssemblyResolver = new DotNetCoreAssemblyResolver(
+                        config,
+                        sourceDirectory: Path.GetFullPath(Path.GetDirectoryName(path)!),
+                        fallbackVersion: TargetRuntime.IsNetCoreApp ? TargetRuntime.Version : null, // In case config is incomplete.
+                        readerParameters: DefaultReaderParameters
+                    );
+
+                    TargetRuntime = runtime;
+                }
+            }
+            catch
+            {
+                // Assume config is corrupted.
+            }
+        }
+
+        // If we failed to determine the target runtime and resolver, make a best effort guess.
+        if (AssemblyResolver is null)
+        {
+            // AnyCPU or platform specific?
+            bool? is32Bit = (baseImage.DotNetDirectory.Flags & DotNetDirectoryFlags.ILOnly) == 0
+                && Platform.TryGet(baseImage.MachineType, out var platform)
+                    ? platform.Is32Bit
+                    : null;
+
+            AssemblyResolver = CreateAssemblyResolver(TargetRuntime, is32Bit, DefaultReaderParameters, searchDirectories);
+        }
+
+        RuntimeCorLib = TargetRuntime.GetAssumedImplCorLib();
+        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
     }
 
     /// <summary>
     /// Creates a new runtime context.
     /// </summary>
     /// <param name="targetRuntime">The target runtime version.</param>
-    /// <param name="searchDirectories">Additional search directories to assume when resolving dependencies.</param>
-    public RuntimeContext(DotNetRuntimeInfo targetRuntime, IEnumerable<string> searchDirectories)
-        : this(targetRuntime, null, null, null)
+    /// <param name="is32Bit"><c>true</c> if a 32-bit architecture is to be assumed, <c>false</c> if 64-bit, <c>null</c> if platform independent.</param>
+    /// <param name="readerParameters">The parameters to use when reading modules in this context.</param>
+    /// <param name="searchDirectories">Additional search directories to be added to the assembly resolution system.</param>
+    public RuntimeContext(
+        DotNetRuntimeInfo targetRuntime,
+        bool? is32Bit = null,
+        ModuleReaderParameters? readerParameters = null,
+        IEnumerable<string>? searchDirectories = null)
     {
-        var dirs = ((AssemblyResolverBase) AssemblyResolver).SearchDirectories;
-        foreach (string directory in searchDirectories)
-            dirs.Add(directory);
-    }
+        DefaultReaderParameters = readerParameters is not null
+            ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
+            : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
 
-    /// <summary>
-    /// Creates a new runtime context.
-    /// </summary>
-    /// <param name="targetRuntime">The target runtime version.</param>
-    /// <param name="assemblyResolver">The assembly resolver to use when resolving assemblies into this context.</param>
-    public RuntimeContext(DotNetRuntimeInfo targetRuntime, IAssemblyResolver assemblyResolver)
-        : this(targetRuntime, assemblyResolver, null, null)
-    {
+        TargetRuntime = targetRuntime;
+        AssemblyResolver = CreateAssemblyResolver(TargetRuntime, is32Bit, DefaultReaderParameters, searchDirectories);
+        RuntimeCorLib = targetRuntime.GetAssumedImplCorLib();
+        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
     }
 
     /// <summary>
@@ -73,27 +121,18 @@ public partial class RuntimeContext
     /// <param name="readerParameters">The parameters to use when reading modules in this context, or the default ones if null.</param>
     public RuntimeContext(
         DotNetRuntimeInfo targetRuntime,
-        IAssemblyResolver? assemblyResolver,
-        AssemblyDescriptor? corLibReference,
-        ModuleReaderParameters? readerParameters)
+        IAssemblyResolver assemblyResolver,
+        AssemblyDescriptor? corLibReference = null,
+        ModuleReaderParameters? readerParameters = null)
     {
         DefaultReaderParameters = readerParameters is not null
             ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
             : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
 
         TargetRuntime = targetRuntime;
-        AssemblyResolver = assemblyResolver ?? CreateAssemblyResolver(targetRuntime, DefaultReaderParameters);
+        AssemblyResolver = assemblyResolver;
         RuntimeCorLib = corLibReference ?? targetRuntime.GetAssumedImplCorLib();
         SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
-    }
-
-    /// <summary>
-    /// Creates a new runtime context for the provided bundled application.
-    /// </summary>
-    /// <param name="manifest">The bundle to create the runtime context for.</param>
-    public RuntimeContext(BundleManifest manifest)
-        : this(manifest, new ModuleReaderParameters(new ByteArrayFileService()))
-    {
     }
 
     /// <summary>
@@ -101,17 +140,19 @@ public partial class RuntimeContext
     /// </summary>
     /// <param name="manifest">The bundle to create the runtime context for.</param>
     /// <param name="readerParameters">The parameters to use when reading modules in this context.</param>
-    public RuntimeContext(BundleManifest manifest, ModuleReaderParameters readerParameters)
+    public RuntimeContext(BundleManifest manifest, ModuleReaderParameters? readerParameters = null)
     {
+        DefaultReaderParameters = readerParameters is not null
+            ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
+            : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
+
         TargetRuntime = manifest.GetTargetRuntime();
-        DefaultReaderParameters = new ModuleReaderParameters(readerParameters) {RuntimeContext = this};
         AssemblyResolver = new BundleAssemblyResolver(manifest, DefaultReaderParameters);
 
         if (ResolveAssembly(TargetRuntime.GetDefaultCorLib(), null, out var corlib) == ResolutionStatus.Success
             && corlib!.ManifestModule?.CorLibTypeFactory.Object.TryResolve(this, out var type) is true)
         {
             RuntimeCorLib = type.DeclaringModule?.Assembly;
-            ;
         }
 
         SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
@@ -159,23 +200,54 @@ public partial class RuntimeContext
 
     private static AssemblyResolverBase CreateAssemblyResolver(
         DotNetRuntimeInfo runtime,
-        ModuleReaderParameters readerParameters)
+        bool? is32Bit,
+        ModuleReaderParameters readerParameters,
+        IEnumerable<string>? searchDirectories)
     {
+        AssemblyResolverBase resolver;
         switch (runtime.Name)
         {
             case DotNetRuntimeInfo.NetFrameworkName:
             case DotNetRuntimeInfo.NetStandardName when string.IsNullOrEmpty(DotNetCorePathProvider.DefaultInstallationPath):
-                return new DotNetFrameworkAssemblyResolver(readerParameters, MonoPathProvider.Default);
+                resolver = new DotNetFxAssemblyResolver(
+                    runtime.Version,
+                    is32Bit ?? IntPtr.Size == sizeof(uint),
+                    DotNetFxPathProvider.Default,
+                    readerParameters
+                );
+                break;
 
             case DotNetRuntimeInfo.NetStandardName when DotNetCorePathProvider.Default.TryGetLatestStandardCompatibleVersion(runtime.Version, out var coreVersion):
-                return new DotNetCoreAssemblyResolver(coreVersion, readerParameters);
+                resolver = new DotNetCoreAssemblyResolver(
+                    coreVersion,
+                    readerParameters: readerParameters
+                );
+                break;
 
             case DotNetRuntimeInfo.NetCoreAppName:
-                return new DotNetCoreAssemblyResolver(runtime.Version, readerParameters);
+                resolver = new DotNetCoreAssemblyResolver(
+                    runtime.Version,
+                    readerParameters: readerParameters
+                );
+                break;
 
             default:
-                return new DotNetFrameworkAssemblyResolver(readerParameters, MonoPathProvider.Default);
+                resolver = new DotNetFxAssemblyResolver(
+                    runtime.Version,
+                    is32Bit ?? IntPtr.Size == sizeof(uint),
+                    DotNetFxPathProvider.Default,
+                    readerParameters
+                );
+                break;
         }
+
+        if (searchDirectories is not null)
+        {
+            foreach (string path in searchDirectories)
+                resolver.SearchDirectories.Add(path);
+        }
+
+        return resolver;
     }
 
     /// <summary>

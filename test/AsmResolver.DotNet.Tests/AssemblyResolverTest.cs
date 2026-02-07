@@ -1,19 +1,26 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using AsmResolver.DotNet.Config.Json;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.IO;
 using AsmResolver.PE.File;
+using AsmResolver.Tests.Runners;
 using Xunit;
 
 namespace AsmResolver.DotNet.Tests
 {
-    public class AssemblyResolverTest
+    public class AssemblyResolverTest : IClassFixture<TemporaryDirectoryFixture>
     {
         private const string NonWindowsPlatform = "Test checks for the presence of Windows specific runtime libraries.";
 
-        private readonly SignatureComparer _comparer = new();
+        private readonly TemporaryDirectoryFixture _fixture;
+
+        public AssemblyResolverTest(TemporaryDirectoryFixture fixture)
+        {
+            _fixture = fixture;
+        }
 
         [Theory]
         [InlineData(2, 0)]
@@ -21,14 +28,29 @@ namespace AsmResolver.DotNet.Tests
         [InlineData(4, 7)]
         public void ResolveFrameworkCorLib(int major, int minor)
         {
-            var corlib = KnownCorLibs.FromRuntimeInfo(DotNetRuntimeInfo.NetFramework(major, minor));
+            var runtimeInfo = DotNetRuntimeInfo.NetFramework(major, minor);
+            var corlib = KnownCorLibs.FromRuntimeInfo(runtimeInfo);
 
-            var resolver = new DotNetFrameworkAssemblyResolver();
+            var resolver = new DotNetFxAssemblyResolver(runtimeInfo.Version, nint.Size == sizeof(uint));
             var status = resolver.Resolve(corlib, null, out var assemblyDef);
 
             Assert.Equal(ResolutionStatus.Success, status);
             Assert.Equal(corlib.Name, assemblyDef!.Name);
             Assert.NotNull(assemblyDef.ManifestModule!.FilePath);
+        }
+
+        [Fact]
+        public void ResolveFramework20CorLibOnFramework40()
+        {
+            var runtimeInfo = DotNetRuntimeInfo.NetFramework(4, 0);
+            var corlib = KnownCorLibs.MsCorLib_v2_0_0_0;
+
+            var resolver = new DotNetFxAssemblyResolver(runtimeInfo.Version, nint.Size == sizeof(uint));
+            var status = resolver.Resolve(corlib, null, out var assemblyDef);
+
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Equal<AssemblyDescriptor>(KnownCorLibs.MsCorLib_v4_0_0_0, assemblyDef, SignatureComparer.Default);
+            Assert.NotNull(assemblyDef!.ManifestModule!.FilePath);
         }
 
         [Theory]
@@ -53,7 +75,11 @@ namespace AsmResolver.DotNet.Tests
 
             var assemblyRef = KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0;
 
-            var resolver = new DotNetCoreAssemblyResolver(new Version(10, 0), new ModuleReaderParameters(service));
+            var resolver = new DotNetCoreAssemblyResolver(
+                new Version(10, 0),
+                readerParameters: new ModuleReaderParameters(service)
+            );
+
             Assert.Empty(service.GetOpenedFiles());
             Assert.Equal(ResolutionStatus.Success, resolver.Resolve(assemblyRef, null, out _));
             Assert.NotEmpty(service.GetOpenedFiles());
@@ -69,16 +95,22 @@ namespace AsmResolver.DotNet.Tests
                 false,
                 assemblyName.GetPublicKeyToken());
 
-            var config = RuntimeConfiguration.FromJson(@"{
-    ""runtimeOptions"": {
-        ""tfm"": ""netcoreapp3.1"",
-        ""framework"": {
-            ""name"": ""Microsoft.NETCore.App"",
-            ""version"": ""3.1.0""
-        }
-    }
-}");
-            var resolver = new DotNetCoreAssemblyResolver(config, new Version(3, 1, 0));
+            var config = RuntimeConfiguration.FromJson(
+                """
+                {
+                    "runtimeOptions": {
+                        "tfm": "netcoreapp3.1",
+                        "framework": {
+                            "name": "Microsoft.NETCore.App",
+                            "version": "3.1.0"
+                        }
+                    }
+                }
+                """
+            );
+
+            var resolver = new DotNetCoreAssemblyResolver(config);
+
             var status = resolver.Resolve(assemblyRef, null, out var assemblyDef);
 
             Assert.Equal(ResolutionStatus.Success, status);
@@ -100,16 +132,21 @@ namespace AsmResolver.DotNet.Tests
                 assemblyName.GetPublicKeyToken()
             );
 
-            var config = RuntimeConfiguration.FromJson(@"{
-    ""runtimeOptions"": {
-        ""tfm"": ""netcoreapp3.1"",
-        ""framework"": {
-            ""name"": ""Microsoft.WindowsDesktop.App"",
-            ""version"": ""3.1.0""
-        }
-    }
-}");
-            var resolver = new DotNetCoreAssemblyResolver(config, new Version(3, 1, 0));
+            var config = RuntimeConfiguration.FromJson(
+                """
+                {
+                    "runtimeOptions": {
+                        "tfm": "netcoreapp3.1",
+                        "framework": {
+                            "name": "Microsoft.WindowsDesktop.App",
+                            "version": "3.1.0"
+                        }
+                    }
+                }
+                """
+            );
+
+            var resolver = new DotNetCoreAssemblyResolver(config);
             var status = resolver.Resolve(assemblyRef, null, out var assemblyDef);
 
             Assert.Equal(ResolutionStatus.Success, status);
@@ -128,16 +165,20 @@ namespace AsmResolver.DotNet.Tests
                 false,
                 new byte[] {0x31, 0xbf, 0x38, 0x56, 0xad, 0x36, 0x4e, 0x35});
 
-            var config = RuntimeConfiguration.FromJson(@"{
-    ""runtimeOptions"": {
-        ""tfm"": ""netcoreapp3.1"",
-        ""framework"": {
-            ""name"": ""Microsoft.WindowsDesktop.App"",
-            ""version"": ""3.1.0""
-        }
-    }
-}");
-            var resolver = new DotNetCoreAssemblyResolver(config, new Version(3, 1, 0));
+            var config = RuntimeConfiguration.FromJson(
+                """
+                {
+                    "runtimeOptions": {
+                        "tfm": "netcoreapp3.1",
+                        "framework": {
+                            "name": "Microsoft.WindowsDesktop.App",
+                            "version": "3.1.0"
+                        }
+                    }
+                }
+                """)
+            ;
+            var resolver = new DotNetCoreAssemblyResolver(config);
             var status = resolver.Resolve(assemblyRef, null, out var assemblyDef);
 
             Assert.Equal(ResolutionStatus.Success, status);

@@ -1,3 +1,4 @@
+using System.IO;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE;

@@ -238,7 +238,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [Fact]
         public void CompareSimpleTypeDescriptors()
         {
-            var status = new DotNetFrameworkAssemblyResolver().Resolve(KnownCorLibs.MsCorLib_v4_0_0_0, null, out var assembly);
+            var status = new DotNetFxAssemblyResolver(new Version(4,0), false)
+                .Resolve(KnownCorLibs.MsCorLib_v4_0_0_0, null, out var assembly);
 
             Assert.Equal(ResolutionStatus.Success, status);
 

@@ -8,7 +8,7 @@ using AsmResolver.Shims;
 namespace AsmResolver.DotNet
 {
     /// <summary>
-    /// Provides a mechanism for looking up versioned runtimes in a .NET Core / .NET 5.0+ installation folder.
+    /// Provides a mechanism for locating versioned runtimes in a .NET Core / .NET 5.0+ installation folder.
     /// </summary>
     public class DotNetCorePathProvider
     {
@@ -26,7 +26,7 @@ namespace AsmResolver.DotNet
         private const string DotNetDefaultLocationRegistry = "/etc/dotnet/install_location";
 
         private static readonly Regex NetCoreRuntimePattern = new(@"\.NET( Core)? \d+\.\d+\.\d+");
-        private readonly List<DotNetInstallationInfo> _installedRuntimes = new();
+        private readonly List<DotNetInstallationInfo> _installedRuntimes = [];
 
         static DotNetCorePathProvider()
         {

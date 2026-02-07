@@ -334,10 +334,7 @@ namespace AsmResolver.DotNet.Bundles
                 if (file.Type == BundleFileType.RuntimeConfigJson)
                 {
                     var config = RuntimeConfiguration.FromJson(Encoding.UTF8.GetString(file.GetData()));
-                    if (config is not {RuntimeOptions.TargetFrameworkMoniker: { } tfm})
-                        continue;
-
-                    if (DotNetRuntimeInfo.TryParseMoniker(tfm, out targetRuntime))
+                    if (config?.TryGetTargetRuntime(out targetRuntime) is true)
                         return true;
                 }
             }

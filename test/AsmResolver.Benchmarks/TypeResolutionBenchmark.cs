@@ -22,7 +22,7 @@ public class TypeResolutionBenchmark
         var module1 = ModuleDefinition.FromFile(typeof(Class).Assembly.Location, parameters);
 
         if (UsingRuntimeContext)
-            parameters.RuntimeContext = module1.RuntimeContext;
+            parameters = new ModuleReaderParameters(parameters) { RuntimeContext = module1.RuntimeContext };
 
         var module2 = ModuleDefinition.FromFile(typeof(SingleMethod).Assembly.Location, parameters);
 

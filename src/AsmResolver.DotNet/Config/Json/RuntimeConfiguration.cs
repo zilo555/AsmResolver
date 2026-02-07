@@ -89,5 +89,17 @@ namespace AsmResolver.DotNet.Config.Json
         {
             File.WriteAllText(path, ToJson());
         }
+
+        /// <summary>
+        /// Attempts to determine the target runtime based on the contents of the runtime configuration file.
+        /// </summary>
+        /// <param name="targetRuntime">The target runtime.</param>
+        /// <returns><c>true</c> if the runtime was determined successfully, <c>false</c> otherwise.</returns>
+        public bool TryGetTargetRuntime(out DotNetRuntimeInfo targetRuntime)
+        {
+            targetRuntime = default;
+            return !string.IsNullOrEmpty(RuntimeOptions.TargetFrameworkMoniker)
+                && DotNetRuntimeInfo.TryParseMoniker(RuntimeOptions.TargetFrameworkMoniker!, out targetRuntime);
+        }
     }
 }

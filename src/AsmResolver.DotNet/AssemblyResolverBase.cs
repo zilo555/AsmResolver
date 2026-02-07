@@ -12,16 +12,7 @@ namespace AsmResolver.DotNet
     /// </summary>
     public abstract class AssemblyResolverBase : IAssemblyResolver
     {
-        private static readonly string[] BinaryFileExtensions = {".dll", ".exe"};
-
-        /// <summary>
-        /// Initializes the base of an assembly resolver.
-        /// </summary>
-        /// <param name="fileService">The service to use for reading files from the disk.</param>
-        protected AssemblyResolverBase(IFileService fileService)
-        {
-            ReaderParameters = new ModuleReaderParameters(fileService);
-        }
+        private static readonly string[] BinaryFileExtensions = [".dll", ".exe"];
 
         /// <summary>
         /// Initializes the base of an assembly resolver.
@@ -57,20 +48,12 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         public ResolutionStatus Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule, out AssemblyDefinition? result)
         {
-            result = null;
-
-            // Prefer assemblies in the search directories, in case .NET libraries are shipped with the application.
-            string? path = ProbeSearchDirectories(assembly, originModule);
-
+            // Find path to assembly.
+            string? path = ProbeAssemblyFilePath(assembly, originModule);
             if (string.IsNullOrEmpty(path))
             {
-                // If failed, probe the runtime installation directories.
-                if (assembly.GetPublicKeyToken() is not null)
-                    path = ProbeRuntimeDirectories(assembly);
-
-                // If still no suitable file was found, abort.
-                if (string.IsNullOrEmpty(path))
-                    return ResolutionStatus.AssemblyNotFound;
+                result = null;
+                return ResolutionStatus.AssemblyNotFound;
             }
 
             // Attempt to load the file.
@@ -81,7 +64,7 @@ namespace AsmResolver.DotNet
             }
             catch
             {
-                // Wrap into error object.
+                result = null;
                 return ResolutionStatus.AssemblyBadImage;
             }
         }
@@ -95,6 +78,14 @@ namespace AsmResolver.DotNet
         {
             return AssemblyDefinition.FromFile(FileService.OpenFile(path), ReaderParameters);
         }
+
+        /// <summary>
+        /// Attempts to find the file location of the provided assembly descriptor on the disk.
+        /// </summary>
+        /// <param name="assembly">The assembly to locate.</param>
+        /// <param name="originModule">The module to assume the assembly was referenced in.</param>
+        /// <returns>The path to the assembly, or <c>null</c> if none was found.</returns>
+        protected abstract string? ProbeAssemblyFilePath(AssemblyDescriptor assembly, ModuleDefinition? originModule);
 
         /// <summary>
         /// Probes all search directories in <see cref="SearchDirectories"/> for the provided assembly.
@@ -131,13 +122,6 @@ namespace AsmResolver.DotNet
         }
 
         /// <summary>
-        /// Probes all known runtime directories for the provided assembly.
-        /// </summary>
-        /// <param name="assembly">The assembly descriptor to search.</param>
-        /// <returns>The path to the assembly, or <c>null</c> if none was found.</returns>
-        protected abstract string? ProbeRuntimeDirectories(AssemblyDescriptor assembly);
-
-        /// <summary>
         /// Probes a directory for the provided assembly.
         /// </summary>
         /// <param name="assembly">The assembly descriptor to search.</param>
@@ -155,7 +139,7 @@ namespace AsmResolver.DotNet
             {
                 path = PathShim.Combine(directory, assembly.Culture!, assembly.Name);
                 string? result = ProbeFileFromFilePathWithoutExtension(path)
-                                 ?? ProbeFileFromFilePathWithoutExtension(Path.Combine(path, assembly.Name));
+                    ?? ProbeFileFromFilePathWithoutExtension(Path.Combine(path, assembly.Name));
                 if (result is not null)
                     return result;
             }

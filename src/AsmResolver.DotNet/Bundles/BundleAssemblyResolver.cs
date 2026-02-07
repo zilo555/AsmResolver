@@ -9,14 +9,29 @@ namespace AsmResolver.DotNet.Bundles;
 public class BundleAssemblyResolver : IAssemblyResolver
 {
     private readonly BundleManifest _manifest;
-    private readonly DotNetCoreAssemblyResolver _baseResolver;
+    private readonly IAssemblyResolver _baseResolver;
+    private readonly ModuleReaderParameters _readerParameters;
 
-    internal BundleAssemblyResolver(BundleManifest manifest, ModuleReaderParameters readerParameters)
+    /// <summary>
+    /// Creates a new bundle assembly resolver.
+    /// </summary>
+    /// <param name="manifest">The bundle to assume.</param>
+    /// <param name="readerParameters">The reader parameters to use when loading dependencies.</param>
+    /// <param name="baseResolver">The base resolver to use, or <c>null</c> to use the default resolution mechanism.</param>
+    public BundleAssemblyResolver(
+        BundleManifest manifest,
+        ModuleReaderParameters readerParameters,
+        IAssemblyResolver? baseResolver = null)
     {
         _manifest = manifest;
 
         // Bundles are .NET core 3.1+ only -> we can always default to .NET Core assembly resolution.
-        _baseResolver = new DotNetCoreAssemblyResolver(manifest.GetTargetRuntime().Version, readerParameters);
+        _baseResolver = baseResolver ?? new DotNetCoreAssemblyResolver(
+            manifest.GetTargetRuntime().Version,
+            readerParameters: readerParameters
+        );
+
+        _readerParameters = readerParameters;
     }
 
     /// <inheritdoc />
@@ -43,7 +58,7 @@ public class BundleAssemblyResolver : IAssemblyResolver
 
                 if (Path.GetFileNameWithoutExtension(file.RelativePath) == assembly.Name)
                 {
-                    definition = AssemblyDefinition.FromBytes(file.GetData(), _baseResolver.ReaderParameters);
+                    definition = AssemblyDefinition.FromBytes(file.GetData(), _readerParameters);
                     return ResolutionStatus.Success;
                 }
             }

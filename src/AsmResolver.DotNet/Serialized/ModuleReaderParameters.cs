@@ -104,7 +104,7 @@ namespace AsmResolver.DotNet.Serialized
         public string? WorkingDirectory
         {
             get;
-            set;
+            init;
         }
 
         /// <summary>
@@ -113,7 +113,7 @@ namespace AsmResolver.DotNet.Serialized
         public INetModuleResolver? ModuleResolver
         {
             get;
-            set;
+            init;
         }
 
         /// <summary>
@@ -122,7 +122,7 @@ namespace AsmResolver.DotNet.Serialized
         public IMethodBodyReader MethodBodyReader
         {
             get;
-            set;
+            init;
         }
 
         /// <summary>
@@ -131,7 +131,7 @@ namespace AsmResolver.DotNet.Serialized
         public IFieldRvaDataReader FieldRvaDataReader
         {
             get;
-            set;
+            init;
         }
 
         /// <summary>
@@ -143,7 +143,7 @@ namespace AsmResolver.DotNet.Serialized
         public PEReaderParameters PEReaderParameters
         {
             get;
-            set;
+            init;
         }
 
         /// <summary>
@@ -152,7 +152,7 @@ namespace AsmResolver.DotNet.Serialized
         public RuntimeContext? RuntimeContext
         {
             get;
-            set;
+            init;
         }
     }
 }

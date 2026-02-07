@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Linq;
 using AsmResolver.DotNet.Signatures;
@@ -20,12 +19,12 @@ namespace AsmResolver.DotNet.Tests
         {
             _fwContext = new RuntimeContext(
                 DotNetRuntimeInfo.NetFramework(4, 0),
-                [Path.GetDirectoryName(typeof(MetadataResolverTest).Assembly.Location)]
+                searchDirectories: [Path.GetDirectoryName(typeof(MetadataResolverTest).Assembly.Location)]
             );
 
             _coreContext = new RuntimeContext(
                 DotNetRuntimeInfo.NetCoreApp(3, 1, 0),
-                [Path.GetDirectoryName(typeof(MetadataResolverTest).Assembly.Location)]
+                searchDirectories: [Path.GetDirectoryName(typeof(MetadataResolverTest).Assembly.Location)]
             );
 
             _fwComparer = new SignatureComparer(_fwContext);

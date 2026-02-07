@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="IsExternalInit" Version="1.0.3" />
     <ProjectReference Include="..\AsmResolver.PE\AsmResolver.PE.csproj" />
     <ProjectReference
       Include="..\..\tools\AsmResolver.SourceGenerators\AsmResolver.SourceGenerators.csproj"

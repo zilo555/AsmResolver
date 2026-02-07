@@ -8,6 +8,7 @@ using AsmResolver.PE.Debug;
 using AsmResolver.PE.DotNet;
 using AsmResolver.PE.DotNet.Metadata;
 using AsmResolver.PE.DotNet.Metadata.Tables;
+using AsmResolver.PE.Platforms;
 using AsmResolver.PE.Win32Resources;
 
 namespace AsmResolver.DotNet.Serialized
@@ -37,16 +38,15 @@ namespace AsmResolver.DotNet.Serialized
             if (metadata is null)
                 throw new BadImageFormatException("Input PE image does not contain a .NET metadata directory.");
 
-            var tablesStream = metadata.GetStream<TablesStream>();
+            ReaderContext = new ModuleReaderContext(peImage, this, readerParameters);
+
+            var tablesStream = ReaderContext.Streams.TablesStream;
             if (tablesStream is null)
                 throw new BadImageFormatException(".NET metadata directory does not define a tables stream.");
 
             var moduleTable = tablesStream.GetTable<ModuleDefinitionRow>(TableIndex.Module);
             if (!moduleTable.TryGetByRid(1, out _row))
                 throw new BadImageFormatException("Module definition table does not contain any rows.");
-
-            // Store parameters in fields.
-            ReaderContext = new ModuleReaderContext(peImage, this, readerParameters);
 
             // Copy over PE header fields.
             FilePath = peImage.FilePath;
@@ -70,10 +70,7 @@ namespace AsmResolver.DotNet.Serialized
             OriginalTargetRuntime = TargetRuntimeProber.GetLikelyTargetRuntime(peImage);
 
             // Inherit or create new runtime context.
-            if (readerParameters.RuntimeContext is { } runtimeContext)
-                RuntimeContext = runtimeContext;
-            else
-                RuntimeContext = new RuntimeContext(OriginalTargetRuntime, readerParameters);
+            RuntimeContext = readerParameters.RuntimeContext ?? new RuntimeContext(peImage, readerParameters);
 
             // Prepare lazy RID lists.
             _fieldLists = new LazyRidListRelation<TypeDefinitionRow>(metadata, TableIndex.Field, TableIndex.TypeDef,
