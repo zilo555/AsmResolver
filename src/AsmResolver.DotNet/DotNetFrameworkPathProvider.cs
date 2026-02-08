@@ -98,7 +98,7 @@ public sealed class DotNetFrameworkPathProvider : DotNetFxPathProvider
         if (Directory.Exists(version4Path))
         {
             result.Add(new DotNetFxInstallation(
-                new Version(2, 0),
+                new Version(4, 0),
                 version4Path,
                 null,
                 gacGroup4.Gac,
