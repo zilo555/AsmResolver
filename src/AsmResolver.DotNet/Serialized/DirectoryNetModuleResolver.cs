@@ -36,7 +36,7 @@ namespace AsmResolver.DotNet.Serialized
         }
 
         /// <inheritdoc />
-        public ModuleDefinition? Resolve(string name)
+        public ModuleDefinition? Resolve(RuntimeContext runtimeContext, string name)
         {
             string path = Path.Combine(Directory, name);
             if (!File.Exists(path))
@@ -44,7 +44,8 @@ namespace AsmResolver.DotNet.Serialized
 
             try
             {
-                return ModuleDefinition.FromFile(path, ReaderParameters);
+                var parameters = new ModuleReaderParameters(ReaderParameters) { RuntimeContext = runtimeContext };
+                return ModuleDefinition.FromFile(path, parameters);
             }
             catch
             {
