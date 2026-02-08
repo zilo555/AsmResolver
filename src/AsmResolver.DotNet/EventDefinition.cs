@@ -201,7 +201,7 @@ namespace AsmResolver.DotNet
 
         ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
-            definition = null;
+            definition = this;
             return ResolutionStatus.Success;
         }
 

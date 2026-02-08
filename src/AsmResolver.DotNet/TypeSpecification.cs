@@ -124,10 +124,13 @@ namespace AsmResolver.DotNet
 
         ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
-            return ((ITypeDescriptor) this).Resolve(context, out definition);
+            var result = Resolve(context, out var type);
+            definition = type;
+            return result;
         }
 
-        ResolutionStatus ITypeDescriptor.Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        /// <inheritdoc />
+        public ResolutionStatus Resolve(RuntimeContext? context, out TypeDefinition? definition)
         {
             if (Signature is null)
             {

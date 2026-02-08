@@ -538,7 +538,7 @@ namespace AsmResolver.DotNet
         {
             get
             {
-                return !this.IsTypeOf("System", nameof(Enum)) // System.Enum itself is considered by the runtime a value type.
+                return !this.IsTypeOf("System", nameof(Enum)) // System.Enum itself is not considered a value type by the runtime.
                     && BaseType is not null
                     && BaseType.Namespace == "System"
                     && BaseType.Name?.Value is nameof(ValueType) or nameof(Enum);

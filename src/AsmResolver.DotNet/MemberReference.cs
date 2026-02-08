@@ -187,17 +187,27 @@ namespace AsmResolver.DotNet
                 definition = method;
             else if (IsField && ((IFieldDescriptor) this).TryResolve(context, out var field))
                 definition = field;
+            else
+                definition = null;
 
-            definition = null;
             return definition is not null;
         }
 
         ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
             if (IsMethod)
-                return ((IMethodDescriptor) this).Resolve(context, out definition);
+            {
+                var status = ((IMethodDescriptor) this).Resolve(context, out var method);
+                definition = method;
+                return status;
+            }
+
             if (IsField)
-                return ((IFieldDescriptor) this).Resolve(context, out definition);
+            {
+                var status = ((IFieldDescriptor) this).Resolve(context, out var field);
+                definition = field;
+                return status;
+            }
 
             definition = null;
             return ResolutionStatus.InvalidReference;

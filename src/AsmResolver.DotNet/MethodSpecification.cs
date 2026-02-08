@@ -97,7 +97,8 @@ namespace AsmResolver.DotNet
             return ((IMethodDescriptor) this).Resolve(context, out definition);
         }
 
-        ResolutionStatus IMethodDescriptor.Resolve(RuntimeContext? context, out MethodDefinition? definition)
+        /// <inheritdoc />
+        public ResolutionStatus Resolve(RuntimeContext? context, out MethodDefinition? definition)
         {
             if (Method is null)
             {
