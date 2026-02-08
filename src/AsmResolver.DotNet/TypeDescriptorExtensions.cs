@@ -22,10 +22,7 @@ namespace AsmResolver.DotNet
             /// <returns>The constructed by-reference type signature.</returns>
             public GenericInstanceTypeSignature MakeGenericInstanceType(RuntimeContext? context, params TypeSignature[] typeArguments)
             {
-                return type.ToTypeDefOrRef().MakeGenericInstanceType(
-                    type.TryGetIsValueType(context) ?? throw new ArgumentException($"Could not determine whether {type.SafeToString()} is a value type or not."),
-                    typeArguments
-                );
+                return type.ToTypeDefOrRef().MakeGenericInstanceType(type.GetIsValueType(context), typeArguments);
             }
 
             /// <summary>
@@ -128,6 +125,7 @@ namespace AsmResolver.DotNet
             /// </exception>
             public TypeReference CreateTypeReference(string nestedTypeName)
             {
+                // Note: Runtime does not allow nesting with a TypeSpecification as parent.
                 var parent = type switch
                 {
                     TypeReference reference => reference,
@@ -300,7 +298,7 @@ namespace AsmResolver.DotNet
                 [DoesNotReturn]
                 static FieldDefinition ThrowStatusError(IFieldDescriptor field, ResolutionStatus status) => status switch
                 {
-                    ResolutionStatus.InvalidReference => throw new InvalidOperationException($"The method reference is invalid."),
+                    ResolutionStatus.InvalidReference => throw new InvalidOperationException($"The field reference is invalid."),
                     ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the declaring assembly {field.DeclaringType?.Scope?.GetAssembly().SafeToString()} of field {field.SafeToString()}."),
                     ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The resolved declaring assembly for {field.DeclaringType?.Scope?.GetAssembly().SafeToString()} of field {field.SafeToString()} is in an incorrect format."),
                     ResolutionStatus.TypeNotFound => throw new InvalidOperationException($"The declaring type of {field.SafeToString()} does not exist in the resolved declaring assembly."),
