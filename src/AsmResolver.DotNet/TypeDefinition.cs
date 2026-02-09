@@ -416,6 +416,16 @@ namespace AsmResolver.DotNet
         }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the current type is a Windows Runtime type.
+        /// </summary>
+        public bool IsWindowsRuntime
+        {
+            get => (Attributes & TypeAttributes.WindowsRuntime) != 0;
+            set => Attributes = (Attributes & ~TypeAttributes.WindowsRuntime)
+                                | (value ? TypeAttributes.WindowsRuntime : 0);
+        }
+
+        /// <summary>
         /// Gets or sets a value indicating the runtime should initialize the class before any time before the first
         /// static field access.
         /// </summary>
