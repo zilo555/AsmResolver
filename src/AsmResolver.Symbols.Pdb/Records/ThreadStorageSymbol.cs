@@ -64,7 +64,7 @@ public partial class ThreadStorageSymbol : CodeViewSymbol, IVariableSymbol
         set;
     }
 
-    // <inheritdoc />
+    /// <inheritdoc />
     [LazyProperty]
     public partial CodeViewTypeRecord? VariableType
     {
@@ -76,7 +76,7 @@ public partial class ThreadStorageSymbol : CodeViewSymbol, IVariableSymbol
     /// Gets or sets the name of the symbol.
     /// </summary>
     [LazyProperty]
-    public partial Utf8String Name
+    public partial Utf8String? Name
     {
         get;
         set;
