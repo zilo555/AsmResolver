@@ -91,7 +91,7 @@ public partial class TrampolineSymbol : CodeViewSymbol
     /// <inheritdoc />
     public override string ToString()
     {
-        return $"S_TRAMPOLINE: [{TargetSegmentIndex:X4}:{TargetOffset:X8}] [{TargetSegmentIndex:X4}:{TargetOffset:X8}]";
+        return $"S_TRAMPOLINE: [{TargetSegmentIndex:X4}:{TargetOffset:X8}] [{ThunkSegmentIndex:X4}:{ThunkOffset:X8}]";
     }
 }
 
