@@ -89,5 +89,15 @@ namespace AsmResolver.Symbols.Pdb.Tests.Properties {
                 return ((byte[])(obj));
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] TrampolinePdb {
+            get {
+                object obj = ResourceManager.GetObject("TrampolinePdb", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
     }
 }

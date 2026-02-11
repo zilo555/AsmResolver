@@ -19,8 +19,8 @@ public class SerializedTrampolineSymbol : TrampolineSymbol
     {
         TrampolineSymbolKind kind = (TrampolineSymbolKind)reader.ReadUInt16();
         ushort thunkSize = reader.ReadUInt16();
-        ushort thunkOffset = reader.ReadUInt16();
-        ushort targetOffset = reader.ReadUInt16();
+        uint thunkOffset = reader.ReadUInt32();
+        uint targetOffset = reader.ReadUInt32();
         ushort thunkSegment = reader.ReadUInt16();
         ushort targetSegment = reader.ReadUInt16();
 
