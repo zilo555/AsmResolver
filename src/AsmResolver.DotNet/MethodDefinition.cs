@@ -831,11 +831,26 @@ namespace AsmResolver.DotNet
         /// </remarks>
         public static MethodDefinition CreateConstructor(ModuleDefinition module, params TypeSignature[] parameterTypes)
         {
+            return CreateConstructor(module.CorLibTypeFactory, parameterTypes);
+        }
+
+        /// <summary>
+        /// Creates a new public constructor for a type that is executed when its declaring type is loaded by the CLR.
+        /// </summary>
+        /// <param name="corLibTypeFactory">The <see cref="CorLibTypeFactory"/> instance to use to resolve fundamental type signatures.</param>
+        /// <param name="parameterTypes">An ordered list of types the parameters of the constructor should have.</param>
+        /// <returns>The constructor.</returns>
+        /// <remarks>
+        /// The resulting method's body will consist of a single <c>ret</c> instruction, and does not contain a call to
+        /// any of the declaring type's base classes. For an idiomatic .NET binary, this should be added.
+        /// </remarks>
+        public static MethodDefinition CreateConstructor(CorLibTypeFactory corLibTypeFactory, params TypeSignature[] parameterTypes)
+        {
             var ctor = new MethodDefinition(".ctor",
                 MethodAttributes.Public
                 | MethodAttributes.SpecialName
                 | MethodAttributes.RuntimeSpecialName,
-                MethodSignature.CreateInstance(module.CorLibTypeFactory.Void, parameterTypes));
+                MethodSignature.CreateInstance(corLibTypeFactory.Void, parameterTypes));
 
             for (int i = 0; i < parameterTypes.Length; i++)
                 ctor.ParameterDefinitions.Add(new ParameterDefinition(null));
