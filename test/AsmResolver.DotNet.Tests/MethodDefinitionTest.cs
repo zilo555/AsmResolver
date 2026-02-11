@@ -641,7 +641,7 @@ namespace AsmResolver.DotNet.Tests
         }
 
         [Fact]
-        public void CreateParameterlessConstructor()
+        public void CreateParameterlessConstructorFromModuleDefinition()
         {
             var module = ModuleDefinition.FromFile(typeof(Constructors).Assembly.Location, TestReaderParameters);
             var ctor = MethodDefinition.CreateConstructor(module);
@@ -653,7 +653,7 @@ namespace AsmResolver.DotNet.Tests
         }
 
         [Fact]
-        public void CreateConstructor()
+        public void CreateConstructorFromModuleDefinition()
         {
             var module = ModuleDefinition.FromFile(typeof(Constructors).Assembly.Location, TestReaderParameters);
             var factory = module.CorLibTypeFactory;
@@ -661,6 +661,29 @@ namespace AsmResolver.DotNet.Tests
 
             Assert.True(ctor.IsConstructor);
             Assert.Equal(new[] {factory.Int32, factory.Double}, ctor.Parameters.Select(x => x.ParameterType));
+        }
+
+        [Fact]
+        public void CreateParameterlessConstructorFromCorLibTypeFactory()
+        {
+            var module = ModuleDefinition.FromFile(typeof(Constructors).Assembly.Location, TestReaderParameters);
+            var ctor = MethodDefinition.CreateConstructor(module.CorLibTypeFactory);
+
+            Assert.True(ctor.IsConstructor);
+            Assert.Empty(ctor.Parameters);
+            Assert.NotNull(ctor.CilMethodBody);
+            Assert.Equal(CilOpCodes.Ret, Assert.Single(ctor.CilMethodBody.Instructions).OpCode);
+        }
+
+        [Fact]
+        public void CreateConstructorFromCorLibTypeFactory()
+        {
+            var module = ModuleDefinition.FromFile(typeof(Constructors).Assembly.Location, TestReaderParameters);
+            var factory = module.CorLibTypeFactory;
+            var ctor = MethodDefinition.CreateConstructor(factory, factory.Int32, factory.Double);
+
+            Assert.True(ctor.IsConstructor);
+            Assert.Equal(new[] { factory.Int32, factory.Double }, ctor.Parameters.Select(x => x.ParameterType));
         }
 
         [Fact]
