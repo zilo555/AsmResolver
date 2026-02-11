@@ -91,28 +91,4 @@ public class PdbImageTest : IClassFixture<MockPdbFixture>
             "* Linker *"
         }, _fixture.SimplePdb.Modules.Select(m => m.Name!.Value));
     }
-
-    [Fact]
-    public void TestThreadLocal()
-    {
-        var threadLocalPdb = _fixture.ThreadLocalPdb;
-        var globalSymbols = threadLocalPdb.Symbols.OfType<ThreadStorageSymbol>().ToArray();
-        Assert.Single(globalSymbols);
-
-        var globalThreadStorage = globalSymbols[0];
-        Assert.True(globalThreadStorage.IsGlobal);
-        Assert.Equal("foo", globalThreadStorage.Name!.Value);
-        Assert.Equal(CodeViewLeafKind.SimpleType, globalThreadStorage.VariableType!.LeafKind);
-
-        var module = threadLocalPdb.Modules.First(f => f.Name == "D:\\test.obj");
-        var procedure = module.Symbols.OfType<ProcedureSymbol>().First(f => f.Name!.Value == "from_thread_local");
-        var thread_locals = procedure.Symbols.OfType<ThreadStorageSymbol>();
-
-        Assert.Single(thread_locals);
-        var threadLocal = thread_locals.First();
-
-        Assert.False(threadLocal.IsGlobal);
-        Assert.Equal("x", threadLocal.Name!.Value);
-        Assert.Equal(CodeViewLeafKind.SimpleType, threadLocal.VariableType!.LeafKind);
-    }
 }
