@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using AsmResolver.PE.File;
 using AsmResolver.Symbols.Pdb.Leaves;
 using AsmResolver.Symbols.Pdb.Metadata.Dbi;
-using AsmResolver.Symbols.Pdb.Records;
 using Xunit;
 
 namespace AsmResolver.Symbols.Pdb.Tests;

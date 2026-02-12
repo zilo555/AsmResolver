@@ -1,7 +1,4 @@
 using AsmResolver.IO;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace AsmResolver.Symbols.Pdb.Records.Serialized;
 
