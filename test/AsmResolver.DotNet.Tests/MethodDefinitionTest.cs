@@ -725,7 +725,9 @@ namespace AsmResolver.DotNet.Tests
         [Fact]
         public void VerifyAsyncMethodSignature()
         {
-            var module = new ModuleDefinition("Module", KnownCorLibs.SystemRuntime_v9_0_0_0);
+            var context = new RuntimeContext(DotNetRuntimeInfo.NetCoreApp(10, 0));
+            var module = new ModuleDefinition("Module", context.TargetRuntime);
+
             var factory = module.CorLibTypeFactory;
 
             var method = new MethodDefinition("Method", MethodAttributes.Static, MethodSignature.CreateStatic(factory.Void))
@@ -750,7 +752,7 @@ namespace AsmResolver.DotNet.Tests
                 .CreateTypeReference("System", "Span`1")
                 .MakeGenericInstanceType(isValueType: true, factory.Int32);
 
-            Assert.Throws<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
+            Assert.Throws<AggregateException>(() => method.VerifyMetadata(context));
         }
 
         [Fact]
