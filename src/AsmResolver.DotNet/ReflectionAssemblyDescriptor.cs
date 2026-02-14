@@ -63,12 +63,12 @@ namespace AsmResolver.DotNet
         public override byte[]? GetPublicKeyToken() => _assemblyName.GetPublicKeyToken();
 
         /// <inheritdoc />
-        protected override ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly)
+        public override ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly)
         {
             if (context is null)
             {
                 assembly = null;
-                return ResolutionStatus.AssemblyNotFound;
+                return ResolutionStatus.MissingRuntimeContext;
             }
 
             return context.ResolveAssembly(this, ContextModule, out assembly);

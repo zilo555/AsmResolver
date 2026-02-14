@@ -111,10 +111,9 @@ namespace AsmResolver.DotNet.Tests
                     }
                 }
                 """
-            );
+            )!;
 
             var resolver = new DotNetCoreAssemblyResolver(config);
-
             var status = resolver.Resolve(assemblyRef, null, out var assemblyDef);
 
             Assert.Equal(ResolutionStatus.Success, status);
@@ -198,19 +197,21 @@ namespace AsmResolver.DotNet.Tests
         {
             Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows), NonWindowsPlatform);
 
-            var context = new RuntimeContext(
-                legacy ? DotNetRuntimeInfo.NetFramework(2, 0) : DotNetRuntimeInfo.NetFramework(4, 0),
-                is32Bit: true
+            var reference = new AssemblyReference(
+                name: "System.Web",
+                version: legacy ? new Version(2, 0, 0, 0) : new Version(4, 0, 0, 0),
+                publicKey: false,
+                publicKeyOrToken: [0xb0, 0x3f, 0x5f, 0x7f, 0x11, 0xd5, 0x0a, 0x3a]
             );
 
-            var resolved = new AssemblyReference(
-                    name: "System.Web",
-                    version: legacy ? new Version(2, 0, 0, 0) : new Version(4, 0, 0, 0),
-                    publicKey: false,
-                    publicKeyOrToken: [0xb0, 0x3f, 0x5f, 0x7f, 0x11, 0xd5, 0x0a, 0x3a]
-                ).Resolve(context);
+            var resolver = new DotNetFxAssemblyResolver(
+                legacy ? new Version(2, 0) : new Version(4, 0),
+                is32Bit: true
+            );
+            var status = resolver.Resolve(reference, null, out var definition);
 
-            Assert.Contains("GAC_32", resolved.ManifestModule!.FilePath!);
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Contains("GAC_32", definition!.ManifestModule!.FilePath!);
         }
 
         [SkippableTheory]
@@ -220,19 +221,21 @@ namespace AsmResolver.DotNet.Tests
         {
             Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows), NonWindowsPlatform);
 
-            var context = new RuntimeContext(
-                legacy ? DotNetRuntimeInfo.NetFramework(2, 0) : DotNetRuntimeInfo.NetFramework(4, 0),
-                is32Bit: false
-            );
-
-            var resolved = new AssemblyReference(
+            var reference = new AssemblyReference(
                 name: "System.Web",
                 version: legacy ? new Version(2, 0, 0, 0) : new Version(4, 0, 0, 0),
                 publicKey: false,
                 publicKeyOrToken: [0xb0, 0x3f, 0x5f, 0x7f, 0x11, 0xd5, 0x0a, 0x3a]
-            ).Resolve(context);
+            );
 
-            Assert.Contains("GAC_64", resolved.ManifestModule!.FilePath!);
+            var resolver = new DotNetFxAssemblyResolver(
+                legacy ? new Version(2, 0) : new Version(4, 0),
+                is32Bit: false
+            );
+            var status = resolver.Resolve(reference, null, out var definition);
+
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Contains("GAC_64", definition!.ManifestModule!.FilePath!);
         }
 
         [SkippableTheory]
@@ -242,18 +245,21 @@ namespace AsmResolver.DotNet.Tests
         {
             Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows), NonWindowsPlatform);
 
-            var context = new RuntimeContext(
-                legacy ? DotNetRuntimeInfo.NetFramework(2, 0) : DotNetRuntimeInfo.NetFramework(4, 0)
-            );
-
-            var resolved = new AssemblyReference(
+            var reference = new AssemblyReference(
                 name: "System",
                 version: legacy ? new Version(2, 0, 0, 0) : new Version(4, 0, 0, 0),
                 publicKey: false,
                 publicKeyOrToken: [0xB7, 0x7A, 0x5C, 0x56, 0x19, 0x34, 0xE0, 0x89]
-            ).Resolve(context);
+            );
 
-            Assert.Contains("GAC_MSIL", resolved.ManifestModule!.FilePath!);
+            var resolver = new DotNetFxAssemblyResolver(
+                legacy ? new Version(2, 0) : new Version(4, 0),
+                is32Bit: false
+            );
+            var status = resolver.Resolve(reference, null, out var definition);
+
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Contains("GAC_MSIL", definition!.ManifestModule!.FilePath!);
         }
 
         [Fact]
@@ -279,12 +285,11 @@ namespace AsmResolver.DotNet.Tests
                 ]
             );
 
-            var module = new ModuleDefinition("Dummy", KnownCorLibs.SystemRuntime_v6_0_0_0);
-            module.AssemblyReferences.Add(reference);
+            var resolver = new DotNetCoreAssemblyResolver(new Version(6, 0));
+            var status = resolver.Resolve(reference, null, out var definition);
 
-            var definition = reference.Resolve(module.RuntimeContext);
-
-            Assert.Equal(reference.Name, definition.Name);
+            Assert.Equal(ResolutionStatus.Success, status);
+            Assert.Equal(reference.Name, definition!.Name);
             Assert.NotNull(definition.ManifestModule!.FilePath);
         }
 

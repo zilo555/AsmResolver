@@ -272,6 +272,7 @@ namespace AsmResolver.DotNet
             [DoesNotReturn]
             static AssemblyDefinition ThrowStatusError(AssemblyDescriptor assembly, ResolutionStatus status) => status switch
             {
+                ResolutionStatus.MissingRuntimeContext => throw new ArgumentNullException(nameof(context), "The assembly reference requires a runtime context to be resolved"),
                 ResolutionStatus.InvalidReference => throw new ArgumentException($"The assembly reference is invalid"),
                 ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the assembly {assembly.SafeToString()}."),
                 ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The assembly {assembly.SafeToString()} is in an invalid format."),
@@ -296,7 +297,7 @@ namespace AsmResolver.DotNet
         /// <param name="context">The context to assume when resolving the assembly.</param>
         /// <param name="assembly">The resolved assembly, or <c>null</c> if resolution failed.</param>
         /// <returns>A value describing the success or failure status of the assembly resolution.</returns>
-        protected abstract ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly);
+        public abstract ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly);
 
         /// <summary>
         /// Constructs a new assembly reference based on the descriptor.

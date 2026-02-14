@@ -8,9 +8,9 @@ namespace AsmResolver.DotNet.Serialized
         /// <summary>
         /// Resolves a net module by its name.
         /// </summary>
-        /// <param name="runtimeContext">The context to load the module in.</param>
         /// <param name="name">The name of the module to resolve.</param>
+        /// <param name="originModule">The manifest module referencing the sub-module.</param>
         /// <returns>The module, or <c>null</c> if the module could not be resolved.</returns>
-        ModuleDefinition? Resolve(RuntimeContext runtimeContext, string name);
+        ModuleDefinition? Resolve(string name, ModuleDefinition originModule);
     }
 }

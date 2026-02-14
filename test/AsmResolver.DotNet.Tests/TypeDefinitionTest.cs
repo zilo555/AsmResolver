@@ -610,9 +610,12 @@ namespace AsmResolver.DotNet.Tests
         [Fact]
         public void CorLibTypeDefinitionToSignatureShouldResultInCorLibTypeSignature()
         {
-            var module = new ModuleDefinition("Test");
-            var type = module.CorLibTypeFactory.Object.Resolve(module.RuntimeContext);
+            var context = new RuntimeContext(DotNetRuntimeInfo.NetFramework(4, 0));
+            var module = new ModuleDefinition("Test", context.TargetRuntime);
+
+            var type = module.CorLibTypeFactory.Object.Resolve(context);
             var signature = type.ToTypeSignature();
+
             var corlibType = Assert.IsAssignableFrom<CorLibTypeSignature>(signature);
             Assert.Equal(ElementType.Object, corlibType.ElementType);
         }

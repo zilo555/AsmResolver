@@ -161,21 +161,13 @@ namespace AsmResolver.PE.File
         public static PEFile FromStream(Stream raw) => FromReader(new BinaryStreamReader(raw));
 
         /// <summary>
-        /// Reads a mapped PE file starting at the provided module base address (HINSTANCE).
-        /// </summary>
-        /// <param name="hInstance">The HINSTANCE or base address of the module.</param>
-        /// <returns>The PE file that was read.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the file does not follow the PE file format.</exception>
-        public static PEFile FromModuleBaseAddress(IntPtr hInstance) => FromModuleBaseAddress(hInstance, PEMappingMode.Mapped);
-
-        /// <summary>
         /// Reads a PE file starting at the provided module base address (HINSTANCE).
         /// </summary>
         /// <param name="hInstance">The HINSTANCE or base address of the module.</param>
         /// <param name="mode">Indicates how the input PE file is mapped.</param>
         /// <returns>The PE file that was read.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the file does not follow the PE file format.</exception>
-        public static unsafe PEFile FromModuleBaseAddress(IntPtr hInstance, PEMappingMode mode)
+        public static unsafe PEFile FromModuleBaseAddress(IntPtr hInstance, PEMappingMode mode = PEMappingMode.Mapped)
         {
             // Perform some minimal parsing to get the size of the image from the optional header.
             uint nextHeaderOffset = *(uint*) ((byte*) hInstance + DosHeader.NextHeaderFieldOffset);

@@ -43,10 +43,7 @@ public partial class RuntimeContext
         if (!runtime.IsNetCoreApp)
             throw new ArgumentException("Runtime specified by the configuration is not a .NET or .NET Core runtime.");
 
-        DefaultReaderParameters = readerParameters is not null
-            ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
-            : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
-
+        DefaultReaderParameters = readerParameters ?? new ModuleReaderParameters(new ByteArrayFileService());
         TargetRuntime = runtime;
 
         var resolver = new DotNetCoreAssemblyResolver(
@@ -75,9 +72,13 @@ public partial class RuntimeContext
         if (image.DotNetDirectory is null)
             throw new ArgumentException("PE does not have a .NET data directory.");
 
-        DefaultReaderParameters = readerParameters is not null
-            ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
-            : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
+        DefaultReaderParameters = readerParameters ?? new ModuleReaderParameters(new ByteArrayFileService())
+        {
+            PEReaderParameters = image is SerializedPEImage serializedImage
+                ? serializedImage.ReaderContext.Parameters
+                : new PEReaderParameters(),
+            WorkingDirectory = !string.IsNullOrEmpty(image.FilePath) ? Path.GetDirectoryName(image.FilePath) : null,
+        };
 
         // If we cannot determine the target runtime the image was compiled against, assume .netfx 4.0 since it's
         // the most common case for standalone binaries.
@@ -148,9 +149,7 @@ public partial class RuntimeContext
         ModuleReaderParameters? readerParameters = null,
         IEnumerable<string>? searchDirectories = null)
     {
-        DefaultReaderParameters = readerParameters is not null
-            ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
-            : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
+        DefaultReaderParameters = readerParameters ?? new ModuleReaderParameters(new ByteArrayFileService());
 
         TargetRuntime = targetRuntime;
         AssemblyResolver = CreateAssemblyResolver(TargetRuntime, is32Bit, DefaultReaderParameters, searchDirectories);
@@ -171,10 +170,7 @@ public partial class RuntimeContext
         AssemblyDescriptor? corLibReference = null,
         ModuleReaderParameters? readerParameters = null)
     {
-        DefaultReaderParameters = readerParameters is not null
-            ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
-            : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
-
+        DefaultReaderParameters = readerParameters ?? new ModuleReaderParameters(new ByteArrayFileService());
         TargetRuntime = targetRuntime;
         AssemblyResolver = assemblyResolver;
         RuntimeCorLib = corLibReference ?? targetRuntime.GetAssumedImplCorLib();
@@ -192,10 +188,7 @@ public partial class RuntimeContext
         IAssemblyResolver? assemblyResolver = null,
         ModuleReaderParameters? readerParameters = null)
     {
-        DefaultReaderParameters = readerParameters is not null
-            ? new ModuleReaderParameters(readerParameters) { RuntimeContext = this }
-            : new ModuleReaderParameters(new ByteArrayFileService()) { RuntimeContext = this };
-
+        DefaultReaderParameters = readerParameters ?? new ModuleReaderParameters(new ByteArrayFileService());
         TargetRuntime = manifest.GetTargetRuntime();
         AssemblyResolver = new BundleAssemblyResolver(manifest, DefaultReaderParameters, assemblyResolver);
 
@@ -315,7 +308,7 @@ public partial class RuntimeContext
     /// <returns>The module.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(byte[] buffer)
-        => GetOrAddAssembly(AssemblyDefinition.FromBytes(buffer, DefaultReaderParameters));
+        => GetOrAddAssembly(AssemblyDefinition.FromBytes(buffer, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
 
     /// <summary>
     /// Loads a .NET assembly into the context from the provided input stream.
@@ -324,7 +317,7 @@ public partial class RuntimeContext
     /// <returns>The module.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(Stream stream)
-        => GetOrAddAssembly(AssemblyDefinition.FromStream(stream, DefaultReaderParameters));
+        => GetOrAddAssembly(AssemblyDefinition.FromStream(stream, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
 
     /// <summary>
     /// Loads a .NET assembly into the context from the provided input file.
@@ -333,7 +326,7 @@ public partial class RuntimeContext
     /// <returns>The module.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(string filePath)
-        => GetOrAddAssembly(AssemblyDefinition.FromFile(filePath, DefaultReaderParameters));
+        => GetOrAddAssembly(AssemblyDefinition.FromFile(filePath, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
 
     /// <summary>
     /// Loads a .NET assembly into the context from the provided input file.
@@ -342,7 +335,7 @@ public partial class RuntimeContext
     /// <returns>The module.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(PEFile file)
-        => GetOrAddAssembly(AssemblyDefinition.FromFile(file, DefaultReaderParameters));
+        => GetOrAddAssembly(AssemblyDefinition.FromFile(file, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
 
     /// <summary>
     /// Loads a .NET assembly into the context from the provided input file.
@@ -351,7 +344,7 @@ public partial class RuntimeContext
     /// <returns>The module.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(IInputFile file)
-        => GetOrAddAssembly(AssemblyDefinition.FromFile(file, DefaultReaderParameters));
+        => GetOrAddAssembly(AssemblyDefinition.FromFile(file, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
 
     /// <summary>
     /// Loads a .NET assembly into the context from an input stream.
@@ -361,7 +354,7 @@ public partial class RuntimeContext
     /// <returns>The module.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(in BinaryStreamReader reader, PEMappingMode mode = PEMappingMode.Unmapped)
-        => LoadAssembly(PEFile.FromReader(reader, mode));
+        => GetOrAddAssembly(AssemblyDefinition.FromReader(reader, mode: mode, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
 
     /// <summary>
     /// Loads a .NET assembly into the context from a PE image.
@@ -370,7 +363,7 @@ public partial class RuntimeContext
     /// <returns>The module.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(PEImage peImage)
-        => GetOrAddAssembly(AssemblyDefinition.FromImage(peImage, DefaultReaderParameters));
+        => GetOrAddAssembly(AssemblyDefinition.FromImage(peImage, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
 
     private void AssertNoOwner(AssemblyDefinition assembly)
     {
@@ -393,7 +386,7 @@ public partial class RuntimeContext
             AssertNoOwner(assembly);
 
             if (_loadedAssemblies.ContainsKey(assembly))
-                throw new ArgumentException($"Another assembly with name {assembly.Name} was already added to this context.", nameof(assembly));
+                throw new ArgumentException($"Assembly '{assembly.SafeToString()}' is already present in this context.", nameof(assembly));
 
             _loadedAssemblies.Add(assembly, assembly);
             assembly.RuntimeContext = this;
@@ -423,5 +416,4 @@ public partial class RuntimeContext
             return _loadedAssemblies.Values.ToArray();
         }
     }
-
 }

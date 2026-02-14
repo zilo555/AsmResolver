@@ -51,6 +51,7 @@ namespace AsmResolver.DotNet
                 [DoesNotReturn]
                 static TypeDefinition ThrowStatusError(ITypeDescriptor type, ResolutionStatus status) => status switch
                 {
+                    ResolutionStatus.MissingRuntimeContext => throw new ArgumentNullException(nameof(context), "The type reference requires a runtime context to be resolved"),
                     ResolutionStatus.InvalidReference => throw new InvalidOperationException($"The type reference is invalid."),
                     ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the declaring assembly {type.Scope?.GetAssembly().SafeToString()} of type {type}"),
                     ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The resolved declaring assembly for {type.Scope?.GetAssembly().SafeToString()} of type {type.SafeToString()} is in an incorrect format"),
@@ -259,6 +260,7 @@ namespace AsmResolver.DotNet
                 [DoesNotReturn]
                 static MethodDefinition ThrowStatusError(IMethodDescriptor method, ResolutionStatus status) => status switch
                 {
+                    ResolutionStatus.MissingRuntimeContext => throw new ArgumentNullException(nameof(context), "The method reference requires a runtime context to be resolved"),
                     ResolutionStatus.InvalidReference => throw new InvalidOperationException($"The method reference is invalid."),
                     ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the declaring assembly {method.DeclaringType?.Scope?.GetAssembly().SafeToString()} of method {method.SafeToString()}."),
                     ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The resolved declaring assembly for {method.DeclaringType?.Scope?.GetAssembly().SafeToString()} of method {method.SafeToString()} is in an incorrect format."),
@@ -298,6 +300,7 @@ namespace AsmResolver.DotNet
                 [DoesNotReturn]
                 static FieldDefinition ThrowStatusError(IFieldDescriptor field, ResolutionStatus status) => status switch
                 {
+                    ResolutionStatus.MissingRuntimeContext => throw new ArgumentNullException(nameof(context), "The field reference requires a runtime context to be resolved"),
                     ResolutionStatus.InvalidReference => throw new InvalidOperationException($"The field reference is invalid."),
                     ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the declaring assembly {field.DeclaringType?.Scope?.GetAssembly().SafeToString()} of field {field.SafeToString()}."),
                     ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The resolved declaring assembly for {field.DeclaringType?.Scope?.GetAssembly().SafeToString()} of field {field.SafeToString()} is in an incorrect format."),

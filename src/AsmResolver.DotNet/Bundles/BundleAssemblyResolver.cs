@@ -58,7 +58,12 @@ public class BundleAssemblyResolver : IAssemblyResolver
 
                 if (Path.GetFileNameWithoutExtension(file.RelativePath) == assembly.Name)
                 {
-                    definition = AssemblyDefinition.FromBytes(file.GetData(), _readerParameters);
+                    definition = AssemblyDefinition.FromBytes(
+                        file.GetData(),
+                        readerParameters: _readerParameters,
+                        createRuntimeContext: false
+                    );
+
                     return ResolutionStatus.Success;
                 }
             }

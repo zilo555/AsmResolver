@@ -16,6 +16,11 @@ public enum ResolutionStatus
     InvalidReference,
 
     /// <summary>
+    /// Indicates the reference could not be resolved because no runtime context was provided.
+    /// </summary>
+    MissingRuntimeContext,
+
+    /// <summary>
     /// Indicates the reference to be resolved defines a circular resolution scope.
     /// </summary>
     CircularResolutionScope,

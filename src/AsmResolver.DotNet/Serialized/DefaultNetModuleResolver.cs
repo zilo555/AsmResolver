@@ -6,25 +6,15 @@ namespace AsmResolver.DotNet.Serialized
     /// <summary>
     /// Provides a basic implementation for a net module resolver, that searches for the net module in a directory.
     /// </summary>
-    public class DirectoryNetModuleResolver : INetModuleResolver
+    public class DefaultNetModuleResolver : INetModuleResolver
     {
         /// <summary>
         /// Creates a new net module resolver that searches for the module in a directory.
         /// </summary>
-        /// <param name="directory">The path to the search directory.</param>
         /// <param name="readerParameters">The parameters to use for reading a module.</param>
-        public DirectoryNetModuleResolver(string directory, ModuleReaderParameters readerParameters)
+        public DefaultNetModuleResolver(ModuleReaderParameters readerParameters)
         {
-            Directory = directory ?? throw new ArgumentNullException(nameof(directory));
             ReaderParameters = readerParameters ?? throw new ArgumentNullException(nameof(readerParameters));
-        }
-
-        /// <summary>
-        /// Gets the search directory.
-        /// </summary>
-        public string Directory
-        {
-            get;
         }
 
         /// <summary>
@@ -36,16 +26,19 @@ namespace AsmResolver.DotNet.Serialized
         }
 
         /// <inheritdoc />
-        public ModuleDefinition? Resolve(RuntimeContext runtimeContext, string name)
+        public ModuleDefinition? Resolve(string name, ModuleDefinition originModule)
         {
-            string path = Path.Combine(Directory, name);
-            if (!File.Exists(path))
+            if (originModule.FilePath is not { Length: > 0 } filePath
+                || Path.GetDirectoryName(filePath) is not { } directory
+                || Path.Combine(directory, name) is not {} modulePath
+                || !File.Exists(modulePath))
+            {
                 return null;
+            }
 
             try
             {
-                var parameters = new ModuleReaderParameters(ReaderParameters) { RuntimeContext = runtimeContext };
-                return ModuleDefinition.FromFile(path, parameters);
+                return ModuleDefinition.FromFile(modulePath, ReaderParameters);
             }
             catch
             {

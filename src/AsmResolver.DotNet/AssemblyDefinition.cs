@@ -33,123 +33,138 @@ namespace AsmResolver.DotNet
         /// Reads a .NET assembly from the provided input buffer.
         /// </summary>
         /// <param name="buffer">The raw contents of the executable file to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromBytes(byte[] buffer) => FromBytes(buffer, new ModuleReaderParameters());
-
-        /// <summary>
-        /// Reads a .NET assembly from the provided input buffer.
-        /// </summary>
-        /// <param name="buffer">The raw contents of the executable file to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromBytes(byte[] buffer, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromBytes(buffer, readerParameters.PEReaderParameters), readerParameters);
-
-        /// <summary>
-        /// Reads a .NET assembly from the provided input stream.
-        /// </summary>
-        /// <param name="stream">The raw contents of the executable file to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromStream(Stream stream) => FromStream(stream, new ModuleReaderParameters());
+        public static AssemblyDefinition FromBytes(
+            byte[] buffer,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromBytes(buffer, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET assembly from the provided input stream.
         /// </summary>
         /// <param name="stream">The raw contents of the executable file to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromStream(Stream stream, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromStream(stream, readerParameters.PEReaderParameters), readerParameters);
+        public static AssemblyDefinition FromStream(
+            Stream stream,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromStream(stream, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET assembly from the provided input file.
         /// </summary>
         /// <param name="filePath">The file path to the input executable to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromFile(string filePath)
-            => FromFile(filePath, new ModuleReaderParameters(Path.GetDirectoryName(filePath)));
-
-        /// <summary>
-        /// Reads a .NET assembly from the provided input file.
-        /// </summary>
-        /// <param name="filePath">The file path to the input executable to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromFile(string filePath, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromFile(filePath, readerParameters.PEReaderParameters), readerParameters);
-
-        /// <summary>
-        /// Reads a .NET assembly from the provided input file.
-        /// </summary>
-        /// <param name="file">The portable executable file to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromFile(PEFile file) => FromFile(file, new ModuleReaderParameters());
+        public static AssemblyDefinition FromFile(
+            string filePath,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromFile(filePath, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET assembly from the provided input file.
         /// </summary>
         /// <param name="file">The portable executable file to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromFile(PEFile file, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromFile(file, readerParameters.PEReaderParameters), readerParameters);
-
-        /// <summary>
-        /// Reads a .NET assembly from the provided input file.
-        /// </summary>
-        /// <param name="file">The portable executable file to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromFile(IInputFile file) =>
-            FromFile(file, new ModuleReaderParameters(Path.GetDirectoryName(file.FilePath)));
+        public static AssemblyDefinition FromFile(
+            PEFile file,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromFile(file, readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET assembly from the provided input file.
         /// </summary>
         /// <param name="file">The portable executable file to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
-        /// <returns>The module.</returns>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
+        /// <returns>The assembly.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromFile(IInputFile file, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromFile(file, readerParameters.PEReaderParameters), readerParameters);
+        public static AssemblyDefinition FromFile(
+            IInputFile file,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromFile(file, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET assembly from an input stream.
         /// </summary>
         /// <param name="reader">The input stream pointing at the beginning of the executable to load.</param>
         /// <param name="mode">Indicates the input PE is mapped or unmapped.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromReader(in BinaryStreamReader reader, PEMappingMode mode = PEMappingMode.Unmapped) =>
-            FromImage(PEImage.FromReader(reader, mode));
-
-        /// <summary>
-        /// Initializes a .NET assembly from a PE image.
-        /// </summary>
-        /// <param name="peImage">The image containing the .NET metadata.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromImage(PEImage peImage) =>
-            FromImage(peImage, new ModuleReaderParameters(Path.GetDirectoryName(peImage.FilePath)));
-
-        /// <summary>
-        /// Initializes a .NET assembly from a PE image.
-        /// </summary>
-        /// <param name="peImage">The image containing the .NET metadata.</param>
         /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
-        /// <returns>The module.</returns>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
+        /// <returns>The assembly.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static AssemblyDefinition FromImage(PEImage peImage, ModuleReaderParameters readerParameters)
+        public static AssemblyDefinition FromReader(
+            in BinaryStreamReader reader,
+            PEMappingMode mode = PEMappingMode.Unmapped,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
         {
-            return ModuleDefinition.FromImage(peImage, readerParameters).Assembly
+            return FromImage(
+                PEImage.FromReader(reader, mode),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
+
+        /// <summary>
+        /// Initializes a .NET assembly from a PE image.
+        /// </summary>
+        /// <param name="image">The image containing the .NET metadata.</param>
+        /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
+        /// <returns>The assembly.</returns>
+        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+        public static AssemblyDefinition FromImage(
+            PEImage image,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return ModuleDefinition.FromImage(image, readerParameters, createRuntimeContext).Assembly
                 ?? throw new BadImageFormatException("The provided PE image does not contain an assembly manifest.");
         }
 
@@ -312,7 +327,7 @@ namespace AsmResolver.DotNet
             (AssemblyReference) importer.ImportScope(new AssemblyReference(this));
 
         /// <inheritdoc />
-        protected override ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly)
+        public override ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly)
         {
             assembly = this;
             return ResolutionStatus.Success;
@@ -378,7 +393,7 @@ namespace AsmResolver.DotNet
                 var module = Modules[i];
                 string modulePath = module == ManifestModule
                     ? filePath
-                    : Path.Combine(directory, module.Name?.Value ?? $"module{i}.bin");
+                    : Path.Combine(directory, module.Name?.Value ?? $"module{i}.netmodule");
 
                 module.Write(modulePath, imageBuilder, fileBuilder);
             }

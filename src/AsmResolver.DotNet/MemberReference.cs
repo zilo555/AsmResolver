@@ -224,7 +224,7 @@ namespace AsmResolver.DotNet
             if (context is null)
             {
                 definition = null;
-                return ResolutionStatus.AssemblyNotFound;
+                return ResolutionStatus.MissingRuntimeContext;
             }
 
             return context.ResolveField(this, ContextModule, out definition);
@@ -241,7 +241,7 @@ namespace AsmResolver.DotNet
             if (context is null)
             {
                 definition = null;
-                return ResolutionStatus.AssemblyNotFound;
+                return ResolutionStatus.MissingRuntimeContext;
             }
 
             return context.ResolveMethod(this, ContextModule, out definition);

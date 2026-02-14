@@ -150,7 +150,7 @@ namespace AsmResolver.DotNet
             if (context is null)
             {
                 definition = null;
-                return ResolutionStatus.AssemblyNotFound;
+                return ResolutionStatus.MissingRuntimeContext;
             }
 
             return context.ResolveType(this, ContextModule, out definition);

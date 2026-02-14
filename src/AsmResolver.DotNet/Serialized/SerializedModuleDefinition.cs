@@ -67,17 +67,6 @@ namespace AsmResolver.DotNet.Serialized
                 ? originalTargetRuntime
                 : DotNetRuntimeInfo.NetFramework(4, 0);
 
-            // Inherit or create new runtime context.
-            if (readerParameters.RuntimeContext is not null)
-            {
-                RuntimeContext = readerParameters.RuntimeContext;
-            }
-            else
-            {
-                RuntimeContext = new RuntimeContext(peImage, readerParameters);
-                readerParameters = new ModuleReaderParameters(RuntimeContext.DefaultReaderParameters);
-            }
-
             // Initialize member factory.
             ReaderContext = new ModuleReaderContext(peImage, this, readerParameters);
             _memberFactory = new CachedSerializedMemberFactory(ReaderContext);

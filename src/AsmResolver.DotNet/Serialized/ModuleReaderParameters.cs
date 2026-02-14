@@ -15,18 +15,9 @@ namespace AsmResolver.DotNet.Serialized
         public ModuleReaderParameters()
         {
             MethodBodyReader = DefaultMethodBodyReader.Instance;
+            ModuleResolver = new DefaultNetModuleResolver(this);
             FieldRvaDataReader = AsmResolver.PE.DotNet.Metadata.FieldRvaDataReader.Instance;
             PEReaderParameters = new PEReaderParameters();
-        }
-
-        /// <summary>
-        /// Initializes the module read parameters with a file service.
-        /// </summary>
-        /// <param name="context">The context the module should be read in.</param>
-        public ModuleReaderParameters(RuntimeContext context)
-            : this(context.DefaultReaderParameters)
-        {
-            RuntimeContext = context;
         }
 
         /// <summary>
@@ -76,10 +67,11 @@ namespace AsmResolver.DotNet.Serialized
             if (workingDirectory is not null)
             {
                 WorkingDirectory = workingDirectory;
-                ModuleResolver = new DirectoryNetModuleResolver(workingDirectory, this);
+                ModuleResolver = new DefaultNetModuleResolver(this);
             }
 
             MethodBodyReader = DefaultMethodBodyReader.Instance;
+            ModuleResolver = new DefaultNetModuleResolver(this);
             FieldRvaDataReader = AsmResolver.PE.DotNet.Metadata.FieldRvaDataReader.Instance;
             PEReaderParameters = readerParameters;
         }
@@ -95,7 +87,6 @@ namespace AsmResolver.DotNet.Serialized
             MethodBodyReader = readerParameters.MethodBodyReader;
             FieldRvaDataReader = readerParameters.FieldRvaDataReader;
             PEReaderParameters = readerParameters.PEReaderParameters;
-            RuntimeContext = readerParameters.RuntimeContext;
         }
 
         /// <summary>
@@ -141,15 +132,6 @@ namespace AsmResolver.DotNet.Serialized
         /// This property is ignored when the module was read from a <see cref="PEImage"/>
         /// </remarks>
         public PEReaderParameters PEReaderParameters
-        {
-            get;
-            init;
-        }
-
-        /// <summary>
-        /// Gets or sets the runtime context to load the module in, or <c>null</c> if a new context is to be created.
-        /// </summary>
-        public RuntimeContext? RuntimeContext
         {
             get;
             init;

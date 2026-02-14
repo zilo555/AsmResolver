@@ -9,16 +9,17 @@ namespace AsmResolver.DotNet.Tests.Signatures
     public class TypeNameParserTest
     {
         private readonly ModuleDefinition _module;
-        private readonly SignatureComparer _comparer;
 
         public TypeNameParserTest()
         {
-            _module = new ModuleDefinition("DummyModule", KnownCorLibs.SystemRuntime_v10_0_0_0)
+            var context = new RuntimeContext(DotNetRuntimeInfo.NetCoreApp(10, 0));
+            var assembly = new AssemblyDefinition("DummyModule", new Version());
+            context.AddAssembly(assembly);
+            _module = new ModuleDefinition("DummyModule", context.TargetRuntime)
             {
                 TopLevelTypes = { new TypeDefinition("System", "Action", TypeAttributes.Class) }
             };
-            new AssemblyDefinition("DummyModule", new Version()).Modules.Add(_module);
-            _comparer = new SignatureComparer();
+            assembly.Modules.Add(_module);
         }
 
         private TypeDefinition CreateAndAddTypeDef(string ns, string name)
@@ -43,7 +44,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var expected = CreateAndAddTypeDef(default(string), name).ToTypeSignature(false);
             var actual = TypeNameParser.Parse(_module, expected.Name!);
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Theory]
@@ -56,7 +57,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var expected = CreateAndAddTypeDef(ns, "MyType").ToTypeSignature(false);
             var actual = TypeNameParser.Parse(_module, expected.FullName);
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Theory]
@@ -71,7 +72,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
                 .ToTypeSignature(false);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}+{nestedType}, {_module}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Theory]
@@ -86,7 +87,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
                 .ToTypeSignature(false);
 
             var actual = TypeNameParser.Parse(_module, $"{name}+{nestedType}, {_module}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -98,7 +99,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = new TypeReference(assemblyRef, ns, name).ToTypeSignature(false);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}, {assemblyRef.FullName}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -116,7 +117,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
 
             var actual = TypeNameParser.Parse(_module,
                 $"{ns}.{name}, {assemblyRef.FullName}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -129,7 +130,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = new TypeReference(_module, corlib, ns, name).ToTypeSignature(true);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}, {corlib.FullName}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -146,7 +147,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
                 .ImportWith(_module.DefaultImporter);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}+{nestedTypeName}, {corlib.FullName}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -159,7 +160,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = new SzArrayTypeSignature(elementType);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[], {elementType.Scope}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -172,7 +173,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = new ArrayTypeSignature(elementType, 4);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[,,,], {elementType.Scope}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -187,7 +188,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = elementType.MakeGenericInstanceType(false, argumentType);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[{argumentType.Namespace}.{argumentType.Name}], {elementType.Scope}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -203,7 +204,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = new GenericInstanceTypeSignature(elementType, false, argumentType, argumentType2);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[{argumentType.Namespace}.{argumentType.Name},{argumentType2.Namespace}.{argumentType2.Name}], {elementType.Scope}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -224,7 +225,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = new GenericInstanceTypeSignature(elementType, false, argumentType, argumentType2);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[{argumentType.Namespace}.{argumentType.Name},{ns}.{escapedPName}], {elementType.Scope}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Theory]
@@ -242,7 +243,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = new GenericInstanceTypeSignature(elementType, false, argumentType);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[[{argumentType.Namespace}.{argumentType.Name}, {argumentType.Scope}]], {elementType.Scope}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -259,7 +260,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = new GenericInstanceTypeSignature(elementType, false, argumentType, argumentType2);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[[{argumentType.Namespace}.{argumentType.Name}, {fullName}],[{argumentType2.Namespace}.{argumentType2.Name}, {fullName}]], {elementType.Scope}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -275,7 +276,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = elementType.MakeGenericInstanceType(true, argumentType);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}[[{argumentType.Namespace}.{argumentType.Name}, {corlib.FullName}]], {corlib.FullName}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -289,7 +290,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = new TypeReference(_module, scope, ns, name).ToTypeSignature(false);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}, {assemblyRef}, Version={scope.Version}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -302,7 +303,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var expected = CreateAndAddTypeDef(ns, name).ToTypeSignature(false);
 
             var actual = TypeNameParser.Parse(_module, $"{ns}.{escapedName}, {_module}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -316,7 +317,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
 
             var expected = definition.ToTypeSignature();
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -327,7 +328,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
 
             var expected = new TypeReference(new AssemblyReference(_module.RuntimeContext.RuntimeCorLib!), ns, name).ToTypeSignature(false);
             var actual = TypeNameParser.Parse(_module, $"{ns}.{name}");
-            Assert.Equal(expected, actual, _comparer);
+            Assert.Equal(expected, actual, SignatureComparer.Default);
         }
 
         [Fact]
@@ -374,8 +375,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var type = TypeNameParser.Parse(_module, "System.Array");
 
-            Assert.NotEqual(_module.RuntimeContext.RuntimeCorLib, _module.CorLibTypeFactory.CorLibScope.GetAssembly(), _comparer);
-            Assert.Equal(_module.RuntimeContext.RuntimeCorLib, type.Scope?.GetAssembly(), _comparer);
+            Assert.NotEqual(_module.RuntimeContext.RuntimeCorLib, _module.CorLibTypeFactory.CorLibScope.GetAssembly(), SignatureComparer.Default);
+            Assert.Equal(_module.RuntimeContext.RuntimeCorLib, type.Scope?.GetAssembly(), SignatureComparer.Default);
         }
 
         [Fact]
@@ -391,7 +392,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var type = TypeNameParser.Parse(_module, "System.Action");
 
-            Assert.Equal(_module, type.Scope, _comparer);
+            Assert.Equal(_module, type.Scope, SignatureComparer.Default);
         }
 
         [Fact]
@@ -399,7 +400,13 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             // https://github.com/Washi1337/AsmResolver/pull/647
             // to hit the original bug of this issue, the assembly's PublicKeyToken needs to begin with a digit, which this corelib does
-            var module = new ModuleDefinition("DummyModule", KnownCorLibs.SystemPrivateCoreLib_v8_0_0_0);
+            var context = new RuntimeContext(DotNetRuntimeInfo.NetCoreApp(10, 0));
+            var assembly = new AssemblyDefinition("Dummy", new Version(1, 0, 0, 0));
+            context.AddAssembly(assembly);
+
+            var module = new ModuleDefinition("Dummy", context.TargetRuntime);
+            assembly.Modules.Add(module);
+
             var expectedType = module.CorLibTypeFactory.CorLibScope
                 .CreateTypeReference("System", "Action`1")
                 .MakeGenericInstanceType(isValueType: false, module.CorLibTypeFactory.Int32)

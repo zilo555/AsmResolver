@@ -66,9 +66,6 @@ namespace AsmResolver.DotNet.Serialized
             var result = new MemberCollection<AssemblyDefinition, ModuleDefinition>(this);
             result.AddNoOwnerCheck(_manifestModule);
 
-            if (RuntimeContext is null)
-                return result;
-
             var moduleResolver = _context.Parameters.ModuleResolver;
             if (moduleResolver is not null)
             {
@@ -87,7 +84,7 @@ namespace AsmResolver.DotNet.Serialized
                     if (fileRow.Attributes == FileAttributes.ContainsMetadata)
                     {
                         string? name = stringsStream.GetStringByIndex(fileRow.Name);
-                        if (!string.IsNullOrEmpty(name) && moduleResolver.Resolve(RuntimeContext, name!) is { } module)
+                        if (!string.IsNullOrEmpty(name) && moduleResolver.Resolve(name!, _manifestModule) is { } module)
                             result.Add(module);
                     }
                 }

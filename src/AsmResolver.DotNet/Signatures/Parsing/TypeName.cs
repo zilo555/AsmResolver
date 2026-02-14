@@ -26,7 +26,7 @@ internal readonly struct TypeName(string? ns, IList<string> names)
             {
                 // If that fails, try corlib.
                 // However, we would prefer to use the implementation corlib for the runtime targeted, not the one it was compiled against.
-                if (contextModule.RuntimeContext.RuntimeCorLib is {} runtimeCorLib)
+                if (contextModule.RuntimeContext?.RuntimeCorLib is {} runtimeCorLib)
                 {
                     type.Scope = new AssemblyReference(runtimeCorLib);
                     type.TryResolve(contextModule.RuntimeContext, out definition);

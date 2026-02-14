@@ -76,7 +76,11 @@ namespace AsmResolver.DotNet
         /// <returns>The assembly.</returns>
         protected virtual AssemblyDefinition LoadAssemblyFromFile(string path)
         {
-            return AssemblyDefinition.FromFile(FileService.OpenFile(path), ReaderParameters);
+            return AssemblyDefinition.FromFile(
+                FileService.OpenFile(path),
+                readerParameters: ReaderParameters,
+                createRuntimeContext: false
+            );
         }
 
         /// <summary>
