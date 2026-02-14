@@ -20,9 +20,7 @@ namespace AsmResolver.DotNet;
 /// </summary>
 public partial class RuntimeContext
 {
-    private readonly Dictionary<AssemblyDescriptor, AssemblyDefinition> _loadedAssemblies = new(
-        new SignatureComparer(SignatureComparisonFlags.VersionAgnostic)
-    );
+    private readonly Dictionary<AssemblyDescriptor, AssemblyDefinition> _loadedAssemblies;
     private readonly ConcurrentDictionary<ITypeDescriptor, TypeDefinition> _typeCache = new();
 
     /// <summary>
@@ -56,6 +54,7 @@ public partial class RuntimeContext
 
         RuntimeCorLib = TargetRuntime.GetAssumedImplCorLib();
         SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
+        _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
     }
 
     /// <summary>
@@ -133,7 +132,13 @@ public partial class RuntimeContext
         }
 
         RuntimeCorLib = TargetRuntime.GetAssumedImplCorLib();
-        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
+
+        var flags = SignatureComparisonFlags.VersionAgnostic;
+        if (TargetRuntime.IsNetCoreApp)
+            flags |= SignatureComparisonFlags.IgnoreStrongNames;
+        SignatureComparer = new SignatureComparer(this, flags);
+
+        _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
     }
 
     /// <summary>
@@ -154,7 +159,13 @@ public partial class RuntimeContext
         TargetRuntime = targetRuntime;
         AssemblyResolver = CreateAssemblyResolver(TargetRuntime, is32Bit, DefaultReaderParameters, searchDirectories);
         RuntimeCorLib = targetRuntime.GetAssumedImplCorLib();
-        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
+
+        var flags = SignatureComparisonFlags.VersionAgnostic;
+        if (targetRuntime.IsNetCoreApp)
+            flags |= SignatureComparisonFlags.IgnoreStrongNames;
+        SignatureComparer = new SignatureComparer(this, flags);
+
+        _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
     }
 
     /// <summary>
@@ -174,7 +185,13 @@ public partial class RuntimeContext
         TargetRuntime = targetRuntime;
         AssemblyResolver = assemblyResolver;
         RuntimeCorLib = corLibReference ?? targetRuntime.GetAssumedImplCorLib();
-        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
+
+        var flags = SignatureComparisonFlags.VersionAgnostic;
+        if (targetRuntime.IsNetCoreApp)
+            flags |= SignatureComparisonFlags.IgnoreStrongNames;
+        SignatureComparer = new SignatureComparer(this, flags);
+
+        _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
     }
 
     /// <summary>
@@ -191,14 +208,14 @@ public partial class RuntimeContext
         DefaultReaderParameters = readerParameters ?? new ModuleReaderParameters(new ByteArrayFileService());
         TargetRuntime = manifest.GetTargetRuntime();
         AssemblyResolver = new BundleAssemblyResolver(manifest, DefaultReaderParameters, assemblyResolver);
+        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic | SignatureComparisonFlags.IgnoreStrongNames);
+        _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
 
         if (ResolveAssembly(TargetRuntime.GetDefaultCorLib(), null, out var corlib) == ResolutionStatus.Success
             && corlib!.ManifestModule?.CorLibTypeFactory.Object.TryResolve(this, out var type) is true)
         {
             RuntimeCorLib = type.DeclaringModule?.Assembly;
         }
-
-        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
     }
 
     /// <summary>
