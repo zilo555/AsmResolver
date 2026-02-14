@@ -293,11 +293,8 @@ public partial class RuntimeContext
     {
         if (searchDirectories is not null)
         {
-            foreach (string? path in searchDirectories)
-            {
-                if (path is not null)
-                    resolver.SearchDirectories.Add(path);
-            }
+            foreach (string path in searchDirectories)
+                resolver.SearchDirectories.Add(path);
         }
     }
 

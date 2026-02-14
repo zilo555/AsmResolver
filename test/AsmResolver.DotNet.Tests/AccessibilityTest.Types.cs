@@ -35,8 +35,8 @@ public partial class AccessibilityTest
         var type1 = AddTopLevelType(module1, "Type1", TypeAttributes.Public);
         var type2 = AddTopLevelType(module1, "Type2", TypeAttributes.Public);
 
-        Assert.True(type2.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type2));
+        Assert.True(type2.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type2, module1.RuntimeContext));
     }
 
     [Fact]
@@ -46,8 +46,8 @@ public partial class AccessibilityTest
         var type1 = AddTopLevelType(module1, "Type1", TypeAttributes.Public);
         var type2 = AddTopLevelType(module1, "Type2", TypeAttributes.NotPublic);
 
-        Assert.True(type2.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type2));
+        Assert.True(type2.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type2, module1.RuntimeContext));
     }
 
     [Fact]
@@ -58,8 +58,8 @@ public partial class AccessibilityTest
         var type1 = AddTopLevelType(module1, "Type1", TypeAttributes.Public);
         var type2 = AddTopLevelType(module2, "Type2", TypeAttributes.Public);
 
-        Assert.True(type2.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type2));
+        Assert.True(type2.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type2, module1.RuntimeContext));
     }
 
     [Fact]
@@ -70,8 +70,8 @@ public partial class AccessibilityTest
         var type1 = AddTopLevelType(module1, "Type1", TypeAttributes.Public);
         var type2 = AddTopLevelType(module2, "Type2", TypeAttributes.NotPublic);
 
-        Assert.False(type2.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type2));
+        Assert.False(type2.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type2, module1.RuntimeContext));
     }
 
     [Theory]
@@ -87,8 +87,8 @@ public partial class AccessibilityTest
         var type1 = AddTopLevelType(module1, "Type1", TypeAttributes.Public);
         var type2 = AddNestedType(type1, "Type2", attributes);
 
-        Assert.True(type2.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type2));
+        Assert.True(type2.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type2, module1.RuntimeContext));
     }
 
     [Fact]
@@ -101,8 +101,8 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module2, "Type2", TypeAttributes.Public);
         var type3 = AddNestedType(type2, "Type3", TypeAttributes.NestedPublic);
 
-        Assert.True(type3.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type3));
+        Assert.True(type3.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type3, module1.RuntimeContext));
     }
 
     [Fact]
@@ -115,8 +115,8 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module2, "Type2", TypeAttributes.NotPublic);
         var type3 = AddNestedType(type2, "Type3", TypeAttributes.NestedPublic);
 
-        Assert.False(type3.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type3));
+        Assert.False(type3.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type3, module1.RuntimeContext));
     }
 
     [Fact]
@@ -129,8 +129,8 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module2, "Type2", TypeAttributes.Public);
         var type3 = AddNestedType(type2, "Type3", TypeAttributes.NestedPrivate);
 
-        Assert.False(type3.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type3));
+        Assert.False(type3.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type3, module1.RuntimeContext));
     }
 
     [Fact]
@@ -141,8 +141,8 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module1, "Type2", TypeAttributes.Public);
         var type3 = AddNestedType(type2, "Type3", TypeAttributes.NestedPrivate);
 
-        Assert.False(type3.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type3));
+        Assert.False(type3.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type3, module1.RuntimeContext));
     }
 
     [Fact]
@@ -153,8 +153,8 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module1, "Type2", TypeAttributes.Public);
         var type3 = AddNestedType(type2, "Type3", TypeAttributes.NestedAssembly);
 
-        Assert.True(type3.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type3));
+        Assert.True(type3.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type3, module1.RuntimeContext));
     }
 
     [Fact]
@@ -167,8 +167,8 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module2, "Type2", TypeAttributes.Public);
         var type3 = AddNestedType(type2, "Type3", TypeAttributes.NestedAssembly);
 
-        Assert.False(type3.IsAccessibleFromType(type1));
-        Assert.True(type1.IsAccessibleFromType(type3));
+        Assert.False(type3.IsAccessibleFromType(type1, module1.RuntimeContext));
+        Assert.True(type1.IsAccessibleFromType(type3, module1.RuntimeContext));
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public partial class AccessibilityTest
         var type2 = AddNestedType(type1, "Type2", TypeAttributes.NestedFamily);
         var type3 = AddTopLevelType(module1, "Type3", TypeAttributes.Public, type1);
 
-        Assert.True(type2.IsAccessibleFromType(type3));
+        Assert.True(type2.IsAccessibleFromType(type3, module1.RuntimeContext));
     }
 
     [Fact]
@@ -192,7 +192,7 @@ public partial class AccessibilityTest
         var type4 = AddTopLevelType(module1, "Type4", TypeAttributes.Public, type3);
         var type5 = AddTopLevelType(module1, "Type5", TypeAttributes.Public, type4);
 
-        Assert.True(type2.IsAccessibleFromType(type5));
+        Assert.True(type2.IsAccessibleFromType(type5, module1.RuntimeContext));
     }
 
     [Fact]
@@ -203,6 +203,6 @@ public partial class AccessibilityTest
         var type2 = AddNestedType(type1, "Type2", TypeAttributes.NestedFamily);
         var type3 = AddTopLevelType(module1, "Type3", TypeAttributes.Public);
 
-        Assert.False(type2.IsAccessibleFromType(type3));
+        Assert.False(type2.IsAccessibleFromType(type3, module1.RuntimeContext));
     }
 }

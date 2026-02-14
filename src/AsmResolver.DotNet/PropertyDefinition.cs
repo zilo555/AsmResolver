@@ -212,8 +212,8 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public bool IsAccessibleFromType(TypeDefinition type) =>
-            Semantics.Any(s => s.Method?.IsAccessibleFromType(type) ?? false);
+        public bool IsAccessibleFromType(TypeDefinition type, RuntimeContext? context) =>
+            Semantics.Any(s => s.Method?.IsAccessibleFromType(type, context) ?? false);
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)

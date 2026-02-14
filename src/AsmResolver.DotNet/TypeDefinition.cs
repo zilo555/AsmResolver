@@ -768,74 +768,81 @@ namespace AsmResolver.DotNet
         /// Determines whether the type inherits from a particular type.
         /// </summary>
         /// <param name="fullName">The full name of the type</param>
+        /// <param name="context">The runtime context to consider when traversing metadata references.</param>
         /// <returns>
         /// <c>true</c> whether the current <see cref="TypeDefinition"/> inherits from the type,
         /// <c>false</c> otherwise.
         /// </returns>
-        public bool InheritsFrom(string fullName) => FindInTypeTree(x => x.FullName == fullName);
+        public bool InheritsFrom(string fullName, RuntimeContext? context = null)
+            => FindInTypeTree(x => x.FullName == fullName, context);
 
         /// <summary>
         /// Determines whether the type inherits from a particular type.
         /// </summary>
         /// <param name="ns">The namespace of the type.</param>
         /// <param name="name">The name of the type.</param>
+        /// <param name="context">The runtime context to consider when traversing metadata references.</param>
         /// <returns>
         /// <c>true</c> whether the current <see cref="TypeDefinition"/> inherits from the type,
         /// <c>false</c> otherwise.
         /// </returns>
-        public bool InheritsFrom(string? ns, string name) => FindInTypeTree(x => x.IsTypeOf(ns, name));
+        public bool InheritsFrom(string? ns, string name, RuntimeContext? context = null)
+            => FindInTypeTree(x => x.IsTypeOf(ns, name), context);
 
         /// <summary>
         /// Determines whether the type inherits from a particular type.
         /// </summary>
         /// <param name="ns">The namespace of the type.</param>
         /// <param name="name">The name of the type.</param>
+        /// <param name="context">The runtime context to consider when traversing metadata references.</param>
         /// <returns>
         /// <c>true</c> whether the current <see cref="TypeDefinition"/> inherits from the type,
         /// <c>false</c> otherwise.
         /// </returns>
-        public bool InheritsFrom(Utf8String? ns, Utf8String name) => FindInTypeTree(x => x.IsTypeOfUtf8(ns, name));
+        public bool InheritsFrom(Utf8String? ns, Utf8String name, RuntimeContext? context = null)
+            => FindInTypeTree(x => x.IsTypeOfUtf8(ns, name), context);
 
         /// <summary>
         /// Determines whether the type implements a particular interface.
         /// </summary>
-        /// <param name="fullName">The full name of the interface</param>
+        /// <param name="fullName">The full name of the type</param>
+        /// <param name="context">The runtime context to consider when traversing metadata references.</param>
         /// <returns>
         /// <c>true</c> whether the current <see cref="TypeDefinition"/> implements the interface,
         /// <c>false</c> otherwise.
         /// </returns>
-        public bool Implements(string fullName)
-        {
-            return FindInTypeTree(x => x.Interfaces.Any(@interface => @interface.Interface?.FullName == fullName));
-        }
-
-        /// <summary>
-        /// Determines whether the type implements a particular interface.
-        /// </summary>
-        /// <param name="ns">The namespace of the type.</param>
-        /// <param name="name">The name of the type.</param>
-        /// <returns>
-        /// <c>true</c> whether the current <see cref="TypeDefinition"/> implements the interface,
-        /// <c>false</c> otherwise.
-        /// </returns>
-        public bool Implements(string? ns, string name) => FindInTypeTree(
-            x => x.Interfaces.Any(@interface => @interface.Interface?.IsTypeOf(ns, name) ?? false));
+        public bool Implements(string fullName, RuntimeContext? context = null)
+            => FindInTypeTree(x => x.Interfaces.Any(@interface => @interface.Interface?.FullName == fullName), context);
 
         /// <summary>
         /// Determines whether the type implements a particular interface.
         /// </summary>
         /// <param name="ns">The namespace of the type.</param>
         /// <param name="name">The name of the type.</param>
+        /// <param name="context">The runtime context to consider when traversing metadata references.</param>
         /// <returns>
         /// <c>true</c> whether the current <see cref="TypeDefinition"/> implements the interface,
         /// <c>false</c> otherwise.
         /// </returns>
-        public bool Implements(Utf8String? ns, Utf8String name) => FindInTypeTree(
-            x => x.Interfaces.Any(@interface => @interface.Interface?.IsTypeOfUtf8(ns, name) ?? false));
+        public bool Implements(string? ns, string name, RuntimeContext? context = null)
+            => FindInTypeTree(x => x.Interfaces.Any(@interface => @interface.Interface?.IsTypeOf(ns, name) ?? false), context);
 
-        private bool FindInTypeTree(Predicate<TypeDefinition> condition)
+        /// <summary>
+        /// Determines whether the type implements a particular interface.
+        /// </summary>
+        /// <param name="ns">The namespace of the type.</param>
+        /// <param name="name">The name of the type.</param>
+        /// <param name="context">The runtime context to consider when traversing metadata references.</param>
+        /// <returns>
+        /// <c>true</c> whether the current <see cref="TypeDefinition"/> implements the interface,
+        /// <c>false</c> otherwise.
+        /// </returns>
+        public bool Implements(Utf8String? ns, Utf8String name, RuntimeContext? context = null)
+            => FindInTypeTree(x => x.Interfaces.Any(@interface => @interface.Interface?.IsTypeOfUtf8(ns, name) ?? false), context);
+
+        private bool FindInTypeTree(Predicate<TypeDefinition> condition, RuntimeContext? context)
         {
-            var context = _module?.RuntimeContext;
+            context ??= _module?.RuntimeContext;
 
             var visited = new List<TypeDefinition>();
 
@@ -889,19 +896,18 @@ namespace AsmResolver.DotNet
         /// Determines whether the provided definition can be accessed by the type.
         /// </summary>
         /// <param name="definition">The definition to access.</param>
+        /// <param name="context">The runtime context to consider when traversing metadata references.</param>
         /// <returns><c>true</c> if this type can access <paramref name="definition"/>, <c>false</c> otherwise.</returns>
-        public bool CanAccessDefinition(IMemberDefinition definition)
+        public bool CanAccessDefinition(IMemberDefinition definition, RuntimeContext? context)
         {
-            return definition.IsAccessibleFromType(this);
+            return definition.IsAccessibleFromType(this, context);
         }
 
         /// <inheritdoc />
-        public bool IsAccessibleFromType(TypeDefinition type)
+        public bool IsAccessibleFromType(TypeDefinition type, RuntimeContext? context)
         {
             if (SignatureComparer.Default.Equals(this, type))
                 return true;
-
-            var context = DeclaringModule?.RuntimeContext;
 
             bool isInSameAssembly = SignatureComparer.Default.Equals(DeclaringModule, type.DeclaringModule);
 
@@ -912,7 +918,7 @@ namespace AsmResolver.DotNet
 
             // The current type is a nested type, which means in order to be accessible, `type` needs to be able to
             // access the declaring type first before it can reach the current type.
-            if (!declaringType.IsAccessibleFromType(type))
+            if (!declaringType.IsAccessibleFromType(type, context))
                 return false;
 
             // Types can always access their direct nested types.
@@ -939,7 +945,7 @@ namespace AsmResolver.DotNet
             if ((IsNestedFamily || IsNestedFamilyOrAssembly || IsNestedFamilyAndAssembly)
                 && type.BaseType?.TryResolve(context, out var baseType) is true)
             {
-                return (!IsNestedFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
+                return (!IsNestedFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType, context);
             }
 
             return false;

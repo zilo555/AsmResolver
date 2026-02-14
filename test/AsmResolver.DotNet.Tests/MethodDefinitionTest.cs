@@ -607,15 +607,15 @@ namespace AsmResolver.DotNet.Tests
             var factory = module.CorLibTypeFactory;
 
             var method = new MethodDefinition("Method", MethodAttributes.Static, MethodSignature.CreateStatic(factory.Void));
-            method.VerifyMetadata();
+            method.VerifyMetadata(module.RuntimeContext);
 
             method.IsStatic = false;
             method.Signature!.HasThis = false;
-            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata());
+            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
 
             method.IsStatic = true;
             method.Signature!.HasThis = true;
-            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata());
+            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
         }
 
         [Fact]
@@ -625,17 +625,17 @@ namespace AsmResolver.DotNet.Tests
             var factory = module.CorLibTypeFactory;
 
             var method = new MethodDefinition("Method", MethodAttributes.Static, MethodSignature.CreateStatic(factory.Void));
-            method.VerifyMetadata();
+            method.VerifyMetadata(module.RuntimeContext);
 
             method.GenericParameters.Add(new GenericParameter("T1"));
             method.GenericParameters.Add(new GenericParameter("T2"));
 
-            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata());
+            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
 
             method.Signature!.IsGeneric = true;
             method.Signature!.GenericParameterCount = 2;
 
-            method.VerifyMetadata();
+            method.VerifyMetadata(module.RuntimeContext);
         }
 
         [Fact]
@@ -733,24 +733,24 @@ namespace AsmResolver.DotNet.Tests
                 IsRuntimeAsync = true
             };
             module.GetOrCreateModuleType().Methods.Add(method);
-            method.VerifyMetadata();
+            method.VerifyMetadata(module.RuntimeContext);
 
             method.IsSynchronized = true;
-            Assert.Throws<AggregateException>(() => method.VerifyMetadata());
+            Assert.Throws<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
             method.IsSynchronized = false;
 
             method.Signature.Attributes |= CallingConventionAttributes.VarArg;
-            Assert.Throws<AggregateException>(() => method.VerifyMetadata());
+            Assert.Throws<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
             method.Signature.Attributes &= ~CallingConventionAttributes.VarArg;
 
             method.Signature.ReturnType = factory.Int32.MakeByReferenceType();
-            Assert.Throws<AggregateException>(() => method.VerifyMetadata());
+            Assert.Throws<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
 
             method.Signature.ReturnType = factory.CorLibScope
                 .CreateTypeReference("System", "Span`1")
                 .MakeGenericInstanceType(isValueType: true, factory.Int32);
 
-            Assert.Throws<AggregateException>(() => method.VerifyMetadata());
+            Assert.Throws<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
         }
 
         [Fact]

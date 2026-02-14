@@ -398,12 +398,10 @@ namespace AsmResolver.DotNet
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
         /// <inheritdoc />
-        public bool IsAccessibleFromType(TypeDefinition type)
+        public bool IsAccessibleFromType(TypeDefinition type, RuntimeContext? context)
         {
-            var context = DeclaringModule?.RuntimeContext;
-
             // The field is only accessible if its declaring type is accessible.
-            if (DeclaringType is not { } declaringType || !declaringType.IsAccessibleFromType(type))
+            if (DeclaringType is not { } declaringType || !declaringType.IsAccessibleFromType(type, context))
                 return false;
 
             // Public fields are always accessible.
@@ -429,7 +427,7 @@ namespace AsmResolver.DotNet
             if ((IsFamily || IsFamilyOrAssembly || IsFamilyAndAssembly)
                 && type.BaseType?.TryResolve(context, out var baseType) is true)
             {
-                return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
+                return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType, context);
             }
 
             return false;
