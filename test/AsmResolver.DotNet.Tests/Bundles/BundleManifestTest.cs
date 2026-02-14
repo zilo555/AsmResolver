@@ -416,12 +416,7 @@ namespace AsmResolver.DotNet.Tests.Bundles
             var manifest = BundleManifest.FromBytes(Properties.Resources.HelloWorld_SingleFile_V6_WithDependency);
             var context = new RuntimeContext(manifest);
 
-            var assembly = AssemblyDefinition.FromBytes(
-                manifest.Files.First(x => x.RelativePath == "MainApp.dll").GetData(),
-                createRuntimeContext: false
-            );
-            context.AddAssembly(assembly);
-
+            var assembly = context.LoadAssembly(manifest.Files.First(x => x.RelativePath == "MainApp.dll").GetData());
             _ = assembly.ManifestModule!.AssemblyReferences.First(x => x.Name == "Library").Resolve(context);
         }
     }

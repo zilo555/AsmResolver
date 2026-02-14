@@ -52,7 +52,7 @@ namespace AsmResolver.DotNet.Cloning
         protected override ITypeDefOrRef ImportType(TypeReference type)
         {
             // Special case for System.Object.
-            if (type.IsTypeOf(nameof(System), nameof(Object)) && (type.Scope?.GetAssembly()?.IsCorLib ?? false))
+            if (type.IsTypeOf(nameof(System), nameof(Object)) && (type.Scope?.GetAssembly()?.IsCorLib(_context.Module.OriginalTargetRuntime) ?? false))
                 return _context.Module.CorLibTypeFactory.Object.Type;
 
             // Rare case where a type reference could point to one of the included type definitions

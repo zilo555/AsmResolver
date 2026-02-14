@@ -118,9 +118,6 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public override bool IsCorLib => KnownCorLibs.KnownCorLibReferences.Contains(this);
-
-        /// <inheritdoc />
         public override byte[]? GetPublicKeyToken()
         {
             if (!HasPublicKey)

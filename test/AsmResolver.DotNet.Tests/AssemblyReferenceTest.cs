@@ -144,5 +144,66 @@ namespace AsmResolver.DotNet.Tests
             var newAttribute = Assert.Single(newReference.CustomAttributes);
             Assert.Equal(ctor, newAttribute.Constructor, SignatureComparer.Default);
         }
+
+        [Fact]
+        public void AllKnownCorLibsAreCorLib()
+        {
+            Assert.All(KnownCorLibs.KnownCorLibReferences,
+                reference => reference.IsCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.All(KnownCorLibs.KnownCorLibReferences,
+                reference => reference.IsCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.All(KnownCorLibs.KnownCorLibReferences,
+                reference => reference.IsCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+        }
+
+        [Fact]
+        public void MscorlibClassification()
+        {
+            Assert.True(KnownCorLibs.MsCorLib_v4_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.True(KnownCorLibs.MsCorLib_v4_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.True(KnownCorLibs.MsCorLib_v4_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.False(KnownCorLibs.MsCorLib_v4_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.True(KnownCorLibs.MsCorLib_v4_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+            Assert.False(KnownCorLibs.MsCorLib_v4_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+        }
+
+        [Fact]
+        public void NetStandardClassification()
+        {
+            Assert.All(
+                [
+                    DotNetRuntimeInfo.NetFramework(4, 0),
+                    DotNetRuntimeInfo.NetStandard(2, 0),
+                    DotNetRuntimeInfo.NetCoreApp(10, 0),
+                ],
+                info =>
+                {
+                    Assert.True(KnownCorLibs.NetStandard_v2_0_0_0.IsReferenceCorLib(info));
+                    Assert.False(KnownCorLibs.NetStandard_v2_0_0_0.IsImplementationCorLib(info));
+                }
+            );
+        }
+
+        [Fact]
+        public void SystemRuntimeClassification()
+        {
+            Assert.False(KnownCorLibs.SystemRuntime_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.False(KnownCorLibs.SystemRuntime_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.True(KnownCorLibs.SystemRuntime_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.False(KnownCorLibs.SystemRuntime_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.True(KnownCorLibs.SystemRuntime_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+            Assert.False(KnownCorLibs.SystemRuntime_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+        }
+
+        [Fact]
+        public void SystemPrivateCorLibClassification()
+        {
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.True(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+        }
     }
 }

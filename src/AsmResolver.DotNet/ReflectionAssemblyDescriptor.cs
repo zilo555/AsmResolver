@@ -51,9 +51,6 @@ namespace AsmResolver.DotNet
             (AssemblyReference) importer.ImportScope(ToAssemblyReference());
 
         /// <inheritdoc />
-        public override bool IsCorLib => Name is not null && KnownCorLibs.KnownCorLibNames.Contains(Name);
-
-        /// <inheritdoc />
         public ModuleDefinition? ContextModule
         {
             get;

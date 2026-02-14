@@ -53,7 +53,7 @@ public partial class RuntimeContext
         AssemblyResolver = resolver;
 
         RuntimeCorLib = TargetRuntime.GetAssumedImplCorLib();
-        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic);
+        SignatureComparer = CreateSignatureComparer(TargetRuntime);
         _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
     }
 
@@ -132,12 +132,7 @@ public partial class RuntimeContext
         }
 
         RuntimeCorLib = TargetRuntime.GetAssumedImplCorLib();
-
-        var flags = SignatureComparisonFlags.VersionAgnostic;
-        if (TargetRuntime.IsNetCoreApp)
-            flags |= SignatureComparisonFlags.IgnoreStrongNames;
-        SignatureComparer = new SignatureComparer(this, flags);
-
+        SignatureComparer = CreateSignatureComparer(TargetRuntime);
         _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
     }
 
@@ -146,11 +141,13 @@ public partial class RuntimeContext
     /// </summary>
     /// <param name="targetRuntime">The target runtime version.</param>
     /// <param name="is32Bit"><c>true</c> if a 32-bit architecture is to be assumed, <c>false</c> if 64-bit, <c>null</c> if platform independent.</param>
+    /// <param name="corLibReference">The core library for this runtime context, or the assumed one from the version if null.</param>
     /// <param name="readerParameters">The parameters to use when reading modules in this context.</param>
     /// <param name="searchDirectories">Additional search directories to be added to the assembly resolution system.</param>
     public RuntimeContext(
         DotNetRuntimeInfo targetRuntime,
         bool? is32Bit = null,
+        AssemblyDescriptor? corLibReference = null,
         ModuleReaderParameters? readerParameters = null,
         IEnumerable<string>? searchDirectories = null)
     {
@@ -158,13 +155,9 @@ public partial class RuntimeContext
 
         TargetRuntime = targetRuntime;
         AssemblyResolver = CreateAssemblyResolver(TargetRuntime, is32Bit, DefaultReaderParameters, searchDirectories);
-        RuntimeCorLib = targetRuntime.GetAssumedImplCorLib();
+        RuntimeCorLib = corLibReference ?? targetRuntime.GetAssumedImplCorLib();
 
-        var flags = SignatureComparisonFlags.VersionAgnostic;
-        if (targetRuntime.IsNetCoreApp)
-            flags |= SignatureComparisonFlags.IgnoreStrongNames;
-        SignatureComparer = new SignatureComparer(this, flags);
-
+        SignatureComparer = CreateSignatureComparer(targetRuntime);
         _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
     }
 
@@ -185,12 +178,7 @@ public partial class RuntimeContext
         TargetRuntime = targetRuntime;
         AssemblyResolver = assemblyResolver;
         RuntimeCorLib = corLibReference ?? targetRuntime.GetAssumedImplCorLib();
-
-        var flags = SignatureComparisonFlags.VersionAgnostic;
-        if (targetRuntime.IsNetCoreApp)
-            flags |= SignatureComparisonFlags.IgnoreStrongNames;
-        SignatureComparer = new SignatureComparer(this, flags);
-
+        SignatureComparer = CreateSignatureComparer(targetRuntime);
         _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
     }
 
@@ -208,7 +196,7 @@ public partial class RuntimeContext
         DefaultReaderParameters = readerParameters ?? new ModuleReaderParameters(new ByteArrayFileService());
         TargetRuntime = manifest.GetTargetRuntime();
         AssemblyResolver = new BundleAssemblyResolver(manifest, DefaultReaderParameters, assemblyResolver);
-        SignatureComparer = new SignatureComparer(this, SignatureComparisonFlags.VersionAgnostic | SignatureComparisonFlags.IgnoreStrongNames);
+        SignatureComparer = CreateSignatureComparer(TargetRuntime);
         _loadedAssemblies = new Dictionary<AssemblyDescriptor, AssemblyDefinition>(SignatureComparer);
 
         if (ResolveAssembly(TargetRuntime.GetDefaultCorLib(), null, out var corlib) == ResolutionStatus.Success
@@ -315,11 +303,19 @@ public partial class RuntimeContext
         }
     }
 
+    private SignatureComparer CreateSignatureComparer(DotNetRuntimeInfo targetRuntime)
+    {
+        var flags = SignatureComparisonFlags.VersionAgnostic;
+        if (targetRuntime.IsNetCoreApp)
+            flags |= SignatureComparisonFlags.IgnoreStrongNames;
+        return new SignatureComparer(this, flags);
+    }
+
     /// <summary>
     /// Loads a .NET assembly into the context from the provided input buffer.
     /// </summary>
     /// <param name="buffer">The raw contents of the executable file to load.</param>
-    /// <returns>The module.</returns>
+    /// <returns>The assembly.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(byte[] buffer)
         => GetOrAddAssembly(AssemblyDefinition.FromBytes(buffer, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
@@ -328,7 +324,7 @@ public partial class RuntimeContext
     /// Loads a .NET assembly into the context from the provided input stream.
     /// </summary>
     /// <param name="stream">The raw contents of the executable file to load.</param>
-    /// <returns>The module.</returns>
+    /// <returns>The assembly.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(Stream stream)
         => GetOrAddAssembly(AssemblyDefinition.FromStream(stream, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
@@ -337,7 +333,7 @@ public partial class RuntimeContext
     /// Loads a .NET assembly into the context from the provided input file.
     /// </summary>
     /// <param name="filePath">The file path to the input executable to load.</param>
-    /// <returns>The module.</returns>
+    /// <returns>The assembly.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(string filePath)
         => GetOrAddAssembly(AssemblyDefinition.FromFile(filePath, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
@@ -346,7 +342,7 @@ public partial class RuntimeContext
     /// Loads a .NET assembly into the context from the provided input file.
     /// </summary>
     /// <param name="file">The portable executable file to load.</param>
-    /// <returns>The module.</returns>
+    /// <returns>The assembly.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(PEFile file)
         => GetOrAddAssembly(AssemblyDefinition.FromFile(file, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
@@ -355,7 +351,7 @@ public partial class RuntimeContext
     /// Loads a .NET assembly into the context from the provided input file.
     /// </summary>
     /// <param name="file">The portable executable file to load.</param>
-    /// <returns>The module.</returns>
+    /// <returns>The assembly.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(IInputFile file)
         => GetOrAddAssembly(AssemblyDefinition.FromFile(file, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
@@ -365,7 +361,7 @@ public partial class RuntimeContext
     /// </summary>
     /// <param name="reader">The input stream pointing at the beginning of the executable to load.</param>
     /// <param name="mode">Indicates the input PE is mapped or unmapped.</param>
-    /// <returns>The module.</returns>
+    /// <returns>The assembly.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(in BinaryStreamReader reader, PEMappingMode mode = PEMappingMode.Unmapped)
         => GetOrAddAssembly(AssemblyDefinition.FromReader(reader, mode: mode, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
@@ -374,12 +370,21 @@ public partial class RuntimeContext
     /// Loads a .NET assembly into the context from a PE image.
     /// </summary>
     /// <param name="peImage">The image containing the .NET metadata.</param>
-    /// <returns>The module.</returns>
+    /// <returns>The assembly.</returns>
     /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
     public AssemblyDefinition LoadAssembly(PEImage peImage)
         => GetOrAddAssembly(AssemblyDefinition.FromImage(peImage, readerParameters: DefaultReaderParameters, createRuntimeContext: false));
 
-    private void AssertNoOwner(AssemblyDefinition assembly)
+    /// <summary>
+    /// Loads a .NET assembly into the context from a file in an app-host bundle.
+    /// </summary>
+    /// <param name="file">The file containing the .NET metadata.</param>
+    /// <returns>The assembly.</returns>
+    /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+    public AssemblyDefinition LoadAssembly(BundleFile file)
+        => GetOrAddAssembly(AssemblyDefinition.FromBytes(file.GetData(), readerParameters: DefaultReaderParameters, createRuntimeContext: false));
+
+    private static void AssertNoOwner(AssemblyDefinition assembly)
     {
         if (assembly.RuntimeContext is not null)
             throw new ArgumentException($"Assembly {assembly.SafeToString()} is already added to another context.");

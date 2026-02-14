@@ -7,7 +7,6 @@ using AsmResolver.DotNet.TestCases.Types;
 using AsmResolver.IO;
 using AsmResolver.Tests.Runners;
 using Xunit;
-using FileAttributes = AsmResolver.PE.DotNet.Metadata.Tables.FileAttributes;
 
 namespace AsmResolver.DotNet.Tests
 {
@@ -182,6 +181,29 @@ namespace AsmResolver.DotNet.Tests
             var object2 = module2.CorLibTypeFactory.Object.Resolve(module2.RuntimeContext);
 
             Assert.Same(object1, object2);
+        }
+
+        [Fact]
+        public void LoadReferenceCorLibShouldNotSetAsRuntimeCorLib()
+        {
+            string path = new DotNetCoreAssemblyResolver(new Version(10, 0))
+                .ProbeAssemblyFilePath(KnownCorLibs.SystemRuntime_v10_0_0_0, null);
+
+            Assert.NotNull(path);
+
+            var module = ModuleDefinition.FromFile(path, TestReaderParameters);
+            var context = module.RuntimeContext!;
+
+            Assert.NotSame(module.Assembly, context.RuntimeCorLib);
+        }
+
+        [Fact]
+        public void LoadImplementationCorLibShouldSetAsRuntimeCorLib()
+        {
+            var module = ModuleDefinition.FromFile(typeof(object).Assembly.Location, TestReaderParameters);
+            var context = module.RuntimeContext!;
+
+            Assert.Same(module.Assembly, context.RuntimeCorLib);
         }
     }
 }

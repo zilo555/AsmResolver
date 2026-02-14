@@ -130,7 +130,7 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        protected override string? ProbeAssemblyFilePath(AssemblyDescriptor assembly, ModuleDefinition? originModule)
+        public override string? ProbeAssemblyFilePath(AssemblyDescriptor assembly, ModuleDefinition? originModule)
         {
             string? path = null;
 

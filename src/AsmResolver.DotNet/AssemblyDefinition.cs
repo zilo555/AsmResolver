@@ -274,9 +274,6 @@ namespace AsmResolver.DotNet
             }
         }
 
-        /// <inheritdoc />
-        public override bool IsCorLib => Name is not null && KnownCorLibs.KnownCorLibNames.Contains(Name);
-
         /// <summary>
         /// Obtains the list of defined modules in the .NET assembly.
         /// </summary>

@@ -275,7 +275,20 @@ namespace AsmResolver.DotNet
 
             if (module.Assembly is not null && createRuntimeContext)
             {
-                var context = new RuntimeContext(image, readerParameters);
+                RuntimeContext context;
+                if (module.Assembly.IsImplementationCorLib(module.OriginalTargetRuntime))
+                {
+                    context = new RuntimeContext(
+                        module.OriginalTargetRuntime,
+                        corLibReference: module.Assembly,
+                        readerParameters: readerParameters
+                    );
+                }
+                else
+                {
+                    context = new RuntimeContext(image, readerParameters);
+                }
+
                 context.AddAssembly(module.Assembly);
             }
 

@@ -187,11 +187,42 @@ namespace AsmResolver.DotNet
         }
 
         /// <summary>
-        /// Gets a value indicating whether the assembly descriptor references a Common Object Runtime standard library.
+        /// Determines whether the assembly descriptor references a Common Object Runtime standard library,
+        /// according to the provided host runtime.
         /// </summary>
-        public abstract bool IsCorLib
+        /// <param name="contextRuntime">The runtime to assume the host is running as.</param>
+        /// <returns><c>true</c> if it is considered a corlib according to the provided runtime, <c>false</c> otherwise.</returns>
+        public bool IsCorLib(in DotNetRuntimeInfo contextRuntime)
         {
-            get;
+            return IsReferenceCorLib(contextRuntime) || IsImplementationCorLib(contextRuntime);
+        }
+
+        /// <summary>
+        /// Determines whether the assembly descriptor references a Common Object Runtime standard reference (facade)
+        /// library, according to the provided host runtime.
+        /// </summary>
+        /// <param name="contextRuntime">The runtime to assume the host is running as.</param>
+        /// <returns><c>true</c> if it is considered a facade corlib according to the provided runtime, <c>false</c> otherwise.</returns>
+        public bool IsReferenceCorLib(in DotNetRuntimeInfo contextRuntime)
+        {
+            if (contextRuntime.IsNetFramework)
+                return Name?.Value is "mscorlib" or "netstandard";
+            return Name?.Value is "mscorlib" or "System.Runtime"  or "netstandard";
+        }
+
+        /// <summary>
+        /// Determines whether the assembly descriptor references a Common Object Runtime standard implementation
+        /// library, according to the provided host runtime.
+        /// </summary>
+        /// <param name="contextRuntime">The runtime to assume the host is running as.</param>
+        /// <returns><c>true</c> if it is considered a implementation corlib according to the provided runtime, <c>false</c> otherwise.</returns>
+        public bool IsImplementationCorLib(in DotNetRuntimeInfo contextRuntime)
+        {
+            if (contextRuntime.IsNetFramework)
+                return Name == "mscorlib";
+            if (contextRuntime.IsNetCoreApp)
+                return Name == "System.Private.CoreLib";
+            return false;
         }
 
         /// <summary>

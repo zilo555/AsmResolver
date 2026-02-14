@@ -89,7 +89,7 @@ namespace AsmResolver.DotNet
         /// <param name="assembly">The assembly to locate.</param>
         /// <param name="originModule">The module to assume the assembly was referenced in.</param>
         /// <returns>The path to the assembly, or <c>null</c> if none was found.</returns>
-        protected abstract string? ProbeAssemblyFilePath(AssemblyDescriptor assembly, ModuleDefinition? originModule);
+        public abstract string? ProbeAssemblyFilePath(AssemblyDescriptor assembly, ModuleDefinition? originModule);
 
         /// <summary>
         /// Probes all search directories in <see cref="SearchDirectories"/> for the provided assembly.
