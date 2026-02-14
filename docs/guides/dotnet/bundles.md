@@ -240,3 +240,17 @@ file.Compress();
 file.Decompress();
 // file.Contents now contains the decompressed version of the data and file.IsCompressed = false
 ```
+
+
+## Reading assemblies from bundles
+
+Assemblies can be read and loaded into a `RuntimeContext`:
+
+```csharp
+BundleManifest manifest = ...;
+
+var context = new RuntimeContext(manifest);
+AssemblyDefinition assembly = context.LoadAssembly(manifest.Files.First(x => x.RelativePath == "MainAssembly.dll").GetData());
+```
+
+This will also initialize a runtime context that upon resolution prefers assemblies stored in the bundle rather than on the disk.

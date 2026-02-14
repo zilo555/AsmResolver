@@ -266,14 +266,16 @@ assignable to variables of another type. These rules are implemented in
 AsmResolver using the `IsCompatibleWith` and `IsAssignableTo` methods:
 
 ``` csharp
-if (type1.IsCompatibleWith(type2)) 
+RuntimeContext? context = ...;
+if (type1.IsCompatibleWith(type2, context)) 
 {
     // type1 can be converted to type2.
 }
 ```
 
 ``` csharp
-if (type1.IsAssignableTo(type2)) 
+RuntimeContext? context = ...;
+if (type1.IsAssignableTo(type2, context)) 
 {
     // Values of type1 can be assigned to variables of type2.
 }

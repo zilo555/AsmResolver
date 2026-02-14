@@ -24,8 +24,9 @@ To get the memory layout of any `ITypeDescriptor`, use the following
 extension method:
 
 ``` csharp
-ITypeDescriptor type = ...    
-TypeMemoryLayout typeLayout = type.GetImpliedMemoryLayout(is32Bit: false);
+ITypeDescriptor type = ...
+RuntimeContext context = ...
+TypeMemoryLayout typeLayout = type.GetImpliedMemoryLayout(context, is32Bit: false);
 ```
 
 > [!NOTE]
@@ -128,9 +129,10 @@ the type, use the `TryGetFieldPath` method. This method will return
 otherwise.
 
 ``` csharp
+RuntimeContext context = ...;
 var struct3Definition = (TypeDefinition) Module.LookupMember(
     typeof(Struct3).MetadataToken);
-var struct3Layout = struct3Definition.GetImpliedMemoryLayout(false);
+var struct3Layout = struct3Definition.GetImpliedMemoryLayout(context, is32Bit: false);
 
 uint offset = 20;
 bool isStartOfField = layout.TryGetFieldPath(offset, out var path);

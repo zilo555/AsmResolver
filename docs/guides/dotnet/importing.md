@@ -3,6 +3,10 @@
 Next to metadata symbols defined in the current module (see [The Member Tree](./member-tree.md)), .NET modules can also reference metadata defined in external assemblies using the `AssemblyRef`, `TypeRef` and `MemberRef` tables.
 Thus, when you want to use a type, field or method defined in a different assembly, it is required to turn these definitions into the appropriate references first.
 
+> [!NOTE]
+> Prior to AsmResolver 6.0, manually importing of external metadata definitions using `ImportWith` is required for any definition not defined in the same assembly.
+> For AsmResolver 6.0 and newer, importing is only required when cloning metadata (e.g., see [Member Cloning](./cloning.md)), or when mapping references to other (equivalent) references.
+
 Below an overview of how AsmResolver represents definitions and their corresponding reference type.
 
 | Definition           | Reference                                  | 
@@ -29,22 +33,31 @@ foreach (var assembly in module.AssemblyReferences)
     Console.WriteLine(assembly);
 ```
 
-You can add new `AssemblyReference`s to this list, but the preferred way of adding a new assembly reference to is by using an importer:
+Creating a new `AssemblyReference` can be done using its constructor:
 
 ```csharp
 ModuleDefinition module = ...;
 var systemConsole = new AssemblyReference(
-        "System.Console", 
-        new Version(8, 0, 0, 0)
-    ).ImportWith(module.DefaultImporter);
+    "System.Console", 
+    new Version(8, 0, 0, 0)
+);
 ```
 
-You can also import existing `AssemblyDefinition`s and turn them into `AssemblyReference`s:
+> [!NOTE]
+> Prior to AsmResolver 6.0, `AssemblyReference`s need to be manually imported using `ImportWith`
+> ```csharp
+> var systemConsole = new AssemblyReference(
+>    "System.Console", 
+>    new Version(8, 0, 0, 0)
+> ).ImportWith(module.DefaultImporter);
+> ```
+
+An `AssemblyDefinition`s and turn them into `AssemblyReference`s:
 
 ```csharp
 ModuleDefinition module = ...;
 AssemblyDefinition otherAssembly = ...;
-var otherAssemblyRef = otherAssembly.ImportWith(module.DefaultImporter);
+AssemblyReference otherAssemblyRef = otherAssembly.ToAssemblyReference();
 ```
 
 `ModuleDefinition` also provides a default corlib assembly scope that the module targets:
@@ -110,6 +123,14 @@ var importedMethod = factory.CorLibScope
 // importedMethod now references "!0[] System.Array.Empty<System.String>()"
 ```
 
+> [!NOTE]
+> Prior to AsmResolver 6.0, `TypeReference`s and `MemberReference`s need to be manually imported using `ImportWith`. For example:
+> ```csharp
+> var method = factory.CorLibScope
+>    .CreateTypeReference("System", "Console")
+>    .CreateMemberReference("WriteLine", MethodSignature.CreateStatic(factory.Void, factory.String))
+>    .ImportWith(module.DefaultImporter);
+> ```
 
 ## Importing existing metadata definitions
 
@@ -171,7 +192,7 @@ imported through reflection include:
     is created).
 -   Generic parameters.
 -   Generic type instantiations.
--   Function pointer types (.NET 8.0+ only. TFM doesn't matter for this, the runtime used at runtime is all that matters.) (!!WARNING!! )
+-   Function pointer types (.NET 8.0+ only. TFM doesn't matter for this, the runtime used at runtime is all that matters.)
 
 > [!WARNING]
 > Function pointer `Type` instances lose their calling conventions unless attained with

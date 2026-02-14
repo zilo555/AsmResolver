@@ -79,7 +79,7 @@ custom implementation of the `INetModuleResolver` interface.
 ``` csharp
 public class CustomNetModuleResolver : INetModuleResolver
 {
-    public ModuleDefinition Resolve(string name)
+    public ModuleDefinition Resolve(string name, ModuleDefinition originModule)
     {
         // ...
     }
