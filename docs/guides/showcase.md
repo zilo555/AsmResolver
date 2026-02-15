@@ -33,6 +33,8 @@ Below a non-exhaustive list of awesome projects (sorted alphabetically) that use
 
 ## Libraries
 
+- [BenchmarkDotNet](https://github.com/dotnet/BenchmarkDotNet) - Powerful .NET library for benchmarking.
+- [CsWinRT](https://github.com/microsoft/cswinrt) - C# language projection for the Windows Runtime.
 - [Echo](https://github.com/Washi1337/Echo) - An experimental control flow analysis and emulation framework, that aims to help out with binary code analysis for a variety of platforms.
 
 

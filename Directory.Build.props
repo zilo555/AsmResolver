@@ -1,7 +1,7 @@
 <Project>
 
     <PropertyGroup>
-        <Copyright>Copyright © Washi 2016-2025</Copyright>
+        <Copyright>Copyright © Washi 2016-2026</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryUrl>https://github.com/Washi1337/AsmResolver</RepositoryUrl>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -9,7 +9,7 @@
         <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
         <LangVersion>14</LangVersion>
         <VersionPrefix>6.0.0</VersionPrefix>
-        <VersionSuffix>beta.5</VersionSuffix>
+        <VersionSuffix>beta.6</VersionSuffix>
         <Deterministic>true</Deterministic>
         <UseArtifactsOutput>true</UseArtifactsOutput>
         <CheckEolTargetFramework>false</CheckEolTargetFramework>

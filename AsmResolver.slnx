@@ -1,0 +1,73 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/docs/" />
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="LICENSE.md" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <File Path="src/Directory.Build.props" />
+    <Project Path="src/AsmResolver.DotNet.Dynamic/AsmResolver.DotNet.Dynamic.csproj" />
+    <Project Path="src/AsmResolver.DotNet/AsmResolver.DotNet.csproj" />
+    <Project Path="src/AsmResolver.PE.File/AsmResolver.PE.File.csproj" />
+    <Project Path="src/AsmResolver.PE.Win32Resources/AsmResolver.PE.Win32Resources.csproj" />
+    <Project Path="src/AsmResolver.PE/AsmResolver.PE.csproj" />
+    <Project Path="src/AsmResolver.Symbols.Pdb/AsmResolver.Symbols.Pdb.csproj" />
+    <Project Path="src/AsmResolver/AsmResolver.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <File Path="test/Directory.Build.props" />
+    <Project Path="test/AsmResolver.Benchmarks/AsmResolver.Benchmarks.csproj" />
+    <Project Path="test/AsmResolver.DotNet.Dynamic.Tests/AsmResolver.DotNet.Dynamic.Tests.csproj" />
+    <Project Path="test/AsmResolver.DotNet.Tests/AsmResolver.DotNet.Tests.csproj" />
+    <Project Path="test/AsmResolver.PE.File.Tests/AsmResolver.PE.File.Tests.csproj" />
+    <Project Path="test/AsmResolver.PE.Tests/AsmResolver.PE.Tests.csproj" />
+    <Project Path="test/AsmResolver.PE.Win32Resources.Tests/AsmResolver.PE.Win32Resources.Tests.csproj" />
+    <Project Path="test/AsmResolver.Symbols.Pdb.Tests/AsmResolver.Symbols.Pdb.Tests.csproj" />
+    <Project Path="test/AsmResolver.Tests/AsmResolver.Tests.csproj" />
+  </Folder>
+  <Folder Name="/test/TestBinaries/" />
+  <Folder Name="/test/TestBinaries/DotNet/">
+    <File Path="test/TestBinaries/DotNet/Directory.Build.props" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.CustomAttributes/AsmResolver.DotNet.TestCases.CustomAttributes.csproj" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.Events/AsmResolver.DotNet.TestCases.Events.csproj" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.Fields/AsmResolver.DotNet.TestCases.Fields.csproj" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.Generics/AsmResolver.DotNet.TestCases.Generics.csproj" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.Methods/AsmResolver.DotNet.TestCases.Methods.csproj" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.MultiModules/AsmResolver.DotNet.TestCases.MultiModules.csproj" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.NestedClasses/AsmResolver.DotNet.TestCases.NestedClasses.csproj" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.Properties/AsmResolver.DotNet.TestCases.Properties.csproj" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.Resources/AsmResolver.DotNet.TestCases.Resources.csproj" />
+    <Project Path="test/TestBinaries/DotNet/AsmResolver.DotNet.TestCases.Types/AsmResolver.DotNet.TestCases.Types.csproj" />
+    <Project Path="test/TestBinaries/DotNet/ClassLibraryVB/ClassLibraryVB.vbproj" />
+    <Project Path="test/TestBinaries/DotNet/HelloWorld/HelloWorld.csproj" />
+    <Project Path="test/TestBinaries/DotNet/HelloWorldVB/HelloWorldVB.vbproj" />
+    <Project Path="test/TestBinaries/DotNet/TheAnswer/TheAnswer.csproj" />
+  </Folder>
+  <Folder Name="/test/TestBinaries/Native/">
+    <Project Path="test/TestBinaries/Native/CallManagedExport/CallManagedExport.vcxproj">
+      <Build Solution="*|Any CPU" Project="false" />
+    </Project>
+    <Project Path="test/TestBinaries/Native/SimpleDll/SimpleDll.vcxproj">
+      <Platform Solution="*|Any CPU" Project="Win32" />
+      <Build Solution="*|Any CPU" Project="false" />
+    </Project>
+    <Project Path="test/TestBinaries/Native/TlsTest/TlsTest.vcxproj">
+      <Platform Solution="*|Any CPU" Project="Win32" />
+      <Build Solution="*|Any CPU" Project="false" />
+    </Project>
+  </Folder>
+  <Folder Name="/tools/">
+    <File Path="tools/Directory.Build.props" />
+    <Project Path="tools/AsmResolver.PE.Exports.OrdinalMapper/AsmResolver.PE.Exports.OrdinalMapper.csproj" />
+    <Project Path="tools/AsmResolver.SourceGenerators/AsmResolver.SourceGenerators.csproj" />
+  </Folder>
+</Solution>

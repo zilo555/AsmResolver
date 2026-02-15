@@ -88,8 +88,8 @@ jobs:
       - name: Build on master branch
         if: ${{github.ref == 'refs/heads/master'}}
         run: |
-          dotnet restore AsmResolver.sln
-          dotnet build AsmResolver.sln `
+          dotnet restore AsmResolver.slnx
+          dotnet build AsmResolver.slnx `
             --configuration Release `
             --property:CheckEolTargetFramework=false
 
@@ -97,11 +97,11 @@ jobs:
       - name: Build on non-master branch
         if: ${{github.ref != 'refs/heads/master'}}
         run: |
-          dotnet restore AsmResolver.sln `
+          dotnet restore AsmResolver.slnx `
             --property:VersionSuffix=${{needs.get-version.outputs.version_suffix}} `
             --property:CheckEolTargetFramework=false
 
-          dotnet build AsmResolver.sln `
+          dotnet build AsmResolver.slnx `
             --configuration Release `
             --property:VersionSuffix=${{needs.get-version.outputs.version_suffix}} `
             --property:CheckEolTargetFramework=false
@@ -198,7 +198,7 @@ jobs:
         shell: pwsh
         if: "${{ matrix.runner.arch == 'x86' }}"
         run: |
-          & "${{ steps.dotnet-path.outputs.exe-path }}" test AsmResolver.sln `
+          & "${{ steps.dotnet-path.outputs.exe-path }}" test AsmResolver.slnx `
             --arch x86 `
             --configuration Release `
             --property:VersionSuffix=${{needs.get-version.outputs.version_suffix}} `
@@ -210,7 +210,7 @@ jobs:
         shell: pwsh
         if: "${{ matrix.runner.arch == 'x64' }}"
         run: |
-          & "${{ steps.dotnet-path.outputs.exe-path }}" test AsmResolver.sln `
+          & "${{ steps.dotnet-path.outputs.exe-path }}" test AsmResolver.slnx `
             --configuration Release `
             --property:VersionSuffix=${{needs.get-version.outputs.version_suffix}} `
             --property:CheckEolTargetFramework=false `
