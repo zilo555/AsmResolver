@@ -18,7 +18,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void NameWithDotShouldBeEscaped()
         {
             var type = new TypeReference(_module, _module, "Company.ProductName", "Class.Name");
-            string name = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature());
+            string name = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature(false));
             Assert.Contains("Class\\.Name", name);
         }
 
@@ -26,7 +26,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void NameWithEqualsShouldNotBeEscaped()
         {
             var type = new TypeReference(_module, _module, "Company.ProductName", "#=abc");
-            string name = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature());
+            string name = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature(false));
             Assert.DoesNotContain('\\', name);
             Assert.Contains("#=abc", name);
         }
@@ -35,7 +35,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void NamespaceShouldNotBeEscaped()
         {
             var type = new TypeReference(_module, _module, "Company.ProductName", "ClassName");
-            string name = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature());
+            string name = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature(false));
             Assert.DoesNotContain('\\', name);
             Assert.Contains("Company.ProductName", name);
         }
@@ -44,7 +44,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void NamespaceWithEqualsShouldNotBeEscaped()
         {
             var type = new TypeReference(_module, _module, "#=abc", "ClassName");
-            string name = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature());
+            string name = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature(false));
             Assert.DoesNotContain('\\', name);
             Assert.Contains("#=abc", name);
         }
@@ -55,7 +55,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void NestedTypeShouldContainPlus(string ns, string name, string nestedType)
         {
             var type = new TypeReference(_module, new TypeReference(_module, ns, name), null, nestedType);
-            string fullname = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature());
+            string fullname = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature(false));
             Assert.DoesNotContain('\\', fullname);
             Assert.Contains($"{ns}.{name}+{nestedType}", fullname);
         }
@@ -66,7 +66,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void NestedTypeNoNamespaceShouldContainPlus(string name, string nestedType)
         {
             var type = new TypeReference(_module, new TypeReference(_module, null, name), null, nestedType);
-            string fullname = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature());
+            string fullname = TypeNameBuilder.GetAssemblyQualifiedName(type.ToTypeSignature(false));
             Assert.DoesNotContain('\\', fullname);
             Assert.Contains($"{name}+{nestedType}", fullname);
         }

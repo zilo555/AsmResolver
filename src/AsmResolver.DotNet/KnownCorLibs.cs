@@ -172,7 +172,7 @@ namespace AsmResolver.DotNet
 
         /// <summary>
         /// References System.Runtime.dll, Version=4.2.1.0, PublicKeyToken=B03F5F7F11D50A3A. This is used by .NET
-        /// assemblies targeting .NET Core 2.1 and 3.0.
+        /// assemblies targeting .NET Core 2.1, 2.2 and 3.0.
         /// </summary>
         public static readonly AssemblyReference SystemRuntime_v4_2_1_0 = new("System.Runtime",
             new Version(4, 2, 1, 0), false, new byte[]

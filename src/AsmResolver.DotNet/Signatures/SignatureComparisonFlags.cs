@@ -12,7 +12,8 @@ namespace AsmResolver.DotNet.Signatures
         /// When neither <see cref="AcceptOlderVersions"/> nor <see cref="AcceptNewerVersions"/> are specified,
         /// the exact version number must match in the comparison of two assembly descriptors.
         /// </summary>
-        ExactVersion = 0,
+        ExactVersion = 0b00,
+
         /// <summary>
         /// If this flag is used, the containing assembly of the second member to compare is
         /// allowed to be an older version than the containing assembly of the first member.
@@ -23,7 +24,8 @@ namespace AsmResolver.DotNet.Signatures
         /// same name or signature contained in an assembly with a older version (e.g. 1.0.0.0).
         /// Otherwise, they will be treated as inequal.
         /// </remarks>
-        AcceptOlderVersions = 1,
+        AcceptOlderVersions = 0b01,
+
         /// <summary>
         /// If this flag is used, the containing assembly of the second member to compare is
         /// allowed to be a newer version than the containing assembly of the first member.
@@ -34,11 +36,17 @@ namespace AsmResolver.DotNet.Signatures
         /// same name or signature contained in an assembly with a newer version (e.g. 1.1.0.0).
         /// Otherwise, they will be treated as inequal.
         /// </remarks>
-        AcceptNewerVersions = 2,
+        AcceptNewerVersions = 0b10,
+
         /// <summary>
         /// If this flag is used, version numbers will be excluded in the comparison of two
         /// assembly descriptors.
         /// </summary>
         VersionAgnostic = AcceptOlderVersions | AcceptNewerVersions,
+
+        /// <summary>
+        /// Indicates any strong names added to assembly descriptors will be ignored.
+        /// </summary>
+        IgnoreStrongNames = 0b100,
     }
 }

@@ -74,8 +74,10 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = new ModuleDefinition("Dummy");
             var genericInstance = _dummyType.MakeGenericInstanceType(
+                isValueType: false,
                 module.CorLibTypeFactory.Int32,
-                _dummyType.MakeGenericInstanceType(module.CorLibTypeFactory.Object));
+                _dummyType.MakeGenericInstanceType(isValueType: false, module.CorLibTypeFactory.Object)
+            );
 
             Assert.Equal("Type<System.Int32, Namespace.Type<System.Object>>", genericInstance.Name);
             Assert.Equal("Namespace.Type<System.Int32, Namespace.Type<System.Object>>", genericInstance.FullName);
@@ -170,7 +172,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void GetReducedTypeOfPrimitive(ElementType type, ElementType expected)
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
-            Assert.Equal(expected, module.CorLibTypeFactory.FromElementType(type)!.GetReducedType().ElementType);
+            Assert.Equal(expected, module.CorLibTypeFactory.FromElementType(type)!.GetReducedType(module.RuntimeContext).ElementType);
         }
 
         [Theory]
@@ -180,7 +182,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromFile(type.Assembly.Location, TestReaderParameters);
             var signature = module.LookupMember<TypeDefinition>(type.MetadataToken).ToTypeSignature();
-            Assert.Equal(expected, signature.GetReducedType().ElementType);
+            Assert.Equal(expected, signature.GetReducedType(module.RuntimeContext).ElementType);
         }
 
         [Fact]
@@ -188,7 +190,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var type = module.TopLevelTypes.First(t => t.Name == "Program").ToTypeSignature(false);
-            Assert.Equal(type, type.GetReducedType());
+            Assert.Equal(type, type.GetReducedType(module.RuntimeContext));
         }
 
         [Theory]
@@ -208,7 +210,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void GetVerificationTypeOfPrimitive(ElementType type, ElementType expected)
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
-            Assert.Equal(expected, module.CorLibTypeFactory.FromElementType(type)!.GetVerificationType().ElementType);
+            Assert.Equal(expected, module.CorLibTypeFactory.FromElementType(type)!.GetVerificationType(module.RuntimeContext).ElementType);
         }
 
         [Theory]
@@ -229,7 +231,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var pointerType = module.CorLibTypeFactory.FromElementType(type)!.MakeByReferenceType();
-            var actualType = Assert.IsAssignableFrom<ByReferenceTypeSignature>(pointerType.GetVerificationType());
+            var actualType = Assert.IsAssignableFrom<ByReferenceTypeSignature>(pointerType.GetVerificationType(module.RuntimeContext));
             Assert.Equal(expected, actualType.BaseType.ElementType);
         }
 
@@ -238,7 +240,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var type = module.TopLevelTypes.First(t => t.Name == "Program").ToTypeSignature(false);
-            Assert.Equal(type, type.GetVerificationType());
+            Assert.Equal(type, type.GetVerificationType(module.RuntimeContext));
         }
 
         [Theory]
@@ -260,7 +262,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         public void GetIntermediateTypeOfPrimitive(ElementType type, ElementType expected)
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
-            Assert.Equal(expected, module.CorLibTypeFactory.FromElementType(type)!.GetIntermediateType().ElementType);
+            Assert.Equal(expected, module.CorLibTypeFactory.FromElementType(type)!.GetIntermediateType(module.RuntimeContext).ElementType);
         }
 
         [Fact]
@@ -268,7 +270,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var type = module.TopLevelTypes.First(t => t.Name == "Program").ToTypeSignature(false);
-            Assert.Equal(type, type.GetIntermediateType());
+            Assert.Equal(type, type.GetIntermediateType(module.RuntimeContext));
         }
 
         [Fact]
@@ -276,7 +278,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var signature = module.CorLibTypeFactory.Object.MakeArrayType(3);
-            Assert.Equal("System.Array", signature.GetDirectBaseClass()!.FullName);
+            Assert.Equal("System.Array", signature.GetDirectBaseClass(module.RuntimeContext)!.FullName);
         }
 
         [Fact]
@@ -284,7 +286,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var signature = module.CorLibTypeFactory.Object.MakeSzArrayType();
-            Assert.Equal("System.Array", signature.GetDirectBaseClass()!.FullName);
+            Assert.Equal("System.Array", signature.GetDirectBaseClass(module.RuntimeContext)!.FullName);
         }
 
         [Fact]
@@ -296,7 +298,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
 
             var interfaceSignature = interfaceDefinition.ToTypeSignature(false);
 
-            Assert.Equal("System.Object", interfaceSignature.GetDirectBaseClass()!.FullName);
+            Assert.Equal("System.Object", interfaceSignature.GetDirectBaseClass(module.RuntimeContext)!.FullName);
         }
 
         [Fact]
@@ -304,7 +306,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var type = module.TopLevelTypes.First(t => t.Name == "Program").ToTypeSignature();
-            Assert.Equal("System.Object", type.GetDirectBaseClass()!.FullName);
+            Assert.Equal("System.Object", type.GetDirectBaseClass(module.RuntimeContext)!.FullName);
         }
 
         [Fact]
@@ -312,20 +314,23 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromFile(typeof(DerivedClass).Assembly.Location, TestReaderParameters);
             var type = module.LookupMember<TypeDefinition>(typeof(DerivedClass).MetadataToken);
-            Assert.Equal(type.BaseType!.FullName, type.ToTypeSignature().GetDirectBaseClass()!.FullName);
+            Assert.Equal(type.BaseType!.FullName, type.ToTypeSignature().GetDirectBaseClass(module.RuntimeContext)!.FullName);
         }
 
         [Fact]
         public void GetDirectBaseClassOfGenericTypeInstance()
         {
             var module = ModuleDefinition.FromFile(typeof(GenericType<,,>).Assembly.Location, TestReaderParameters);
-            var genericInstanceType = module.LookupMember<TypeDefinition>(typeof(GenericType<,,>).MetadataToken)
+            var genericInstanceType = module
+                .LookupMember<TypeDefinition>(typeof(GenericType<,,>).MetadataToken)
                 .MakeGenericInstanceType(
+                    isValueType: false,
                     module.CorLibTypeFactory.Int32,
                     module.CorLibTypeFactory.String,
-                    module.CorLibTypeFactory.Object);
+                    module.CorLibTypeFactory.Object
+                );
 
-            Assert.Equal("System.Object", genericInstanceType.GetDirectBaseClass()!.FullName);
+            Assert.Equal("System.Object", genericInstanceType.GetDirectBaseClass(module.RuntimeContext)!.FullName);
         }
 
         [Fact]
@@ -334,11 +339,13 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var module = ModuleDefinition.FromFile(typeof(GenericDerivedType<,>).Assembly.Location, TestReaderParameters);
             var genericInstanceType = module.LookupMember<TypeDefinition>(typeof(GenericDerivedType<,>).MetadataToken)
                 .MakeGenericInstanceType(
+                    isValueType: false,
                     module.CorLibTypeFactory.Int32,
-                    module.CorLibTypeFactory.Object);
+                    module.CorLibTypeFactory.Object
+                );
 
             var baseClass = Assert.IsAssignableFrom<GenericInstanceTypeSignature>(
-                genericInstanceType.GetDirectBaseClass());
+                genericInstanceType.GetDirectBaseClass(module.RuntimeContext));
 
             Assert.Equal(typeof(GenericType<,,>).Namespace, baseClass.GenericType.Namespace);
             Assert.Equal(typeof(GenericType<,,>).Name, baseClass.GenericType.Name);
@@ -370,7 +377,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var type = module.CorLibTypeFactory.FromElementType(elementType)!;
-            Assert.True(type.IsCompatibleWith(type));
+            Assert.True(type.IsCompatibleWith(type, module.RuntimeContext));
         }
 
         [Theory]
@@ -380,7 +387,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         {
             var module = ModuleDefinition.FromFile(type.Assembly.Location, TestReaderParameters);
             var signature = module.LookupMember<TypeDefinition>(type.MetadataToken).ToTypeSignature();
-            Assert.True(signature.IsCompatibleWith(signature));
+            Assert.True(signature.IsCompatibleWith(signature, module.RuntimeContext));
         }
 
         [Theory]
@@ -394,7 +401,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var module = ModuleDefinition.FromFile(derivedType.Assembly.Location, TestReaderParameters);
             var derivedSignature = module.LookupMember<TypeDefinition>(derivedType.MetadataToken).ToTypeSignature();
             var abstractSignature = module.LookupMember<TypeDefinition>(baseType.MetadataToken).ToTypeSignature();
-            Assert.Equal(expected, derivedSignature.IsCompatibleWith(abstractSignature));
+            Assert.Equal(expected, derivedSignature.IsCompatibleWith(abstractSignature, module.RuntimeContext));
         }
 
         [Theory]
@@ -415,7 +422,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var module = ModuleDefinition.FromFile(typeof(DerivedClass).Assembly.Location, TestReaderParameters);
             var derivedSignature = module.LookupMember<TypeDefinition>(derivedType.MetadataToken).ToTypeSignature();
             var interfaceSignature = module.LookupMember<TypeDefinition>(interfaceType.MetadataToken).ToTypeSignature();
-            Assert.Equal(expected, derivedSignature.IsCompatibleWith(interfaceSignature));
+            Assert.Equal(expected, derivedSignature.IsCompatibleWith(interfaceSignature, module.RuntimeContext));
         }
 
         [Theory]
@@ -428,18 +435,18 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var module = ModuleDefinition.FromFile(typeof(GenericInterfaceImplementation<,>).Assembly.Location, TestReaderParameters);
 
             var type1 = module.LookupMember<TypeDefinition>(typeof(GenericInterfaceImplementation<,>).MetadataToken)
-                .ToTypeSignature(false)
                 .MakeGenericInstanceType(
+                    isValueType: false,
                     typeArguments1.Select(x => (TypeSignature) module.CorLibTypeFactory.FromElementType(x)!).ToArray()
                 );
 
             var type2 = module.LookupMember<TypeDefinition>(typeof(IGenericInterface<,,>).MetadataToken)
-                .ToTypeSignature(false)
                 .MakeGenericInstanceType(
+                    isValueType: false,
                     typeArguments2.Select(x => (TypeSignature) module.CorLibTypeFactory.FromElementType(x)!).ToArray()
                 );
 
-            Assert.Equal(expected, type1.IsCompatibleWith(type2));
+            Assert.Equal(expected, type1.IsCompatibleWith(type2, module.RuntimeContext));
         }
 
         [Theory]
@@ -457,7 +464,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var type1 = module.CorLibTypeFactory.FromElementType(elementType1)!.MakeSzArrayType();
             var type2 = module.CorLibTypeFactory.FromElementType(elementType2)!.MakeSzArrayType();
-            Assert.Equal(expected, type1.IsCompatibleWith(type2));
+            Assert.Equal(expected, type1.IsCompatibleWith(type2, module.RuntimeContext));
         }
 
         [Theory]
@@ -477,10 +484,9 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var type1 = module.CorLibTypeFactory.FromElementType(elementType1)!.MakeSzArrayType();
             var type2 = module.CorLibTypeFactory.CorLibScope
                 .CreateTypeReference("System.Collections.Generic", "IList`1")
-                .ToTypeSignature(false)
-                .MakeGenericInstanceType(module.CorLibTypeFactory.FromElementType(elementType2)!);
+                .MakeGenericInstanceType(isValueType: false, module.CorLibTypeFactory.FromElementType(elementType2)!);
 
-            Assert.Equal(expected, type1.IsCompatibleWith(type2));
+            Assert.Equal(expected, type1.IsCompatibleWith(type2, module.RuntimeContext));
         }
 
         [Fact]
@@ -490,14 +496,15 @@ namespace AsmResolver.DotNet.Tests.Signatures
 
             var type1 = module
                 .LookupMember<TypeDefinition>(typeof(GenericType<,,>).MetadataToken)
-                .ToTypeSignature()
                 .MakeGenericInstanceType(
+                    isValueType: false,
                     module.CorLibTypeFactory.Int32,
                     module.CorLibTypeFactory.Object,
-                    module.CorLibTypeFactory.String);
+                    module.CorLibTypeFactory.String
+                );
 
-            Assert.True(type1.IsCompatibleWith(type1));
-            Assert.True(type1.IsCompatibleWith(module.CorLibTypeFactory.Object));
+            Assert.True(type1.IsCompatibleWith(type1, module.RuntimeContext));
+            Assert.True(type1.IsCompatibleWith(module.CorLibTypeFactory.Object, module.RuntimeContext));
         }
 
         [Fact]
@@ -507,29 +514,32 @@ namespace AsmResolver.DotNet.Tests.Signatures
 
             var type1 = module
                 .LookupMember<TypeDefinition>(typeof(GenericDerivedType<,>).MetadataToken)
-                .ToTypeSignature()
                 .MakeGenericInstanceType(
+                    isValueType: false,
                     module.CorLibTypeFactory.Int32,
-                    module.CorLibTypeFactory.Object);
+                    module.CorLibTypeFactory.Object
+                );
 
             var type2 = module
                 .LookupMember<TypeDefinition>(typeof(GenericType<,,>).MetadataToken)
-                .ToTypeSignature()
                 .MakeGenericInstanceType(
+                    isValueType: false,
                     module.CorLibTypeFactory.Int32,
                     module.CorLibTypeFactory.Object,
-                    module.CorLibTypeFactory.String);
+                    module.CorLibTypeFactory.String
+                );
 
             var type3 = module
                 .LookupMember<TypeDefinition>(typeof(GenericType<,,>).MetadataToken)
-                .ToTypeSignature()
                 .MakeGenericInstanceType(
+                    isValueType: false,
                     module.CorLibTypeFactory.Object,
                     module.CorLibTypeFactory.Int32,
-                    module.CorLibTypeFactory.String);
+                    module.CorLibTypeFactory.String
+                );
 
-            Assert.True(type1.IsCompatibleWith(type2));
-            Assert.False(type1.IsCompatibleWith(type3));
+            Assert.True(type1.IsCompatibleWith(type2, module.RuntimeContext));
+            Assert.False(type1.IsCompatibleWith(type3, module.RuntimeContext));
         }
 
         [Theory]
@@ -547,7 +557,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var type1 = module.CorLibTypeFactory.FromElementType(elementType1)!.MakePointerType();
             var type2 = module.CorLibTypeFactory.FromElementType(elementType2)!.MakePointerType();
 
-            Assert.Equal(expected, type1.IsCompatibleWith(type2));
+            Assert.Equal(expected, type1.IsCompatibleWith(type2, module.RuntimeContext));
         }
 
         [Theory]
@@ -567,7 +577,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var type1 = module.CorLibTypeFactory.FromElementType(elementType1)!;
             var type2 = module.CorLibTypeFactory.FromElementType(elementType2)!;
 
-            Assert.Equal(expected, type1.IsAssignableTo(type2));
+            Assert.Equal(expected, type1.IsAssignableTo(type2, module.RuntimeContext));
         }
 
         [Fact]
@@ -581,8 +591,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
                     .ImportWith(module.DefaultImporter),
                 true);
 
-            Assert.True(type1.IsCompatibleWith(type2));
-            Assert.True(type2.IsCompatibleWith(type1));
+            Assert.True(type1.IsCompatibleWith(type2, module.RuntimeContext));
+            Assert.True(type2.IsCompatibleWith(type1, module.RuntimeContext));
         }
 
         [Fact]
@@ -600,11 +610,11 @@ namespace AsmResolver.DotNet.Tests.Signatures
                 .CreateTypeReference("System.Collections.Generic", "List`1")
                 .ImportWith(module.DefaultImporter);
 
-            var genericType1 = genericType.MakeGenericInstanceType(type1);
-            var genericType2 = genericType.MakeGenericInstanceType(type2);
+            var genericType1 = genericType.MakeGenericInstanceType(isValueType: false, type1);
+            var genericType2 = genericType.MakeGenericInstanceType(isValueType: false, type2);
 
-            Assert.True(genericType1.IsCompatibleWith(genericType2));
-            Assert.True(genericType2.IsCompatibleWith(genericType1));
+            Assert.True(genericType1.IsCompatibleWith(genericType2, module.RuntimeContext));
+            Assert.True(genericType2.IsCompatibleWith(genericType1, module.RuntimeContext));
         }
 
         [Fact]
@@ -615,8 +625,8 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var type1 = module.CorLibTypeFactory.Int32;
             var type2 = module.CorLibTypeFactory.Int32.MakePinnedType();
 
-            Assert.True(type1.IsCompatibleWith(type2));
-            Assert.True(type2.IsCompatibleWith(type1));
+            Assert.True(type1.IsCompatibleWith(type2, module.RuntimeContext));
+            Assert.True(type2.IsCompatibleWith(type1, module.RuntimeContext));
         }
 
         [Fact]
@@ -633,7 +643,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var module = ModuleDefinition.FromBytes(Properties.Resources.TypeRefNullScope_CurrentModule, TestReaderParameters);
             var signature = module
                 .LookupMember<TypeReference>(new MetadataToken(TableIndex.TypeRef, 2))
-                .ToTypeSignature();
+                .ToTypeSignature(false);
 
             Assert.Null(signature.Scope);
             Assert.Same(module, signature.ContextModule);
@@ -645,7 +655,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
             var module = ModuleDefinition.FromBytes(Properties.Resources.TypeRefNullScope_CurrentModule, TestReaderParameters);
             var signature = module
                 .LookupMember<TypeReference>(new MetadataToken(TableIndex.TypeRef, 2))
-                .ToTypeSignature()
+                .ToTypeSignature(false)
                 .MakeSzArrayType();
 
             Assert.Null(signature.Scope);
@@ -655,7 +665,7 @@ namespace AsmResolver.DotNet.Tests.Signatures
         [Fact]
         public void ResolveTypeDefSignatureShouldReturnSameInstance()
         {
-            Assert.Same(_dummyType, _dummyType.ToTypeSignature(false).Resolve());
+            Assert.Same(_dummyType, _dummyType.ToTypeSignature(false).Resolve(null));
         }
     }
 }

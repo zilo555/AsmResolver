@@ -11,8 +11,8 @@ namespace AsmResolver.DotNet.Serialized
     /// </summary>
     public class SerializedAssemblyDefinition : AssemblyDefinition
     {
-        private static readonly Utf8String SystemRuntimeVersioningNamespace = "System.Runtime.Versioning";
-        private static readonly Utf8String TargetFrameworkAttributeName = "TargetFrameworkAttribute";
+        internal static readonly Utf8String SystemRuntimeVersioningNamespace = "System.Runtime.Versioning";
+        internal static readonly Utf8String TargetFrameworkAttributeName = "TargetFrameworkAttribute";
 
         private readonly ModuleReaderContext _context;
         private readonly AssemblyDefinitionRow _row;
@@ -52,13 +52,13 @@ namespace AsmResolver.DotNet.Serialized
             : SecurityDeclarationsInternal.Count > 0;
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
-        protected override Utf8String? GetCulture() => _context.StringsStream?.GetStringByIndex(_row.Culture);
+        protected override Utf8String? GetCulture() => _context.Streams.StringsStream?.GetStringByIndex(_row.Culture);
 
         /// <inheritdoc />
-        protected override byte[]? GetPublicKey() => _context.BlobStream?.GetBlobByIndex(_row.PublicKey);
+        protected override byte[]? GetPublicKey() => _context.Streams.BlobStream?.GetBlobByIndex(_row.PublicKey);
 
         /// <inheritdoc />
         protected override IList<ModuleDefinition> GetModules()
@@ -69,8 +69,11 @@ namespace AsmResolver.DotNet.Serialized
             var moduleResolver = _context.Parameters.ModuleResolver;
             if (moduleResolver is not null)
             {
-                var tablesStream = _context.TablesStream;
-                var stringsStream = _context.StringsStream;
+                var tablesStream = _context.Streams.TablesStream;
+                if (tablesStream is null)
+                    return result;
+
+                var stringsStream = _context.Streams.StringsStream;
                 if (stringsStream is null)
                     return result;
 
@@ -81,7 +84,7 @@ namespace AsmResolver.DotNet.Serialized
                     if (fileRow.Attributes == FileAttributes.ContainsMetadata)
                     {
                         string? name = stringsStream.GetStringByIndex(fileRow.Name);
-                        if (!string.IsNullOrEmpty(name) && moduleResolver.Resolve(name!) is { } module)
+                        if (!string.IsNullOrEmpty(name) && moduleResolver.Resolve(name!, _manifestModule) is { } module)
                             result.Add(module);
                     }
                 }
@@ -104,8 +107,7 @@ namespace AsmResolver.DotNet.Serialized
             // We need to override this to be able to detect the runtime without lazily resolving all kinds of members.
 
             // Get relevant streams.
-            var tablesStream = _context.TablesStream;
-            if (_context.StringsStream is not { } stringsStream)
+            if (_context.Streams is not {TablesStream: { } tablesStream, StringsStream: { } stringsStream})
             {
                 info = default;
                 return false;

@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.TestCases.Methods;
-using AsmResolver.PE.DotNet.Metadata;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using Xunit;
 
@@ -204,9 +203,9 @@ namespace AsmResolver.DotNet.Tests.Collections
         public void ThisParameterOfCorLibShouldResultInCorLibTypeSignature()
         {
             var module = ModuleDefinition.FromFile(typeof(object).Assembly.Location, TestReaderParameters);
-            var type = module.CorLibTypeFactory.Object.Type.Resolve();
+            var type = module.CorLibTypeFactory.Object.Type.Resolve(module.RuntimeContext);
             var instanceMethod = type.Methods.First(t => !t.IsStatic);
-            var signature = Assert.IsAssignableFrom<CorLibTypeSignature>(instanceMethod.Parameters.ThisParameter.ParameterType);
+            var signature = Assert.IsAssignableFrom<CorLibTypeSignature>(instanceMethod.Parameters.ThisParameter?.ParameterType);
             Assert.Same(module.CorLibTypeFactory.Object, signature);
         }
 

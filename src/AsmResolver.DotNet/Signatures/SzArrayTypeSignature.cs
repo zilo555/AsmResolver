@@ -8,7 +8,7 @@ namespace AsmResolver.DotNet.Signatures
     /// </summary>
     public class SzArrayTypeSignature : ArrayBaseTypeSignature
     {
-        private static readonly ArrayDimension[] SzDimensions = { new() };
+        private static readonly ArrayDimension[] SzDimensions = [new()];
 
         /// <summary>
         /// Creates a new single-dimension array signature with 0 as a lower bound.
@@ -32,18 +32,18 @@ namespace AsmResolver.DotNet.Signatures
         public override IEnumerable<ArrayDimension> GetDimensions() => SzDimensions;
 
         /// <inheritdoc />
-        public override TypeSignature? GetDirectBaseClass() => ContextModule?.CorLibTypeFactory.CorLibScope
-            .CreateTypeReference("System", "Array")
-            .ToTypeSignature(false);
+        public override TypeSignature? GetDirectBaseClass(RuntimeContext? context)
+            => ContextModule?.CorLibTypeFactory.CorLibScope
+                .CreateTypeReference("System", "Array")
+                .ToTypeSignature(false);
 
 
         /// <inheritdoc />
-        public override TResult AcceptVisitor<TResult>(ITypeSignatureVisitor<TResult> visitor) =>
-            visitor.VisitSzArrayType(this);
+        public override TResult AcceptVisitor<TResult>(ITypeSignatureVisitor<TResult> visitor)
+            => visitor.VisitSzArrayType(this);
 
         /// <inheritdoc />
-        public override TResult AcceptVisitor<TState, TResult>(ITypeSignatureVisitor<TState, TResult> visitor,
-            TState state) =>
-            visitor.VisitSzArrayType(this, state);
+        public override TResult AcceptVisitor<TState, TResult>(ITypeSignatureVisitor<TState, TResult> visitor, TState state)
+            => visitor.VisitSzArrayType(this, state);
     }
 }

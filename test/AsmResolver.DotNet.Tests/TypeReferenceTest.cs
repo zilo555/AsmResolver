@@ -1,9 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
-using AsmResolver.DotNet.Builder;
 using AsmResolver.DotNet.Signatures;
-using AsmResolver.PE.Builder;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using Xunit;
 
@@ -165,7 +163,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = new ModuleDefinition("SomeModule");
             var reference = new TypeReference(module, module.CorLibTypeFactory.CorLibScope, "System", "Object");
-            var signature = Assert.IsAssignableFrom<CorLibTypeSignature>(reference.ToTypeSignature());
+            var signature = Assert.IsAssignableFrom<CorLibTypeSignature>(reference.ToTypeSignature(isValueType: false));
 
             Assert.Equal(ElementType.Object, signature.ElementType);
         }
@@ -175,7 +173,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = new ModuleDefinition("SomeModule");
             var reference = new TypeReference(module, module.CorLibTypeFactory.CorLibScope, "System", "Array");
-            var signature = Assert.IsAssignableFrom<TypeDefOrRefSignature>(reference.ToTypeSignature());
+            var signature = Assert.IsAssignableFrom<TypeDefOrRefSignature>(reference.ToTypeSignature(isValueType: false));
 
             Assert.Equal(signature.Type, reference, Comparer);
         }

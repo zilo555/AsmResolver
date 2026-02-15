@@ -31,7 +31,7 @@ namespace AsmResolver.DotNet.Tests.Memory
 
             struct2.Fields[0].Signature.FieldType = struct1.ToTypeSignature();
 
-            Assert.Throws<CyclicStructureException>(() => struct1.GetImpliedMemoryLayout(IntPtr.Size == 4));
+            Assert.Throws<CyclicStructureException>(() => struct1.GetImpliedMemoryLayout(module.RuntimeContext, IntPtr.Size == 4));
         }
 
         private struct StructWithStaticField
@@ -47,7 +47,7 @@ namespace AsmResolver.DotNet.Tests.Memory
             var module = ModuleDefinition.FromFile(typeof(MiscellaneousStructTest).Assembly.Location, TestReaderParameters);
             var type = (TypeDefinition) module.LookupMember(typeof(StructWithStaticField).MetadataToken);
 
-            var layout = type.GetImpliedMemoryLayout(IntPtr.Size == 4);
+            var layout = type.GetImpliedMemoryLayout(module.RuntimeContext, IntPtr.Size == 4);
             Assert.Equal((uint) Unsafe.SizeOf<StructWithStaticField>(), layout.Size);
         }
 
@@ -64,7 +64,7 @@ namespace AsmResolver.DotNet.Tests.Memory
             var module = ModuleDefinition.FromFile(typeof(MiscellaneousStructTest).Assembly.Location, TestReaderParameters);
             var type = (TypeDefinition) module.LookupMember(typeof(PlatformDependentStruct).MetadataToken);
 
-            var layout = type.GetImpliedMemoryLayout(IntPtr.Size == 4);
+            var layout = type.GetImpliedMemoryLayout(module.RuntimeContext, IntPtr.Size == 4);
             Assert.Equal(IntPtr.Size == 4, layout.Is32Bit);
             Assert.True(layout.IsPlatformDependent);
             Assert.Equal((uint) Unsafe.SizeOf<PlatformDependentStruct>(), layout.Size);
@@ -82,7 +82,7 @@ namespace AsmResolver.DotNet.Tests.Memory
             var module = ModuleDefinition.FromFile(typeof(MiscellaneousStructTest).Assembly.Location, TestReaderParameters);
             var type = (TypeDefinition) module.LookupMember(typeof(NestedPlatformDependentStruct).MetadataToken);
 
-            var layout = type.GetImpliedMemoryLayout(IntPtr.Size == 4);
+            var layout = type.GetImpliedMemoryLayout(module.RuntimeContext, IntPtr.Size == 4);
             Assert.Equal(IntPtr.Size == 4, layout.Is32Bit);
             Assert.True(layout.IsPlatformDependent);
             Assert.Equal((uint) Unsafe.SizeOf<NestedPlatformDependentStruct>(), layout.Size);
@@ -104,7 +104,7 @@ namespace AsmResolver.DotNet.Tests.Memory
             var module = ModuleDefinition.FromFile(type.Assembly.Location, TestReaderParameters);
             var t = module.LookupMember<TypeDefinition>(type.MetadataToken);
 
-            var layout = t.GetImpliedMemoryLayout(false);
+            var layout = t.GetImpliedMemoryLayout(module.RuntimeContext, false);
             Assert.Equal(expected, layout.IsReferenceOrContainsReferences);
         }
 
@@ -118,9 +118,9 @@ namespace AsmResolver.DotNet.Tests.Memory
 
             var paramType = module.CorLibTypeFactory.FromElementType(elementType)!;
             var t = module.LookupMember<TypeDefinition>(type.MetadataToken)
-                .MakeGenericInstanceType(paramType, paramType);
+                .MakeGenericInstanceType(module.RuntimeContext, paramType, paramType);
 
-            var layout = t.GetImpliedMemoryLayout(false);
+            var layout = t.GetImpliedMemoryLayout(module.RuntimeContext, false);
             Assert.Equal(expected, layout.IsReferenceOrContainsReferences);
         }
     }

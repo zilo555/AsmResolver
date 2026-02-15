@@ -68,16 +68,16 @@ namespace AsmResolver.DotNet.Signatures
         public override bool IsValueType => BaseType.IsValueType;
 
         /// <inheritdoc />
-        public override TypeSignature GetReducedType() => BaseType.GetReducedType();
+        public override TypeSignature GetReducedType(RuntimeContext? context) => BaseType.GetReducedType(context);
 
         /// <inheritdoc />
-        public override TypeSignature GetVerificationType() => BaseType.GetVerificationType();
+        public override TypeSignature GetVerificationType(RuntimeContext? context) => BaseType.GetVerificationType(context);
 
         /// <inheritdoc />
-        public override TypeSignature GetIntermediateType() => BaseType.GetIntermediateType();
+        public override TypeSignature GetIntermediateType(RuntimeContext? context) => BaseType.GetIntermediateType(context);
 
         /// <inheritdoc />
-        public override TypeSignature? GetDirectBaseClass() => BaseType.GetDirectBaseClass();
+        public override TypeSignature? GetDirectBaseClass(RuntimeContext? context) => BaseType.GetDirectBaseClass(context);
 
         /// <inheritdoc />
         public override TypeSignature StripModifiers() => BaseType.StripModifiers();

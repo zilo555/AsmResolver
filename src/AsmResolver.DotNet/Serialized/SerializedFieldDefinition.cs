@@ -36,12 +36,12 @@ namespace AsmResolver.DotNet.Serialized
             : CustomAttributes.Count > 0;
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
         protected override FieldSignature? GetSignature()
         {
-            if (_context.BlobStream is not { } blobStream
+            if (_context.Streams.BlobStream is not { } blobStream
                 || !blobStream.TryGetBlobReaderByIndex(_row.Signature, out var reader))
             {
                 return _context.BadImageAndReturn<FieldSignature>(
@@ -89,7 +89,7 @@ namespace AsmResolver.DotNet.Serialized
                 return null;
 
             uint rid = module.GetFieldRvaRid(MetadataToken);
-            bool result = _context.TablesStream
+            bool result = _context.Streams.TablesStream!
                 .GetTable<FieldRvaRow>(TableIndex.FieldRva)
                 .TryGetByRid(rid, out var fieldRvaRow);
 
@@ -109,7 +109,7 @@ namespace AsmResolver.DotNet.Serialized
         protected override int? GetFieldOffset()
         {
             uint rid = _context.ParentModule.GetFieldLayoutRid(MetadataToken);
-            bool result = _context.TablesStream
+            bool result = _context.Streams.TablesStream!
                 .GetTable<FieldLayoutRow>(TableIndex.FieldLayout)
                 .TryGetByRid(rid, out var fieldLayoutRow);
 

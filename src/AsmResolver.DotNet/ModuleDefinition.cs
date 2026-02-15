@@ -52,113 +52,101 @@ namespace AsmResolver.DotNet
         /// Reads a .NET module from the provided input buffer.
         /// </summary>
         /// <param name="buffer">The raw contents of the executable file to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromBytes(byte[] buffer) =>
-            FromBytes(buffer, new ModuleReaderParameters());
-
-        /// <summary>
-        /// Reads a .NET module from the provided input buffer.
-        /// </summary>
-        /// <param name="buffer">The raw contents of the executable file to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromBytes(byte[] buffer, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromBytes(buffer, readerParameters.PEReaderParameters), readerParameters);
-
-        /// <summary>
-        /// Reads a .NET module from the provided input stream.
-        /// </summary>
-        /// <param name="stream">The raw contents of the executable file to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromStream(Stream stream)
-            => FromStream(stream, new ModuleReaderParameters());
+        public static ModuleDefinition FromBytes(
+            byte[] buffer,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromBytes(buffer, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET module from the provided input stream.
         /// </summary>
         /// <param name="stream">The raw contents of the executable file to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromStream(Stream stream, ModuleReaderParameters readerParameters)
-            => FromImage(PEImage.FromStream(stream, readerParameters.PEReaderParameters), readerParameters);
+        public static ModuleDefinition FromStream(
+            Stream stream,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromStream(stream, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET module from the provided input file.
         /// </summary>
         /// <param name="filePath">The file path to the input executable to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromFile(string filePath) =>
-            FromFile(filePath, new ModuleReaderParameters(Path.GetDirectoryName(filePath)));
-
-        /// <summary>
-        /// Reads a .NET module from the provided input file.
-        /// </summary>
-        /// <param name="filePath">The file path to the input executable to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromFile(string filePath, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromFile(filePath, readerParameters.PEReaderParameters), readerParameters);
-
-        /// <summary>
-        /// Reads a .NET module from the provided input file.
-        /// </summary>
-        /// <param name="file">The portable executable file to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromFile(IInputFile file) => FromFile(file, new ModuleReaderParameters());
+        public static ModuleDefinition FromFile(
+            string filePath,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromFile(filePath, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET module from the provided input file.
         /// </summary>
         /// <param name="file">The portable executable file to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromFile(IInputFile file, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromFile(file, readerParameters.PEReaderParameters), readerParameters);
-
-        /// <summary>
-        /// Reads a .NET module from the provided input file.
-        /// </summary>
-        /// <param name="file">The portable executable file to load.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromFile(PEFile file) => FromFile(file, new ModuleReaderParameters());
+        public static ModuleDefinition FromFile(
+            IInputFile file,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromFile(file, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET module from the provided input file.
         /// </summary>
         /// <param name="file">The portable executable file to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromFile(PEFile file, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromFile(file, readerParameters.PEReaderParameters), readerParameters);
-
-        /// <summary>
-        /// Reads a mapped .NET module starting at the provided module base address (HINSTANCE).
-        /// </summary>
-        /// <param name="hInstance">The HINSTANCE or base address of the module.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromModuleBaseAddress(IntPtr hInstance) =>
-            FromModuleBaseAddress(hInstance, new ModuleReaderParameters());
-
-        /// <summary>
-        /// Reads a mapped .NET module starting at the provided module base address (HINSTANCE).
-        /// </summary>
-        /// <param name="hInstance">The HINSTANCE or base address of the module.</param>
-        /// <param name="readerParameters">The parameters to use while reading the module.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromModuleBaseAddress(IntPtr hInstance, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromModuleBaseAddress(hInstance, readerParameters.PEReaderParameters), readerParameters);
+        public static ModuleDefinition FromFile(
+            PEFile file,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromFile(file, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Reads a .NET module starting at the provided module base address (HINSTANCE).
@@ -166,28 +154,36 @@ namespace AsmResolver.DotNet
         /// <param name="hInstance">The HINSTANCE or base address of the module.</param>
         /// <param name="mode">Indicates how the input PE file is mapped.</param>
         /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromModuleBaseAddress(IntPtr hInstance, PEMappingMode mode, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromModuleBaseAddress(hInstance, mode, readerParameters.PEReaderParameters), readerParameters);
-
-        /// <summary>
-        /// Opens a module from an instance of a <see cref="System.Reflection.Module"/>.
-        /// </summary>
-        /// <param name="module">The reflection module to load.</param>
-        /// <returns>The module.</returns>
-        public static ModuleDefinition FromModule(Module module) => FromModule(module, new ModuleReaderParameters());
+        public static ModuleDefinition FromModuleBaseAddress(
+            IntPtr hInstance,
+            PEMappingMode mode = PEMappingMode.Mapped,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromModuleBaseAddress(hInstance, mode: mode, readerParameters: readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
         /// <summary>
         /// Opens a module from an instance of a <see cref="Module"/>.
         /// </summary>
         /// <param name="module">The reflection module to load.</param>
         /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("SingleFile", "IL3002", Justification = "We're explicitly checking for unmapped module names.")]
 #endif
-        public static ModuleDefinition FromModule(Module module, ModuleReaderParameters readerParameters)
+        public static ModuleDefinition FromModule(
+            Module module,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
         {
             if (!ReflectionHacks.TryGetHINSTANCE(module, out var handle))
                 throw new NotSupportedException("The current platform does not support getting the base address of an instance of System.Reflection.Module.");
@@ -202,7 +198,12 @@ namespace AsmResolver.DotNet
                 : PEMappingMode.Mapped;
 
             // Load from base address.
-            return FromModuleBaseAddress(handle, mappingMode, readerParameters);
+            return FromModuleBaseAddress(
+                handle,
+                mode: mappingMode,
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
         }
 
         /// <summary>
@@ -210,70 +211,89 @@ namespace AsmResolver.DotNet
         /// </summary>
         /// <param name="dataSource">The data source to read from.</param>
         /// <param name="mode">Indicates how the input PE file is mapped.</param>
+        /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module that was read.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the file does not follow the PE file format.</exception>
-        public static ModuleDefinition FromDataSource(IDataSource dataSource, PEMappingMode mode = PEMappingMode.Unmapped) =>
-            FromReader(new BinaryStreamReader(dataSource, dataSource.BaseAddress, 0, (uint) dataSource.Length), mode);
-
-        /// <summary>
-        /// Reads a .NET module from the provided data source.
-        /// </summary>
-        /// <param name="dataSource">The data source to read from.</param>
-        /// <param name="mode">Indicates how the input PE file is mapped.</param>
-        /// <param name="readerParameters">The parameters to use while reading the module.</param>
-        /// <returns>The module that was read.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the file does not follow the PE file format.</exception>
-        public static ModuleDefinition FromDataSource(IDataSource dataSource, PEMappingMode mode, ModuleReaderParameters readerParameters) =>
-            FromReader(new BinaryStreamReader(dataSource, dataSource.BaseAddress, 0, (uint) dataSource.Length), mode, readerParameters);
-
-        /// <summary>
-        /// Reads a .NET module from an input stream.
-        /// </summary>
-        /// <param name="reader">The input stream pointing at the beginning of the executable to load.</param>
-        /// <param name="mode">Indicates the input PE is mapped or unmapped.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromReader(in BinaryStreamReader reader, PEMappingMode mode = PEMappingMode.Unmapped) =>
-            FromFile(PEFile.FromReader(reader, mode));
-
-        /// <summary>
-        /// Reads a .NET module from an input stream.
-        /// </summary>
-        /// <param name="reader">The input stream pointing at the beginning of the executable to load.</param>
-        /// <param name="mode">Indicates the input PE is mapped or unmapped.</param>
-        /// <param name="readerParameters">The parameters to use while reading the module.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromReader(in BinaryStreamReader reader, PEMappingMode mode, ModuleReaderParameters readerParameters) =>
-            FromImage(PEImage.FromReader(reader, mode, readerParameters.PEReaderParameters), readerParameters);
-
-        /// <summary>
-        /// Initializes a .NET module from a PE image.
-        /// </summary>
-        /// <param name="peImage">The image containing the .NET metadata.</param>
-        /// <returns>The module.</returns>
-        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
-        public static ModuleDefinition FromImage(PEImage peImage)
+        public static ModuleDefinition FromDataSource(
+            IDataSource dataSource,
+            PEMappingMode mode = PEMappingMode.Unmapped,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
         {
-            var moduleParameters = new ModuleReaderParameters(Path.GetDirectoryName(peImage.FilePath))
-            {
-                PEReaderParameters = peImage is SerializedPEImage serializedImage
-                    ? serializedImage.ReaderContext.Parameters
-                    : new PEReaderParameters()
-            };
+            return FromImage(
+                PEImage.FromDataSource(dataSource, mode),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
+        }
 
-            return FromImage(peImage, moduleParameters);
+        /// <summary>
+        /// Reads a .NET module from an input stream.
+        /// </summary>
+        /// <param name="reader">The input stream pointing at the beginning of the executable to load.</param>
+        /// <param name="mode">Indicates the input PE is mapped or unmapped.</param>
+        /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
+        /// <returns>The module.</returns>
+        /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET metadata directory.</exception>
+        public static ModuleDefinition FromReader(
+            in BinaryStreamReader reader,
+            PEMappingMode mode = PEMappingMode.Unmapped,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            return FromImage(
+                PEImage.FromReader(reader, mode, readerParameters?.PEReaderParameters),
+                readerParameters: readerParameters,
+                createRuntimeContext: createRuntimeContext
+            );
         }
 
         /// <summary>
         /// Initializes a .NET module from a PE image.
         /// </summary>
-        /// <param name="peImage">The image containing the .NET metadata.</param>
+        /// <param name="image">The image containing the .NET metadata.</param>
         /// <param name="readerParameters">The parameters to use while reading the module.</param>
+        /// <param name="createRuntimeContext"><c>true</c> if a new context should be created based on the input module's target runtime, <c>false</c> otherwise.</param>
         /// <returns>The module.</returns>
         /// <exception cref="BadImageFormatException">Occurs when the image does not contain a valid .NET data directory.</exception>
-        public static ModuleDefinition FromImage(PEImage peImage, ModuleReaderParameters readerParameters) =>
-            new SerializedModuleDefinition(peImage, readerParameters);
+        public static ModuleDefinition FromImage(
+            PEImage image,
+            ModuleReaderParameters? readerParameters = null,
+            bool createRuntimeContext = true)
+        {
+            readerParameters ??= new ModuleReaderParameters
+            {
+                PEReaderParameters = image is SerializedPEImage serializedImage
+                    ? serializedImage.ReaderContext.Parameters
+                    : new PEReaderParameters(),
+                WorkingDirectory = !string.IsNullOrEmpty(image.FilePath) ? Path.GetDirectoryName(image.FilePath) : null,
+            };
+
+            var module = new SerializedModuleDefinition(image, readerParameters);
+
+            if (module.Assembly is not null && createRuntimeContext)
+            {
+                RuntimeContext context;
+                if (module.Assembly.IsImplementationCorLib(module.OriginalTargetRuntime))
+                {
+                    context = new RuntimeContext(
+                        module.OriginalTargetRuntime,
+                        corLibReference: module.Assembly,
+                        readerParameters: readerParameters
+                    );
+                }
+                else
+                {
+                    context = new RuntimeContext(image, readerParameters);
+                }
+
+                context.AddAssembly(module.Assembly);
+            }
+
+            return module;
+        }
 
         // Disable non-nullable property initialization warnings for the CorLibTypeFactory, RuntimeContext and
         // MetadataResolver properties. These are expected to be initialized by constructors that use this base
@@ -303,8 +323,6 @@ namespace AsmResolver.DotNet
 
             CorLibTypeFactory = CorLibTypeFactory.CreateMscorlib40TypeFactory(this);
             OriginalTargetRuntime = DetectTargetRuntime();
-            RuntimeContext = new RuntimeContext(OriginalTargetRuntime);
-            MetadataResolver = new DefaultMetadataResolver(RuntimeContext.AssemblyResolver, this);
 
             CreateAndInsertModuleType();
         }
@@ -324,10 +342,18 @@ namespace AsmResolver.DotNet
 
             CorLibTypeFactory = new CorLibTypeFactory((IResolutionScope?)corLib?.ImportWith(DefaultImporter) ?? this);
             OriginalTargetRuntime = DetectTargetRuntime();
-            RuntimeContext = new RuntimeContext(OriginalTargetRuntime);
-            MetadataResolver = new DefaultMetadataResolver(RuntimeContext.AssemblyResolver);
 
             CreateAndInsertModuleType();
+        }
+
+        /// <summary>
+        /// Defines a new .NET module.
+        /// </summary>
+        /// <param name="name">The name of the module.</param>
+        /// <param name="targetRuntime"> The intended target runtime for the module. </param>
+        public ModuleDefinition(Utf8String? name, DotNetRuntimeInfo targetRuntime)
+            : this(name, targetRuntime.GetDefaultCorLib())
+        {
         }
 
         /// <summary>
@@ -353,11 +379,7 @@ namespace AsmResolver.DotNet
         /// <summary>
         /// Gets the object describing the current active runtime context the module is loaded in.
         /// </summary>
-        public RuntimeContext RuntimeContext
-        {
-            get;
-            protected set;
-        }
+        public RuntimeContext? RuntimeContext => Assembly?.RuntimeContext;
 
         /// <summary>
         /// Gets the runtime that this module was targeted for at compile-time.
@@ -766,15 +788,6 @@ namespace AsmResolver.DotNet
                     Interlocked.CompareExchange(ref CustomAttributesInternal, GetCustomAttributes(), null);
                 return CustomAttributesInternal;
             }
-        }
-
-        /// <summary>
-        /// Gets or sets the object responsible for resolving references to external .NET assemblies.
-        /// </summary>
-        public IMetadataResolver MetadataResolver
-        {
-            get;
-            set;
         }
 
         /// <summary>
@@ -1248,7 +1261,7 @@ namespace AsmResolver.DotNet
         {
             return Assembly is not null && Assembly.TryGetTargetFramework(out var targetRuntime)
                 ? targetRuntime
-                : CorLibTypeFactory.ExtractDotNetRuntimeInfo();
+                : TargetRuntimeProber.ExtractDotNetRuntimeInfo(CorLibTypeFactory.CorLibScope);
         }
 
         /// <inheritdoc />

@@ -18,6 +18,13 @@ namespace AsmResolver.PE.Platforms
             get;
         } = new();
 
+        /// <summary>
+        /// Instantiates an AMD64 platform.
+        /// </summary>
+        protected Amd64Platform()
+        {
+        }
+
         /// <inheritdoc />
         public override MachineType TargetMachine => MachineType.Amd64;
 

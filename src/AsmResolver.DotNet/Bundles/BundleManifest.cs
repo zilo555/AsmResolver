@@ -334,10 +334,7 @@ namespace AsmResolver.DotNet.Bundles
                 if (file.Type == BundleFileType.RuntimeConfigJson)
                 {
                     var config = RuntimeConfiguration.FromJson(Encoding.UTF8.GetString(file.GetData()));
-                    if (config is not {RuntimeOptions.TargetFrameworkMoniker: { } tfm})
-                        continue;
-
-                    if (DotNetRuntimeInfo.TryParseMoniker(tfm, out targetRuntime))
+                    if (config?.TryGetTargetRuntime(out targetRuntime) is true)
                         return true;
                 }
             }
@@ -346,15 +343,15 @@ namespace AsmResolver.DotNet.Bundles
             switch (MajorVersion)
             {
                 case 1:
-                    targetRuntime = new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(3, 1));
+                    targetRuntime = DotNetRuntimeInfo.NetCoreApp(3, 1);
                     return true;
 
                 case 2:
-                    targetRuntime = new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(5, 0));
+                    targetRuntime = DotNetRuntimeInfo.NetCoreApp(5, 0);
                     return true;
 
                 case 6:
-                    targetRuntime = new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(6, 0));
+                    targetRuntime = DotNetRuntimeInfo.NetCoreApp(6, 0);
                     return true;
             }
 

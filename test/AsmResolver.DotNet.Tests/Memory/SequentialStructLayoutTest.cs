@@ -21,7 +21,7 @@ namespace AsmResolver.DotNet.Tests.Memory
         public void ValueTypedCorLibTypeShouldReturnElementSize(ElementType elementType, uint expectedSize)
         {
             var type = Module.CorLibTypeFactory.FromElementType(elementType);
-            var layout = type.GetImpliedMemoryLayout(false);
+            var layout = type.GetImpliedMemoryLayout(Module.RuntimeContext, false);
             Assert.Equal(expectedSize, layout.Size);
         }
 
@@ -33,9 +33,9 @@ namespace AsmResolver.DotNet.Tests.Memory
         public void ReferenceTypedCorLibTypeShouldReturnElementSize(ElementType elementType)
         {
             var type = Module.CorLibTypeFactory.FromElementType(elementType);
-            var layout32 = type.GetImpliedMemoryLayout(true);
+            var layout32 = type.GetImpliedMemoryLayout(Module.RuntimeContext, true);
             Assert.Equal(4u, layout32.Size);
-            var layout64 = type.GetImpliedMemoryLayout(false);
+            var layout64 = type.GetImpliedMemoryLayout(Module.RuntimeContext, false);
             Assert.Equal(8u, layout64.Size);
         }
 
@@ -125,7 +125,7 @@ namespace AsmResolver.DotNet.Tests.Memory
                     typeof(SequentialTestStructs.GenericStruct<,>).MetadataToken
                 );
 
-                type.GetImpliedMemoryLayout(IntPtr.Size == 4);
+                type.GetImpliedMemoryLayout(Module.RuntimeContext, IntPtr.Size == 4);
             });
         }
     }

@@ -14,62 +14,24 @@ namespace AsmResolver.DotNet
     /// </summary>
     public class DotNetCoreAssemblyResolver : AssemblyResolverBase
     {
-        private readonly List<string> _runtimeDirectories = new();
+        private readonly List<string> _runtimeDirectories = [];
 
         /// <summary>
-        /// Creates a new .NET Core assembly resolver, by attempting to autodetect the current .NET or .NET Core
-        /// installation directory.
+        /// Creates a new .NET Core assembly resolver.
         /// </summary>
         /// <param name="runtimeVersion">The version of .NET to target.</param>
-        public DotNetCoreAssemblyResolver(Version runtimeVersion)
-            : this(runtimeVersion, DotNetCorePathProvider.Default)
-        {
-        }
-
-        /// <summary>
-        /// Creates a new .NET Core assembly resolver, by attempting to autodetect the current .NET or .NET Core
-        /// installation directory.
-        /// </summary>
-        /// <param name="runtimeVersion">The version of .NET to target.</param>
-        /// <param name="pathProvider">The installation directory of .NET Core.</param>
-        public DotNetCoreAssemblyResolver(Version runtimeVersion, DotNetCorePathProvider pathProvider)
+        /// <param name="pathProvider">The assumed system installation provider of .NET Core, or <c>null</c> to use the default path provider.</param>
+        /// <param name="readerParameters">The parameters to use while reading assemblies, or <c>null</c> to use the default reader parameters.</param>
+        public DotNetCoreAssemblyResolver(
+            Version runtimeVersion,
+            DotNetCorePathProvider? pathProvider = null,
+            ModuleReaderParameters? readerParameters = null)
             : this(
+                null,
                 null,
                 runtimeVersion,
                 pathProvider,
-                new ModuleReaderParameters(UncachedFileService.Instance)
-            )
-        {
-        }
-
-        /// <summary>
-        /// Creates a new .NET Core assembly resolver, by attempting to autodetect the current .NET or .NET Core
-        /// installation directory.
-        /// </summary>
-        /// <param name="runtimeVersion">The version of .NET to target.</param>
-        /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
-        public DotNetCoreAssemblyResolver(Version runtimeVersion, ModuleReaderParameters readerParameters)
-            : this(
-                null,
-                runtimeVersion,
-                DotNetCorePathProvider.Default,
                 readerParameters
-            )
-        {
-        }
-
-        /// <summary>
-        /// Creates a new .NET Core assembly resolver, by attempting to autodetect the current .NET or .NET Core
-        /// installation directory.
-        /// </summary>
-        /// <param name="configuration">The runtime configuration as specified by the *.runtimeconfig.json file.</param>
-        /// <param name="fallbackVersion">The version of .NET to fallback on if the runtime configuration is insufficient.</param>
-        public DotNetCoreAssemblyResolver(RuntimeConfiguration? configuration, Version fallbackVersion)
-            : this(
-                configuration,
-                fallbackVersion,
-                DotNetCorePathProvider.Default,
-                new ModuleReaderParameters(UncachedFileService.Instance)
             )
         {
         }
@@ -78,26 +40,33 @@ namespace AsmResolver.DotNet
         /// Creates a new .NET Core assembly resolver.
         /// </summary>
         /// <param name="configuration">The runtime configuration to use, or <c>null</c> if no configuration is available.</param>
+        /// <param name="sourceDirectory">The directory of the main assembly.</param>
         /// <param name="fallbackVersion">The version of .NET or .NET Core to use when no (valid) configuration is provided.</param>
-        /// <param name="pathProvider">The installation directory of .NET Core.</param>
-        /// <param name="readerParameters">The parameters to use while reading the assembly.</param>
+        /// <param name="pathProvider">The assumed system installation provider of .NET Core, or <c>null</c> to use the default path provider.</param>
+        /// <param name="readerParameters">The parameters to use while reading assemblies, or <c>null</c> to use the default reader parameters.</param>
         public DotNetCoreAssemblyResolver(
             RuntimeConfiguration? configuration,
-            Version? fallbackVersion,
-            DotNetCorePathProvider pathProvider,
-            ModuleReaderParameters readerParameters)
-            : base(readerParameters)
+            string? sourceDirectory = null,
+            Version? fallbackVersion = null,
+            DotNetCorePathProvider? pathProvider = null,
+            ModuleReaderParameters? readerParameters = null)
+            : base(readerParameters ?? new ModuleReaderParameters(UncachedFileService.Instance))
         {
-            if (fallbackVersion is null)
-                throw new ArgumentNullException(nameof(fallbackVersion));
-            if (pathProvider is null)
-                throw new ArgumentNullException(nameof(pathProvider));
+            var options = configuration?.RuntimeOptions;
+            if (fallbackVersion is null && (options is null || !options.GetAllFrameworks().Any()))
+                throw new ArgumentException("One of configuration or fallback version must be non-null.");
+
+            pathProvider ??= DotNetCorePathProvider.Default;
 
             bool hasNetCoreApp = false;
 
             // Prefer runtime configuration if provided.
-            if (configuration?.RuntimeOptions is { } options)
+            if (options is not null)
             {
+                // Self-contained -> prefer the source directory.
+                if (options.Framework is not null && !string.IsNullOrEmpty(sourceDirectory))
+                    _runtimeDirectories.Add(sourceDirectory!);
+
                 // Order frameworks such that .NETCore.App is last.
                 var frameworks = options
                     .GetAllFrameworks()
@@ -113,10 +82,27 @@ namespace AsmResolver.DotNet
                         _runtimeDirectories.AddRange(directories);
                     }
                 }
+
+                // Add additional probing paths
+                if (options.AdditionalProbingPaths is not null)
+                {
+                    foreach (string? path in options.AdditionalProbingPaths)
+                    {
+                        if (path is not null)
+                            SearchDirectories.Add(path);
+                    }
+                }
+
+                // Infer fallback version from runtimeconfig when there is no fallback specified.
+                // This is necessary because some runtimeconfig.json files may only specify one
+                // framework (e.g., "Microsoft.WindowsDesktop.App") but still implicitly use
+                // assemblies from the base "Microsoft.NETCore.App" framework which we want to include.
+                if (fallbackVersion is null && configuration!.TryGetTargetRuntime(out var runtime))
+                    fallbackVersion = runtime.Version;
             }
 
-            // If no directories where found, use the fallback .NET version.
-            if (pathProvider.HasRuntimeInstalled(fallbackVersion))
+            // Include the fallback .NET version.
+            if (fallbackVersion is not null && pathProvider.HasRuntimeInstalled(fallbackVersion))
             {
                 if (_runtimeDirectories.Count == 0)
                 {
@@ -144,7 +130,17 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        protected override string? ProbeRuntimeDirectories(AssemblyDescriptor assembly)
+        public override string? ProbeAssemblyFilePath(AssemblyDescriptor assembly, ModuleDefinition? originModule)
+        {
+            string? path = null;
+
+            path ??= ProbeRuntimeDirectories(assembly);
+            path ??= ProbeSearchDirectories(assembly, originModule);
+
+            return path;
+        }
+
+        private string? ProbeRuntimeDirectories(AssemblyDescriptor assembly)
         {
             foreach (string candidate in _runtimeDirectories)
             {

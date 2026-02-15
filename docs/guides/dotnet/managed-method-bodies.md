@@ -118,6 +118,21 @@ instructions.Add(CilOpCodes.Ldstr, "Hello, World!");
 instructions.Add(CilOpCodes.Ret);
 ```
 
+If you are building new method bodies from the ground up, consider using object and collection initializer syntax for more concise code:
+
+```csharp
+using static AsmResolver.PE.DotNet.Cil.CilOpCodes;
+...
+method.CilMethodBody = new CilMethodBody
+{
+    Instructions = 
+    {
+        {Ldstr, "Hello, World!"},
+        {Ret}
+    }
+};
+```
+
 ### Pushing 32-bit integer constants onto the stack
 
 In CIL, pushing integer constants onto the stack is done using one of
@@ -207,24 +222,37 @@ instruction1 = body.Instructions[index];
 As specified by the table above, operations such as a `call` require a
 member as operand.
 
-It is important that the member referenced in the operand of such an
-instruction is imported in the module. This can be done using the
-`ReferenceImporter` class.
+It is important that the member referenced in the operand of such an instruction is imported in the module. This can be done using the `ReferenceImporter` class.
 
-Below an example on how to use the `ReferenceImporter` to emit a call to
-`Console::WriteLine(string)` using reflection:
+Below an example on how emit a call to `Console::WriteLine(string)`:
 
 ``` csharp
-var importer = new ReferenceImporter(targetModule);
-var writeLine = importer.ImportMethod(typeof(Console).GetMethod("WriteLine", new[] { typeof(string) } );
+var writeLine = targetModule.CorLibTypeFactory.CorLibScope
+    .CreateTypeReference("System", "Console")
+    .CreateMemberReference("WriteLine", MethodSignature.CreateStatic(targetModule.CorLibTypeFactory.Void, targetModule.CorLibTypeFactory.String));
 
 body.Instructions.Add(CilOpCodes.Ldstr, "Hello, world!");
 body.Instructions.Add(CilOpCodes.Call, writeLine);
 ```
 
-More information on the capabilities and limitations of the
-`ReferenceImporter` can be found in
-[Reference Importing](importing.md).
+See [Member References](metadata-references.md) for more details on constructing external references.
+
+
+> [!NOTE]
+> Prior to AsmResolver 6.0, you will also need to import the reference manually using a `ReferenceImporter` (e.g., by calling `reference.ImportWith(targetModule.DefaultImporter)`).
+
+
+Alternatively, using `ReferenceImporter` it is possible to construct instructions referencing metadata using Reflection:
+
+``` csharp
+var writeLine = targetModule.DefaultImporter.ImportMethod(typeof(Console).GetMethod("WriteLine", new[] { typeof(string) } );
+
+body.Instructions.Add(CilOpCodes.Ldstr, "Hello, world!");
+body.Instructions.Add(CilOpCodes.Call, writeLine);
+```
+
+Importing through Reflection has limitations, see [Common Caveats using the Importer](metadata-references.md#common-caveats-using-the-importer).
+
 
 ### Expanding and Optimizing Macros
 
@@ -396,7 +424,6 @@ body.ExceptionHandlers.Add(new CilExceptionHandler
     HandlerEnd = body.Instructions[8].CreateLabel(),
     ExceptionType = module.CorLibTypeFactory.CorLibScope
         .CreateTypeReference("System", "Exception")
-        .ImprotWith(module.DefaultImporter)
 });
 ```
 

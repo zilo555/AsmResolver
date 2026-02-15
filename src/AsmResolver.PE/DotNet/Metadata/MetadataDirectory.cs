@@ -352,5 +352,63 @@ namespace AsmResolver.PE.DotNet.Metadata
         /// This method is called upon initialization of the <see cref="Streams"/> property.
         /// </remarks>
         protected virtual IList<IMetadataStream> GetStreams() => new List<IMetadataStream>();
+
+        /// <summary>
+        /// Determines the metadata streams that are used by the runtime.
+        /// </summary>
+        /// <returns></returns>
+        public MetadataStreamSelection GetImpliedStreamSelection()
+        {
+            var result = new MetadataStreamSelection
+            {
+                BlobStreamIndex = -1,
+                GuidStreamIndex = -1,
+                StringsStreamIndex = -1,
+                TablesStreamIndex = -1,
+                UserStringsStreamIndex = -1
+            };
+
+            // Both CLR and CoreCLR implement a slightly different loading procedure for EnC metadata.
+            // While the difference is very subtle, it has a slight effect on which streams are selected
+            // when multiple streams with the same name are present in the metadata directory. This only
+            // really happens in post-processed binaries (e.g., obfuscated binaries). Any normal .NET
+            // compiler only emits one stream for each stream type.
+            //
+            // For normal metadata (i.e., metadata with a #~ stream), every stream is loaded. This means that
+            // if a stream has the same name as a previously loaded one, it will override the contents of the previous.
+            // On the other hand, EnC metadata (i.e., metadata with a #- stream) looks up the first occurrence
+            // of the stream of the provided name. The exception for this is the tables stream itself, for which both
+            // the CLR and CoreCLR seem to always result in a file corruption error when there are multiple table streams.
+            bool isEncMetadata = IsEncMetadata;
+
+            for (int i = 0; i < Streams.Count; i++)
+            {
+                switch (Streams[i])
+                {
+                    case TablesStream tablesStream when result.TablesStreamIndex == -1:
+                        result.TablesStream = tablesStream;
+                        result.TablesStreamIndex = i;
+                        break;
+                    case BlobStream blobStream when result.BlobStreamIndex == -1 || !isEncMetadata:
+                        result.BlobStream = blobStream;
+                        result.BlobStreamIndex = i;
+                        break;
+                    case GuidStream guidStream when result.GuidStreamIndex == -1 || !isEncMetadata:
+                        result.GuidStream = guidStream;
+                        result.GuidStreamIndex = i;
+                        break;
+                    case StringsStream stringsStream when result.StringsStreamIndex == -1 || !isEncMetadata:
+                        result.StringsStream = stringsStream;
+                        result.StringsStreamIndex = i;
+                        break;
+                    case UserStringsStream userStringsStream when result.UserStringsStreamIndex == -1 || !isEncMetadata:
+                        result.UserStringsStream = userStringsStream;
+                        result.UserStringsStreamIndex = i;
+                        break;
+                }
+            }
+
+            return result;
+        }
     }
 }

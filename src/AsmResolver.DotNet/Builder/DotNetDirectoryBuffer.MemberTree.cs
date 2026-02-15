@@ -219,7 +219,7 @@ namespace AsmResolver.DotNet.Builder
                     VTableFixups.MapTokenToExport(method.ExportInfo.Value, token);
 
                 if (validateSignatures)
-                    method.VerifyMetadata(ErrorListener);
+                    method.VerifyMetadata(Module.RuntimeContext, ErrorListener);
             }
         }
 

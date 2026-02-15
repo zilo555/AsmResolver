@@ -23,6 +23,13 @@ namespace AsmResolver.PE.Platforms
             get;
         } = new();
 
+        /// <summary>
+        /// Instantiates an I386 platform.
+        /// </summary>
+        protected I386Platform()
+        {
+        }
+
         /// <inheritdoc />
         public override MachineType TargetMachine => MachineType.I386;
 

@@ -22,21 +22,18 @@ internal readonly struct TypeName(string? ns, IList<string> names)
         {
             // First look into the current module.
             type.Scope = contextModule;
-            var definition = type.Resolve();
-            if (definition is null)
+            if (!type.TryResolve(contextModule.RuntimeContext, out var definition))
             {
                 // If that fails, try corlib.
                 // However, we would prefer to use the implementation corlib for the runtime targeted, not the one it was compiled against.
-                if (contextModule.RuntimeContext.RuntimeCorLib is {} runtimeCorLib)
+                if (contextModule.RuntimeContext?.RuntimeCorLib is {} runtimeCorLib)
                 {
                     type.Scope = new AssemblyReference(runtimeCorLib);
-                    definition = type.Resolve();
+                    type.TryResolve(contextModule.RuntimeContext, out definition);
                 }
 
                 if (definition is null)
-                {
                     type.Scope = null;
-                }
             }
         }
 

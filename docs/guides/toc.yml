@@ -27,8 +27,6 @@
   href: peimage/index.md
 - name: Basic I/O
   href: peimage/basics.md
-- name: Advanced PE Image Reading
-  href: peimage/advanced-pe-reading.md
 - name: Imports Directory
   href: peimage/imports.md
 - name: Exports Directory
@@ -45,6 +43,8 @@
   href: peimage/dotnet.md
 - name: .NET ReadyToRun Directory
   href: peimage/ready-to-run.md
+- name: Advanced PE Image Reading
+  href: peimage/advanced-pe-reading.md
 - name: PE File Building
   href: peimage/pe-building.md
 
@@ -53,14 +53,14 @@
   href: dotnet/index.md
 - name: Basic I/O
   href: dotnet/basics.md
-- name: Advanced Module Reading
-  href: dotnet/advanced-module-reading.md
-- name: The Member Tree
-  href: dotnet/member-tree.md
-- name: Type Signatures
-  href: dotnet/type-signatures.md
-- name: Reference Importing
-  href: dotnet/importing.md
+- name: Metadata Definitions
+  href: dotnet/metadata-definitions.md
+- name: Metadata References
+  href: dotnet/metadata-references.md
+- name: Metadata Signatures
+  href: dotnet/metadata-signatures.md
+- name: Metadata Resolution
+  href: dotnet/runtime-contexts.md
 - name: CIL Method Bodies
   href: dotnet/managed-method-bodies.md
 - name: Native Method Bodies
@@ -77,6 +77,8 @@
   href: dotnet/type-memory-layout.md
 - name: AppHost / SingleFileHost Bundles
   href: dotnet/bundles.md
+- name: Advanced Module Reading
+  href: dotnet/advanced-module-reading.md
 - name: Advanced PE Image Building
   href: dotnet/advanced-pe-image-building.md
 

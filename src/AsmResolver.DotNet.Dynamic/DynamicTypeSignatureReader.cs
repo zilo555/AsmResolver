@@ -52,14 +52,12 @@ namespace AsmResolver.DotNet.Dynamic
                 throw new PlatformNotSupportedException("The current platform does not support the translation of raw type handles to System.Type instances.");
 
             // Let the runtime translate the address to a type and import it.
-            var clrType = (Type?) GetTypeFromHandleUnsafeMethod.Invoke(null, new object[] { address });
+            var clrType = (Type?) GetTypeFromHandleUnsafeMethod.Invoke(null, [address]);
 #endif
 
-            var type = clrType is not null
-                ? new ReferenceImporter(context.ReaderContext.ParentModule).ImportType(clrType)
-                : InvalidTypeDefOrRef.Get(InvalidTypeSignatureError.IllegalTypeSpec);
-
-            return new TypeDefOrRefSignature(type);
+            return clrType is not null
+                ? new ReferenceImporter(context.ReaderContext.ParentModule).ImportType(clrType).ToTypeSignature(clrType.IsValueType)
+                : InvalidTypeDefOrRef.Get(InvalidTypeSignatureError.IllegalTypeSpec).ToTypeSignature();
         }
     }
 }

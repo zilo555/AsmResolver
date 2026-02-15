@@ -53,12 +53,12 @@ namespace AsmResolver.DotNet.Serialized
             : SecurityDeclarationsInternal.Count > 0;
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
         protected override MethodSignature? GetSignature()
         {
-            if (_context.BlobStream is not { } blobStream
+            if (_context.Streams.BlobStream is not { } blobStream
                 || !blobStream.TryGetBlobReaderByIndex(_row.Signature, out var reader))
             {
                 return _context.BadImageAndReturn<MethodSignature>(

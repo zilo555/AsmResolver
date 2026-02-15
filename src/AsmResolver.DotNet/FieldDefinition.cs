@@ -369,13 +369,17 @@ namespace AsmResolver.DotNet
             set;
         }
 
-        FieldDefinition IFieldDescriptor.Resolve() => this;
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
-        FieldDefinition IFieldDescriptor.Resolve(ModuleDefinition context) => this;
-
-        IMemberDefinition IMemberDescriptor.Resolve() => this;
-
-        IMemberDefinition IMemberDescriptor.Resolve(ModuleDefinition context) => this;
+        ResolutionStatus IFieldDescriptor.Resolve(RuntimeContext? context, out FieldDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
@@ -394,10 +398,10 @@ namespace AsmResolver.DotNet
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
         /// <inheritdoc />
-        public bool IsAccessibleFromType(TypeDefinition type)
+        public bool IsAccessibleFromType(TypeDefinition type, RuntimeContext? context)
         {
             // The field is only accessible if its declaring type is accessible.
-            if (DeclaringType is not { } declaringType || !declaringType.IsAccessibleFromType(type))
+            if (DeclaringType is not { } declaringType || !declaringType.IsAccessibleFromType(type, context))
                 return false;
 
             // Public fields are always accessible.
@@ -421,9 +425,9 @@ namespace AsmResolver.DotNet
 
             // Family (protected in C#) fields are accessible by any base type.
             if ((IsFamily || IsFamilyOrAssembly || IsFamilyAndAssembly)
-                && type.BaseType?.Resolve() is { } baseType)
+                && type.BaseType?.TryResolve(context, out var baseType) is true)
             {
-                return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
+                return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType, context);
             }
 
             return false;

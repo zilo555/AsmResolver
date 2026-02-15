@@ -118,9 +118,6 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public override bool IsCorLib => KnownCorLibs.KnownCorLibReferences.Contains(this);
-
-        /// <inheritdoc />
         public override byte[]? GetPublicKeyToken()
         {
             if (!HasPublicKey)
@@ -160,11 +157,20 @@ namespace AsmResolver.DotNet
         public override bool IsImportedInModule(ModuleDefinition module) => ContextModule == module;
 
         /// <inheritdoc />
-        public override AssemblyReference ImportWith(ReferenceImporter importer) =>
-            (AssemblyReference) importer.ImportScope(this);
+        public override AssemblyReference ImportWith(ReferenceImporter importer)
+            => (AssemblyReference) importer.ImportScope(this);
 
         /// <inheritdoc />
-        public override AssemblyDefinition? Resolve() => ContextModule?.MetadataResolver.AssemblyResolver.Resolve(this);
+        public override ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly)
+        {
+            if (context is null)
+            {
+                assembly = null;
+                return ResolutionStatus.MissingRuntimeContext;
+            }
+
+            return context.ResolveAssembly(this, ContextModule, out assembly);
+        }
 
         AssemblyDescriptor IResolutionScope.GetAssembly() => this;
     }

@@ -40,12 +40,12 @@ namespace AsmResolver.DotNet.Serialized
             : ConstraintsInternal.Count > 0;
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
         protected override IHasGenericParameters? GetOwner()
         {
-            var ownerToken = _context.TablesStream
+            var ownerToken = _context.Streams.TablesStream!
                 .GetIndexEncoder(CodedIndex.TypeOrMethodDef)
                 .DecodeIndex(_row.Owner);
 
