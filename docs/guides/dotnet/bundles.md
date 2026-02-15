@@ -250,7 +250,7 @@ Assemblies can be read and loaded into a `RuntimeContext`:
 BundleManifest manifest = ...;
 
 var context = new RuntimeContext(manifest);
-AssemblyDefinition assembly = context.LoadAssembly(manifest.Files.First(x => x.RelativePath == "MainAssembly.dll").GetData());
+AssemblyDefinition assembly = context.LoadAssembly(manifest.Files.First(x => x.RelativePath == "MainAssembly.dll"));
 ```
 
 This will also initialize a runtime context that upon resolution prefers assemblies stored in the bundle rather than on the disk.

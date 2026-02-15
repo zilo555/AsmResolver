@@ -235,7 +235,7 @@ body.Instructions.Add(CilOpCodes.Ldstr, "Hello, world!");
 body.Instructions.Add(CilOpCodes.Call, writeLine);
 ```
 
-See [References to External Metadata](importing.md) for more details on constructing external references.
+See [Member References](metadata-references.md) for more details on constructing external references.
 
 
 > [!NOTE]
@@ -251,7 +251,7 @@ body.Instructions.Add(CilOpCodes.Ldstr, "Hello, world!");
 body.Instructions.Add(CilOpCodes.Call, writeLine);
 ```
 
-Importing through Reflection has limitations, see [Common Caveats using the Importer](importing.md#common-caveats-using-the-importer).
+Importing through Reflection has limitations, see [Common Caveats using the Importer](metadata-references.md#common-caveats-using-the-importer).
 
 
 ### Expanding and Optimizing Macros

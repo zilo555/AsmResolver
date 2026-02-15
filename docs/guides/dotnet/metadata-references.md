@@ -1,11 +1,6 @@
-# References to External Metadata
+# Member References
 
-Next to metadata symbols defined in the current module (see [The Member Tree](./member-tree.md)), .NET modules can also reference metadata defined in external assemblies using the `AssemblyRef`, `TypeRef` and `MemberRef` tables.
-Thus, when you want to use a type, field or method defined in a different assembly, it is required to turn these definitions into the appropriate references first.
-
-> [!NOTE]
-> Prior to AsmResolver 6.0, manually importing of external metadata definitions using `ImportWith` is required for any definition not defined in the same assembly.
-> For AsmResolver 6.0 and newer, importing is only required when cloning metadata (e.g., see [Member Cloning](./cloning.md)), or when mapping references to other (equivalent) references.
+Next to metadata symbols defined in the current module (see [Metadata Definitions](./metadata-definitions.md)), .NET modules can also reference metadata defined in external assemblies using the `AssemblyRef`, `TypeRef` and `MemberRef` tables.
 
 Below an overview of how AsmResolver represents definitions and their corresponding reference type.
 
@@ -18,6 +13,11 @@ Below an overview of how AsmResolver represents definitions and their correspond
 
 > [!NOTE]
 > While there also exists both a `ModuleDefinition` and `ModuleReference`, these two are unrelated. `ModuleDefinition` defines a module in a .NET assembly manifest, while `ModuleReference` is used to reference native modules such as `kernel32.dll` or `libc.so`
+
+> [!NOTE]
+> Prior to AsmResolver 6.0, it is required to explicitly import member descriptors (e.g., `TypeDefinition`, `FieldDefinition` and `MethodDefinition`, `MemberReference` etc.) that are not defined or alraedy imported in the same assembly (e.g., using the `ImportWith` method.).
+> For AsmResolver 6.0 and newer, importing is done automatically by the builder at build-time.
+> You will only need to explicit importing when custom behavior is required (e.g., when cloning metadata, see [Member Cloning](./cloning.md)).
 
 
 ## Resolution scopes
@@ -44,15 +44,15 @@ var systemConsole = new AssemblyReference(
 ```
 
 > [!NOTE]
-> Prior to AsmResolver 6.0, `AssemblyReference`s need to be manually imported using `ImportWith`
+> Prior to AsmResolver 6.0, `AssemblyReference`s need to be manually imported using `ImportWith`. For example:
 > ```csharp
 > var systemConsole = new AssemblyReference(
 >    "System.Console", 
 >    new Version(8, 0, 0, 0)
-> ).ImportWith(module.DefaultImporter);
+> ).ImportWith(module.DefaultImporter); // <-- Explicitly import the reference.
 > ```
 
-An `AssemblyDefinition`s and turn them into `AssemblyReference`s:
+An `AssemblyDefinition` can also be turned into an `AssemblyReference`:
 
 ```csharp
 ModuleDefinition module = ...;
@@ -67,18 +67,16 @@ ModuleDefinition module = ...;
 var corlib = module.CorLibTypeFactory.CorLibScope;
 ```
 
-In most cases this will return an `AssemblyReference` to either `mscorlib`, `netstandard`, `System.Runtime` or `System.Private.Corlib`.
-In case `module` is a corlib assembly itself, it will reference itself instead.
+This will typically return an `AssemblyReference` to either `mscorlib`, `netstandard`, `System.Runtime` or `System.Private.Corlib`, depending on the target runtime the module was compiled for.
+In case `module` is a corlib assembly itself, it will reference the `ModuleDefinition` itself instead.
 
 
 ## Type and member references
 
-Similar to assembly references, external types and members are represented using `TypeReference` and
-`MemberReference`.
+Similar to assembly references, external types and members are represented using `TypeReference` and `MemberReference`.
 
 To create new references, use the fluent factory methods `CreateTypeReference` and `CreateMemberReference` on any `IResolutionScope` or `ITypeDescriptor`.
-Below is an example of how to create a fully imported reference to
-`void System.Console.WriteLine(string)`:
+Below is an example of how to create a fully imported reference to `void System.Console.WriteLine(string)`:
 
 ``` csharp
 var method = factory.CorLibScope
@@ -89,8 +87,17 @@ var method = factory.CorLibScope
 // importedMethod now references "void System.Console.WriteLine(string)"
 ```
 
-Generic type instantiations can also be created using
-`MakeGenericInstanceType`:
+> [!NOTE]
+> Prior to AsmResolver 6.0, `TypeReference`s and `MemberReference`s need to be manually imported using `ImportWith`.
+> For example:
+> ```csharp
+> var method = factory.CorLibScope
+>    .CreateTypeReference("System", "Console")
+>    .CreateMemberReference("WriteLine", MethodSignature.CreateStatic(factory.Void, factory.String))
+>    .ImportWith(module.DefaultImporter); // Explicitly import the reference.
+> ```
+
+Generic type instantiations can be created using `MakeGenericInstanceType`:
 
 ``` csharp
 ModuleDefinition module = ...
@@ -107,8 +114,7 @@ var importedMethod = factory.CorLibScope
 // importedMethod now references "System.Collections.Generic.List`1<System.Int32>.Add(!0)"
 ```
 
-Similarly, generic method instantiations can be constructed using
-`MakeGenericInstanceMethod`:
+Similarly, generic method instantiations can be constructed using `MakeGenericInstanceMethod`:
 
 ``` csharp
 ModuleDefinition module = ...
@@ -123,14 +129,8 @@ var importedMethod = factory.CorLibScope
 // importedMethod now references "!0[] System.Array.Empty<System.String>()"
 ```
 
-> [!NOTE]
-> Prior to AsmResolver 6.0, `TypeReference`s and `MemberReference`s need to be manually imported using `ImportWith`. For example:
-> ```csharp
-> var method = factory.CorLibScope
->    .CreateTypeReference("System", "Console")
->    .CreateMemberReference("WriteLine", MethodSignature.CreateStatic(factory.Void, factory.String))
->    .ImportWith(module.DefaultImporter);
-> ```
+See also [Metadata Signatures](metadata-signatures.md) for more information on type and method signatures.
+
 
 ## Importing existing metadata definitions
 
@@ -142,25 +142,32 @@ Below an example of how to import a type definition called `SomeType`:
 ModuleDefinition externalModule = ModuleDefinition.FromFile(...);
 TypeDefinition typeToImport = externalModule.TopLevelTypes.First(t => t.Name == "SomeType");
 
-ITypeDefOrRef importedType = importer.ImportType(typeToImport);
+ITypeDefOrRef importedType = module.ImportType(typeToImport);
 ```
 
-Most metadata definitions also implement the `IImportable` interface.
-This means you can also use the `member.ImportWith` method instead:
+Most metadata descriptors implement the `IImportable` interface, and expose a `member.ImportWith` method allowing for fluent syntax:
 
 ``` csharp
 ModuleDefinition externalModule = ModuleDefinition.FromFile(...);
-TypeDefinition typeToImport = externalModule.TopLevelTypes.First(t => t.Name == "SomeType");
-
-ITypeDefOrRef importedType = typeToImport.ImportWith(importer);
+ITypeDefOrRef importedType = externalModule
+    .TopLevelTypes.First(t => t.Name == "SomeType")
+    .ImportWith(module.DefaultImporter);
 ```
 
 
 ## Importing existing type signatures
 
-Type signatures can also be imported using a reference importer.
-class, but these should be imported using the `ImportTypeSignature`
-method instead.
+Type signatures can be imported in a similar fashion:
+
+```csharp
+TypeSignature signature = ...;
+TypeSignature imported = importer.ImportTypeSignature(signature);
+```
+
+```csharp
+TypeSignature signature = ...;
+TypeSignature imported = signature.ImportWith(importer);
+```
 
 > [!NOTE]
 > If a corlib type signature is imported, the appropriate type from the
@@ -170,8 +177,7 @@ method instead.
 
 ## Importing using System.Reflection
 
-Types and members can also be imported by passing on an instance of
-various `System.Reflection` classes.
+Types and members can also be imported by passing on an instance of various `System.Reflection` classes.
 
 |Member type to import |Method to use        |Result type          |
 |----------------------|---------------------|---------------------|
@@ -182,28 +188,23 @@ various `System.Reflection` classes.
 |`ConstructorInfo`     |`ImportMethod`       |`IMethodDefOrRef`    |
 |`FieldInfo`           |`ImportScope`        |`MemberReference`    |
 
-There is limited support for importing complex types. Types that can be
-imported through reflection include:
+There is limited support for importing complex types and members.
+Types that can be imported through reflection include:
 
 -   Pointer types.
 -   By-reference types.
--   Array types (If an array contains only one dimension, a
-    `SzArrayTypeSignature` is returned. Otherwise a `ArrayTypeSignature`
-    is created).
+-   Array types (If an array contains only one dimension, a `SzArrayTypeSignature` is returned. Otherwise a `ArrayTypeSignature` is created).
 -   Generic parameters.
 -   Generic type instantiations.
--   Function pointer types (.NET 8.0+ only. TFM doesn't matter for this, the runtime used at runtime is all that matters.)
+-   Generic method instantiations.
+-   Function pointer types (.NET 8.0+ only).
 
 > [!WARNING]
-> Function pointer `Type` instances lose their calling conventions unless attained with
-> `GetModified(Field/Property/Parameter)Type`. This includes `typeof`!
-> `typeof(delegate*unmanaged[Cdecl]<void>)` is the same as `typeof(delegate*managed<void>)`.
-> `Import(Field/Method)` will also strip the calling conventions from function pointers
-> that are the types of fields or in method signatures.
-> If you need to handle this, manually set the types in the resulting
-> `IMethodDefOrRef` or `MemberReference` to the appropriate type from `ImportType`.
-
-Instantiations of generic methods are also supported.
+> Due to quirks in the `System.Reflection` sub-system of .NET, `System.Type` instances that represent function pointer types often lose their calling conventions, unless explicitly attained with methods such as [GetModifiedFieldType](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.fieldinfo.getmodifiedfieldtype), [GetModifiedPropertyType](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.propertyinfo.getmodifiedpropertytype), or [GetModifiedParameterType](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.parameterinfo.getmodifiedparametertype?view=net-10.0#system-reflection-parameterinfo-getmodifiedparametertype). 
+> This includes the use of `typeof` (e.g., `typeof(delegate*unmanaged[Cdecl]<void>)` returns the same as `typeof(delegate*managed<void>)`.
+>
+> References imported using `ImportField` and `ImportMethod` may therefore also strip the calling conventions from function pointers that are the types of fields or in method signatures.
+> If you need to handle this, manually set the types in the resulting `IMethodDefOrRef` or `MemberReference` to the appropriate type from `ImportType`.
 
 
 ## Common Caveats using the Importer
