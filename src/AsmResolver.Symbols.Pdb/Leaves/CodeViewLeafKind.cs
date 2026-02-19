@@ -159,6 +159,9 @@ public enum CodeViewLeafKind : ushort
     UdtSrcLine = 0x1606,
     UdtModSrcLine = 0x1607,
 
+    Class2 = 0x1608,
+    Structure2 = 0x1609,
+
     IdLast,
     IdMax = IdLast - 1,
 
