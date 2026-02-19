@@ -161,6 +161,8 @@ public enum CodeViewLeafKind : ushort
 
     Class2 = 0x1608,
     Structure2 = 0x1609,
+    Union2 = 0x160a,
+    Interface2 = 0x160b,
 
     IdLast,
     IdMax = IdLast - 1,
