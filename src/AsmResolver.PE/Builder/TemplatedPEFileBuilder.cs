@@ -7,27 +7,26 @@ using AsmResolver.PE.DotNet.Metadata;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using AsmResolver.PE.File;
 using AsmResolver.PE.Imports;
-using AsmResolver.PE.Relocations;
 using AsmResolver.PE.Tls;
 
 namespace AsmResolver.PE.Builder;
 
 /// <summary>
-/// Provides a mechanism for constructing PE files containing unmanaged code or metadata, based on a template PE file.
+/// Provides a mechanism for constructing PE files based on a template PE file.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This PE file builder attempts to preserve as much data as possible in the original executable file, and is well
-/// suited for input binaries that contain unmanaged code and/or depend on raw offsets, RVAs or similar. However, it
-/// may therefore not necessarily produce the most space-efficient output binaries, and may leave in original data
-/// directories or sometimes entire PE sections that are no longer in use.
+/// suited for input binaries that contain unmanaged code and/or depend on raw offsets, RVAs or similar that need to
+/// stay stable across builds. However, it may therefore not necessarily produce the most space-efficient output
+/// binaries, and may leave in original data directories or sometimes entire PE sections that are no longer in use.
 /// </para>
 /// <para>
 /// This class might modify the final imports directory (exposed by the <see cref="PEImage.Imports"/> property),
 /// as well as the base relocations directory (exposed by the <see cref="PEImage.Relocations"/> property). In
 /// particular, it might add or remove the entry to <c>mscoree.dll!_CorExeMain</c> or <c>mscoree.dll!_CorDllMain</c>,
 /// and it may also add a reference to <c>kernel32.dll!VirtualProtect</c> in case dynamic initializers need to be
-/// injected to initialize reconstructed some parts of the original import address tables (IATs).
+/// injected to initialize some parts of the original import address tables (IATs).
 /// </para>
 /// <para>
 /// By default, the Import Address Table (IATs) and .NET's VTable Fixup Table are not reconstructed and are preserved.
@@ -35,7 +34,7 @@ namespace AsmResolver.PE.Builder;
 /// <see cref="TrampolineVTableFixups"/> properties to <c>true</c>. This will instruct the builder to patch the original
 /// address tables and trampoline them to their new layout. This may also result in the builder injecting additional
 /// initializer code to be inserted in <c>.auxtext</c>, depending on the type of imports that are present. This
-/// initialization code is added as a TLS callback to the final PE file.
+/// initialization code is added as a TLS callback (prepended to the beginning of the callback list) to the final PE file.
 /// </para>
 /// <para>
 /// This class will add at most 5 new auxiliary sections to the final output PE file, next to the sections that were
@@ -43,34 +42,34 @@ namespace AsmResolver.PE.Builder;
 /// location.
 /// </para>
 /// </remarks>
-public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.BuilderContext>
+public class TemplatedPEFileBuilder : PEFileBuilder<TemplatedPEFileBuilder.BuilderContext>
 {
     private static readonly IImportedSymbolClassifier DefaultSymbolClassifier =
         new DelegatedSymbolClassifier(_ => ImportedSymbolType.Function);
 
     /// <summary>
-    /// Creates a new unmanaged PE file builder.
+    /// Creates a new templated PE file builder.
     /// </summary>
-    public UnmanagedPEFileBuilder()
+    public TemplatedPEFileBuilder()
         : this(ThrowErrorListener.Instance, null)
     {
     }
 
     /// <summary>
-    /// Creates a new unmanaged PE file builder using the provided error listener.
+    /// Creates a new templated PE file builder using the provided error listener.
     /// </summary>
     /// <param name="errorListener">The error listener to use.</param>
-    public UnmanagedPEFileBuilder(IErrorListener errorListener)
+    public TemplatedPEFileBuilder(IErrorListener errorListener)
         : this(errorListener, null)
     {
     }
 
     /// <summary>
-    /// Creates a new unmanaged PE file builder using the provided error listener and base PE file.
+    /// Creates a new templated PE file builder using the provided error listener and base PE file.
     /// </summary>
     /// <param name="errorListener">The error listener to use.</param>
     /// <param name="baseFile">The template file to base the resulting file on.</param>
-    public UnmanagedPEFileBuilder(IErrorListener errorListener, PEFile? baseFile)
+    public TemplatedPEFileBuilder(IErrorListener errorListener, PEFile? baseFile)
     {
         ErrorListener = errorListener;
         BaseFile = baseFile;
@@ -87,6 +86,7 @@ public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.Build
 
     /// <summary>
     /// Gets or sets the template file to base the resulting file on.
+    /// When <c>null</c>, the <see cref="PEImage.PEFile"/> of the input image is used instead.
     /// </summary>
     public PEFile? BaseFile
     {
@@ -802,7 +802,7 @@ public class UnmanagedPEFileBuilder : PEFileBuilder<UnmanagedPEFileBuilder.Build
     }
 
     /// <summary>
-    /// Provides a workspace for <see cref="UnmanagedPEFileBuilder"/>.
+    /// Provides a workspace for <see cref="TemplatedPEFileBuilder"/>.
     /// </summary>
     public class BuilderContext : PEFileBuilderContext
     {

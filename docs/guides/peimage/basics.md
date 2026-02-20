@@ -66,7 +66,7 @@ var newPEFile = peImage.ToPEFile(new ManagedPEFileBuilder());
 ```
 
 ```csharp
-var newPEFile = peImage.ToPEFile(new UnmanagedPEFileBuilder());
+var newPEFile = peImage.ToPEFile(new TemplatedPEFileBuilder());
 ```
 
 Depending on the type of PE image you will need a different type of PE builder.
