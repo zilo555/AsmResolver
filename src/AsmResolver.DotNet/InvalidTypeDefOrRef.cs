@@ -81,7 +81,8 @@ namespace AsmResolver.DotNet
 
         ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
-            return ((ITypeDescriptor) this).Resolve(context, out definition);
+            definition = null;
+            return ResolutionStatus.InvalidReference;
         }
 
         ResolutionStatus ITypeDescriptor.Resolve(RuntimeContext? context, out TypeDefinition? definition)

@@ -94,7 +94,9 @@ namespace AsmResolver.DotNet
 
         ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
-            return ((IMethodDescriptor) this).Resolve(context, out definition);
+            var status = Resolve(context, out var method);
+            definition = method;
+            return status;
         }
 
         /// <inheritdoc />
