@@ -121,11 +121,12 @@ public partial class RuntimeContext
         // If we failed to determine the target runtime and resolver, make a best effort guess.
         if (AssemblyResolver is null)
         {
-            // AnyCPU or platform specific?
-            bool? is32Bit = (image.DotNetDirectory.Flags & DotNetDirectoryFlags.ILOnly) == 0
-                && Platform.TryGet(image.MachineType, out var platform)
-                    ? platform.Is32Bit
-                    : null;
+            // 32-bit, 64-bit or AnyCPU?
+            bool? is32Bit = null;
+            if ((image.DotNetDirectory.Flags & DotNetDirectoryFlags.Bit32Required) != 0)
+                is32Bit = true;
+            else if ((image.DotNetDirectory.Flags & DotNetDirectoryFlags.ILOnly) == 0 && Platform.TryGet(image.MachineType, out var platform))
+                is32Bit = platform.Is32Bit;
 
             // ReSharper disable once PossibleMultipleEnumeration
             AssemblyResolver = CreateAssemblyResolver(TargetRuntime, is32Bit, DefaultReaderParameters, searchDirectories);
