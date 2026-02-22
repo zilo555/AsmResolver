@@ -56,7 +56,7 @@ namespace AsmResolver.DotNet.Dynamic
 #endif
 
             return clrType is not null
-                ? new ReferenceImporter(context.ReaderContext.ParentModule).ImportType(clrType).ToTypeSignature(clrType.IsValueType)
+                ? context.ReaderContext.ParentModule.DefaultImporter.ImportType(clrType).ToTypeSignature(clrType.IsValueType)
                 : InvalidTypeDefOrRef.Get(InvalidTypeSignatureError.IllegalTypeSpec).ToTypeSignature();
         }
     }
