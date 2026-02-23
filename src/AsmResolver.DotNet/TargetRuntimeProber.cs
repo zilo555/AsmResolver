@@ -230,6 +230,8 @@ public static class TargetRuntimeProber
             "System.Private.CoreLib" => DotNetRuntimeInfo.NetCoreApp(1, 0),
             "System.Runtime" => (major, minor, build, revision) switch
             {
+                (4, 0, 0, 0) => DotNetRuntimeInfo.NetStandard(1, 0),
+                (4, 0, 10, 0) => DotNetRuntimeInfo.NetStandard(1, 2),
                 (4, 0, 20, 0) => DotNetRuntimeInfo.NetStandard(1, 3),
                 (4, 1, 0, 0) => DotNetRuntimeInfo.NetStandard(1, 5),
                 (4, 2, 1, 0) => DotNetRuntimeInfo.NetCoreApp(2, 1),
