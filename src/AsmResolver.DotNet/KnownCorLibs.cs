@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using AsmResolver.DotNet.Signatures;
@@ -10,6 +11,11 @@ namespace AsmResolver.DotNet
     /// </summary>
     public static class KnownCorLibs
     {
+        // Cached instances of on-demand versions of System.Runtime / System.Private.CoreLib to ensure we always
+        // support a valid corlib for future versions of .NET released after the currently running version of AsmResolver.
+        private static readonly ConcurrentDictionary<int, AssemblyReference> FutureSystemRuntimeRefs = new();
+        private static readonly ConcurrentDictionary<int, AssemblyReference> FutureSystemPrivateCorLibRefs = new();
+
         /// <summary>
         /// A collection of references to all known implementations of the Common Object Runtime (COR) library.
         /// </summary>
@@ -391,6 +397,12 @@ namespace AsmResolver.DotNet
                 (9, 0) => SystemRuntime_v9_0_0_0,
                 (10, 0) => SystemRuntime_v10_0_0_0,
                 (11, 0) => SystemRuntime_v11_0_0_0,
+                (var major, 0) => FutureSystemRuntimeRefs.GetOrAdd(major, m=> new AssemblyReference(
+                    SystemRuntime_v11_0_0_0.Name,
+                    new Version(m, 0,0,0),
+                    false,
+                    SystemRuntime_v11_0_0_0.GetPublicKeyToken() // Assuming pubkey token does not change.
+                )),
                 _ => throw new ArgumentException($"Invalid or unsupported .NET or .NET Core version {version}.")
             };
         }
@@ -407,6 +419,12 @@ namespace AsmResolver.DotNet
                 (9, 0) => SystemPrivateCoreLib_v9_0_0_0,
                 (10, 0) => SystemPrivateCoreLib_v10_0_0_0,
                 (11, 0) => SystemPrivateCoreLib_v11_0_0_0,
+                (var major, 0) => FutureSystemPrivateCorLibRefs.GetOrAdd(major, m=> new AssemblyReference(
+                    SystemPrivateCoreLib_v11_0_0_0.Name,
+                    new Version(m, 0,0,0),
+                    false,
+                    SystemPrivateCoreLib_v11_0_0_0.GetPublicKeyToken() // Assuming pubkey token does not change.
+                )),
                 _ => throw new ArgumentException($"Invalid or unsupported .NET or .NET Core version {version}.")
             };
         }
