@@ -180,7 +180,11 @@ public static class TargetRuntimeProber
 
             // Read first argument (target runtime string).
             var element = reader.ReadSerString();
-            if (!Utf8String.IsNullOrEmpty(element) && DotNetRuntimeInfo.TryParse(element, out var info))
+
+            // Check if it is a newer version (only update if runtime name is the same as previously found best match)
+            if (!Utf8String.IsNullOrEmpty(element)
+                && DotNetRuntimeInfo.TryParse(element, out var info)
+                && bestMatch.Name == info.Name && info.Version > bestMatch.Version)
             {
                 bestMatch = info;
                 updated = true;
