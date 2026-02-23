@@ -8,16 +8,16 @@ namespace AsmResolver.DotNet.Tests
     public class DotNetRuntimeInfoTest
     {
         [Theory]
-        [InlineData(".NETFramework,Version=v2.0", DotNetRuntimeInfo.NetFramework, 2, 0)]
-        [InlineData(".NETFramework,Version=v3.5", DotNetRuntimeInfo.NetFramework, 3, 5)]
-        [InlineData(".NETFramework,Version=v4.0", DotNetRuntimeInfo.NetFramework, 4, 0)]
-        [InlineData(".NETStandard,Version=v1.0", DotNetRuntimeInfo.NetStandard, 1, 0)]
-        [InlineData(".NETStandard,Version=v2.0", DotNetRuntimeInfo.NetStandard, 2, 0)]
-        [InlineData(".NETCoreApp,Version=v2.0", DotNetRuntimeInfo.NetCoreApp, 2, 0)]
-        [InlineData(".NETCoreApp,Version=v5.0", DotNetRuntimeInfo.NetCoreApp, 5, 0)]
-        [InlineData(".NETCoreApp,Version=v10.0", DotNetRuntimeInfo.NetCoreApp, 10, 0)]
-        [InlineData(".NETCore,Version=v4.5", DotNetRuntimeInfo.NetCore, 4, 5)]
-        [InlineData(".NETPortable,Version=v4.6", DotNetRuntimeInfo.NetPortable, 4, 6)]
+        [InlineData(".NETFramework,Version=v2.0", DotNetRuntimeInfo.NetFrameworkName, 2, 0)]
+        [InlineData(".NETFramework,Version=v3.5", DotNetRuntimeInfo.NetFrameworkName, 3, 5)]
+        [InlineData(".NETFramework,Version=v4.0", DotNetRuntimeInfo.NetFrameworkName, 4, 0)]
+        [InlineData(".NETStandard,Version=v1.0", DotNetRuntimeInfo.NetStandardName, 1, 0)]
+        [InlineData(".NETStandard,Version=v2.0", DotNetRuntimeInfo.NetStandardName, 2, 0)]
+        [InlineData(".NETCoreApp,Version=v2.0", DotNetRuntimeInfo.NetCoreAppName, 2, 0)]
+        [InlineData(".NETCoreApp,Version=v5.0", DotNetRuntimeInfo.NetCoreAppName, 5, 0)]
+        [InlineData(".NETCoreApp,Version=v10.0", DotNetRuntimeInfo.NetCoreAppName, 10, 0)]
+        [InlineData(".NETCore,Version=v4.5", DotNetRuntimeInfo.NetCoreName, 4, 5)]
+        [InlineData(".NETPortable,Version=v4.6", DotNetRuntimeInfo.NetPortableName, 4, 6)]
         public void Parse(string name, string expectedFramework, int major, int minor)
         {
             Assert.Equal(
@@ -45,16 +45,16 @@ namespace AsmResolver.DotNet.Tests
         }
 
         [Theory]
-        [InlineData("net20", DotNetRuntimeInfo.NetFramework, 2, 0)]
-        [InlineData("net35", DotNetRuntimeInfo.NetFramework, 3, 5)]
-        [InlineData("net40", DotNetRuntimeInfo.NetFramework, 4, 0)]
-        [InlineData("net47", DotNetRuntimeInfo.NetFramework, 4, 7)]
-        [InlineData("net472", DotNetRuntimeInfo.NetFramework, 4, 7)]
-        [InlineData("netstandard2.0", DotNetRuntimeInfo.NetStandard, 2, 0)]
-        [InlineData("netcoreapp2.1", DotNetRuntimeInfo.NetCoreApp, 2,1)]
-        [InlineData("net5.0", DotNetRuntimeInfo.NetCoreApp, 5, 0)]
-        [InlineData("net8.0", DotNetRuntimeInfo.NetCoreApp, 8, 0)]
-        [InlineData("net10.0", DotNetRuntimeInfo.NetCoreApp, 10, 0)]
+        [InlineData("net20", DotNetRuntimeInfo.NetFrameworkName, 2, 0)]
+        [InlineData("net35", DotNetRuntimeInfo.NetFrameworkName, 3, 5)]
+        [InlineData("net40", DotNetRuntimeInfo.NetFrameworkName, 4, 0)]
+        [InlineData("net47", DotNetRuntimeInfo.NetFrameworkName, 4, 7)]
+        [InlineData("net472", DotNetRuntimeInfo.NetFrameworkName, 4, 7)]
+        [InlineData("netstandard2.0", DotNetRuntimeInfo.NetStandardName, 2, 0)]
+        [InlineData("netcoreapp2.1", DotNetRuntimeInfo.NetCoreAppName, 2,1)]
+        [InlineData("net5.0", DotNetRuntimeInfo.NetCoreAppName, 5, 0)]
+        [InlineData("net8.0", DotNetRuntimeInfo.NetCoreAppName, 8, 0)]
+        [InlineData("net10.0", DotNetRuntimeInfo.NetCoreAppName, 10, 0)]
         public void ParseMoniker(string tfm, string expectedFramework, int major, int minor)
         {
             Assert.Equal(

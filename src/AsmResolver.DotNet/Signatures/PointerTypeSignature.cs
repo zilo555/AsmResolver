@@ -26,16 +26,16 @@ namespace AsmResolver.DotNet.Signatures
         public override bool IsValueType => false;
 
         /// <inheritdoc />
-        protected override bool IsDirectlyCompatibleWith(TypeSignature other, SignatureComparer comparer)
+        protected override bool IsDirectlyCompatibleWith(TypeSignature other, RuntimeContext? context, SignatureComparer comparer)
         {
-            if (base.IsDirectlyCompatibleWith(other, comparer))
+            if (base.IsDirectlyCompatibleWith(other, context, comparer))
                 return true;
 
             if (other is not PointerTypeSignature otherPointer)
                 return false;
 
-            var v = BaseType.GetVerificationType();
-            var w = otherPointer.BaseType.GetVerificationType();
+            var v = BaseType.GetVerificationType(context);
+            var w = otherPointer.BaseType.GetVerificationType(context);
             return comparer.Equals(v, w);
         }
 

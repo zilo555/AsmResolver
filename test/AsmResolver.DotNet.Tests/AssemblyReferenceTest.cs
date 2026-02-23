@@ -1,7 +1,9 @@
 using System;
+using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
+using AsmResolver.DotNet.Signatures;
 using Xunit;
+using FieldAttributes = AsmResolver.PE.DotNet.Metadata.Tables.FieldAttributes;
 
 namespace AsmResolver.DotNet.Tests
 {
@@ -62,8 +64,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var assemblyRef = module.AssemblyReferences[0];
-            var assemblyDef = assemblyRef.Resolve();
-            Assert.NotNull(assemblyDef);
+            var assemblyDef = assemblyRef.Resolve(module.RuntimeContext);
             Assert.Equal(assemblyDef.Name, assemblyDef.Name);
             Assert.Equal(assemblyDef.Version, assemblyDef.Version);
         }
@@ -98,7 +99,7 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var genericType = module.CorLibTypeFactory.CorLibScope
                 .CreateTypeReference("System.Collections.Generic", "List`1")
-                .MakeGenericInstanceType(module.CorLibTypeFactory.Int32);
+                .MakeGenericInstanceType(isValueType: false, module.CorLibTypeFactory.Int32);
             Assert.False(genericType.IsValueType);
         }
 
@@ -108,8 +109,101 @@ namespace AsmResolver.DotNet.Tests
             var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
             var genericType = module.CorLibTypeFactory.CorLibScope
                 .CreateTypeReference("System", "Nullable`1")
-                .MakeGenericInstanceType(module.CorLibTypeFactory.Int32);
+                .MakeGenericInstanceType(isValueType: true, module.CorLibTypeFactory.Int32);
             Assert.True(genericType.IsValueType);
+        }
+
+        [Fact]
+        public void AddReferenceTwiceShouldAddCustomAttributesOnce()
+        {
+            // https://github.com/Washi1337/AsmResolver/pull/697
+
+            // Prepare module.
+            var module = ModuleDefinition.FromBytes(Properties.Resources.HelloWorld, TestReaderParameters);
+
+            // Add some assembly ref with a CA.
+            var reference = new AssemblyReference("Foo", new Version(1, 0, 0, 0));
+            var ctor = module.CorLibTypeFactory.CorLibScope
+                .CreateTypeReference("System", "ObsoleteAttribute")
+                .CreateMemberReference(".ctor", MethodSignature.CreateInstance(module.CorLibTypeFactory.Void));
+            reference.CustomAttributes.Add(new CustomAttribute(ctor));
+
+            // Reference the assembly twice.
+            var moduleType = module.GetOrCreateModuleType();
+            var type = reference.CreateTypeReference("SomeNamespace", "SomeType").ToTypeSignature(false);
+            moduleType.Fields.Add(new FieldDefinition("Foo1", FieldAttributes.Static, type));
+            moduleType.Fields.Add(new FieldDefinition("Foo2", FieldAttributes.Static, type));
+
+            // Rebuild.
+            using var stream = new MemoryStream();
+            module.Write(stream);
+
+            // Verify the assembly ref still has only one CA.
+            var newModule =  ModuleDefinition.FromBytes(stream.ToArray());
+            var newReference = Assert.Single(newModule.AssemblyReferences, x => x.Name == "Foo");
+            var newAttribute = Assert.Single(newReference.CustomAttributes);
+            Assert.Equal(ctor, newAttribute.Constructor, SignatureComparer.Default);
+        }
+
+        [Fact]
+        public void AllKnownCorLibsAreCorLib()
+        {
+            Assert.All(KnownCorLibs.KnownCorLibReferences,
+                reference => reference.IsCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.All(KnownCorLibs.KnownCorLibReferences,
+                reference => reference.IsCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.All(KnownCorLibs.KnownCorLibReferences,
+                reference => reference.IsCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+        }
+
+        [Fact]
+        public void MscorlibClassification()
+        {
+            Assert.True(KnownCorLibs.MsCorLib_v4_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.True(KnownCorLibs.MsCorLib_v4_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.True(KnownCorLibs.MsCorLib_v4_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.False(KnownCorLibs.MsCorLib_v4_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.True(KnownCorLibs.MsCorLib_v4_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+            Assert.False(KnownCorLibs.MsCorLib_v4_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+        }
+
+        [Fact]
+        public void NetStandardClassification()
+        {
+            Assert.All(
+                [
+                    DotNetRuntimeInfo.NetFramework(4, 0),
+                    DotNetRuntimeInfo.NetStandard(2, 0),
+                    DotNetRuntimeInfo.NetCoreApp(10, 0),
+                ],
+                info =>
+                {
+                    Assert.True(KnownCorLibs.NetStandard_v2_0_0_0.IsReferenceCorLib(info));
+                    Assert.False(KnownCorLibs.NetStandard_v2_0_0_0.IsImplementationCorLib(info));
+                }
+            );
+        }
+
+        [Fact]
+        public void SystemRuntimeClassification()
+        {
+            Assert.False(KnownCorLibs.SystemRuntime_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.False(KnownCorLibs.SystemRuntime_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.True(KnownCorLibs.SystemRuntime_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.False(KnownCorLibs.SystemRuntime_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.True(KnownCorLibs.SystemRuntime_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+            Assert.False(KnownCorLibs.SystemRuntime_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+        }
+
+        [Fact]
+        public void SystemPrivateCorLibClassification()
+        {
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetFramework(4, 0)));
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.True(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetCoreApp(10, 0)));
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsReferenceCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
+            Assert.False(KnownCorLibs.SystemPrivateCoreLib_v10_0_0_0.IsImplementationCorLib(DotNetRuntimeInfo.NetStandard(2, 0)));
         }
     }
 }

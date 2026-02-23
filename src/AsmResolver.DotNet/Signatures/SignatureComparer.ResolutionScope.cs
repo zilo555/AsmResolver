@@ -9,28 +9,16 @@ namespace AsmResolver.DotNet.Signatures
         IEqualityComparer<AssemblyReference>
     {
         private bool IgnoreAssemblyVersionNumbers
-        {
-            get
-            {
-                return (Flags & SignatureComparisonFlags.VersionAgnostic) == SignatureComparisonFlags.VersionAgnostic;
-            }
-        }
+            => (Flags & SignatureComparisonFlags.VersionAgnostic) == SignatureComparisonFlags.VersionAgnostic;
 
         private bool AcceptNewerAssemblyVersionNumbers
-        {
-            get
-            {
-                return (Flags & SignatureComparisonFlags.AcceptNewerVersions) == SignatureComparisonFlags.AcceptNewerVersions;
-            }
-        }
+            => (Flags & SignatureComparisonFlags.AcceptNewerVersions) == SignatureComparisonFlags.AcceptNewerVersions;
 
         private bool AcceptOlderAssemblyVersionNumbers
-        {
-            get
-            {
-                return (Flags & SignatureComparisonFlags.AcceptOlderVersions) == SignatureComparisonFlags.AcceptOlderVersions;
-            }
-        }
+            => (Flags & SignatureComparisonFlags.AcceptOlderVersions) == SignatureComparisonFlags.AcceptOlderVersions;
+
+        private bool IgnoreStrongNames
+            => (Flags & SignatureComparisonFlags.IgnoreStrongNames) == SignatureComparisonFlags.IgnoreStrongNames;
 
         /// <inheritdoc />
         public virtual bool Equals(IResolutionScope? x, IResolutionScope? y)
@@ -79,9 +67,9 @@ namespace AsmResolver.DotNet.Signatures
                 versionMatch = x.Version == y.Version;
 
             return versionMatch
-                   && x.Name == y.Name
-                   && (x.Culture == y.Culture || (Utf8String.IsNullOrEmpty(x.Culture) && Utf8String.IsNullOrEmpty(y.Culture)))
-                   && Equals(x.GetPublicKeyToken(), y.GetPublicKeyToken());
+                && x.Name == y.Name
+                && (x.Culture == y.Culture || (Utf8String.IsNullOrEmpty(x.Culture) && Utf8String.IsNullOrEmpty(y.Culture)))
+                && (IgnoreStrongNames || Equals(x.GetPublicKeyToken(), y.GetPublicKeyToken()));
         }
 
         /// <inheritdoc />

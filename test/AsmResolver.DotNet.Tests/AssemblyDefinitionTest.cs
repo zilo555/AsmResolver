@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using AsmResolver.DotNet.Serialized;
-using AsmResolver.IO;
 using AsmResolver.PE.DotNet.StrongName;
 using Xunit;
 
@@ -74,8 +73,9 @@ namespace AsmResolver.DotNet.Tests
             );
 
             Assert.Equal(2, assemblyDef.Modules.Count);
-            Assert.Equal("Manifest.exe", assemblyDef.ManifestModule.Name);
+            Assert.Equal("Manifest.exe", assemblyDef.ManifestModule!.Name);
             Assert.Equal("MyModel.netmodule", assemblyDef.Modules[1].Name);
+            Assert.All(assemblyDef.Modules, m => Assert.Same(assemblyDef.RuntimeContext, m.RuntimeContext));
         }
 
         [Fact]

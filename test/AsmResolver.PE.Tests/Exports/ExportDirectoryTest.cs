@@ -267,7 +267,7 @@ namespace AsmResolver.PE.Tests.Exports
 
             // Try running it.
             var runner = _fixture.GetRunner<NativePERunner>();
-            string basePath = runner.GetTestDirectory(nameof(ExportDirectoryTest), nameof(RebuildForwarderSymbol));
+            string basePath = runner.GetTestDirectory();
             string exePath = Path.Combine(basePath, "ForwarderTest.exe");
 
             System.IO.File.WriteAllBytes(

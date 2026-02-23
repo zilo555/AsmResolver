@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Signatures;
@@ -15,7 +14,6 @@ using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using AsmResolver.PE.DotNet.VTableFixups;
 using AsmResolver.PE.File;
-using AsmResolver.Shims;
 using AsmResolver.Tests.Runners;
 using Xunit;
 
@@ -609,15 +607,15 @@ namespace AsmResolver.DotNet.Tests
             var factory = module.CorLibTypeFactory;
 
             var method = new MethodDefinition("Method", MethodAttributes.Static, MethodSignature.CreateStatic(factory.Void));
-            method.VerifyMetadata();
+            method.VerifyMetadata(module.RuntimeContext);
 
             method.IsStatic = false;
             method.Signature!.HasThis = false;
-            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata());
+            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
 
             method.IsStatic = true;
             method.Signature!.HasThis = true;
-            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata());
+            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
         }
 
         [Fact]
@@ -627,21 +625,21 @@ namespace AsmResolver.DotNet.Tests
             var factory = module.CorLibTypeFactory;
 
             var method = new MethodDefinition("Method", MethodAttributes.Static, MethodSignature.CreateStatic(factory.Void));
-            method.VerifyMetadata();
+            method.VerifyMetadata(module.RuntimeContext);
 
             method.GenericParameters.Add(new GenericParameter("T1"));
             method.GenericParameters.Add(new GenericParameter("T2"));
 
-            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata());
+            Assert.ThrowsAny<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
 
             method.Signature!.IsGeneric = true;
             method.Signature!.GenericParameterCount = 2;
 
-            method.VerifyMetadata();
+            method.VerifyMetadata(module.RuntimeContext);
         }
 
         [Fact]
-        public void CreateParameterlessConstructor()
+        public void CreateParameterlessConstructorFromModuleDefinition()
         {
             var module = ModuleDefinition.FromFile(typeof(Constructors).Assembly.Location, TestReaderParameters);
             var ctor = MethodDefinition.CreateConstructor(module);
@@ -653,7 +651,7 @@ namespace AsmResolver.DotNet.Tests
         }
 
         [Fact]
-        public void CreateConstructor()
+        public void CreateConstructorFromModuleDefinition()
         {
             var module = ModuleDefinition.FromFile(typeof(Constructors).Assembly.Location, TestReaderParameters);
             var factory = module.CorLibTypeFactory;
@@ -661,6 +659,29 @@ namespace AsmResolver.DotNet.Tests
 
             Assert.True(ctor.IsConstructor);
             Assert.Equal(new[] {factory.Int32, factory.Double}, ctor.Parameters.Select(x => x.ParameterType));
+        }
+
+        [Fact]
+        public void CreateParameterlessConstructorFromCorLibTypeFactory()
+        {
+            var module = ModuleDefinition.FromFile(typeof(Constructors).Assembly.Location, TestReaderParameters);
+            var ctor = MethodDefinition.CreateConstructor(module.CorLibTypeFactory);
+
+            Assert.True(ctor.IsConstructor);
+            Assert.Empty(ctor.Parameters);
+            Assert.NotNull(ctor.CilMethodBody);
+            Assert.Equal(CilOpCodes.Ret, Assert.Single(ctor.CilMethodBody.Instructions).OpCode);
+        }
+
+        [Fact]
+        public void CreateConstructorFromCorLibTypeFactory()
+        {
+            var module = ModuleDefinition.FromFile(typeof(Constructors).Assembly.Location, TestReaderParameters);
+            var factory = module.CorLibTypeFactory;
+            var ctor = MethodDefinition.CreateConstructor(factory, factory.Int32, factory.Double);
+
+            Assert.True(ctor.IsConstructor);
+            Assert.Equal(new[] { factory.Int32, factory.Double }, ctor.Parameters.Select(x => x.ParameterType));
         }
 
         [Fact]
@@ -727,28 +748,34 @@ namespace AsmResolver.DotNet.Tests
         [Fact]
         public void VerifyAsyncMethodSignature()
         {
-            var module = new ModuleDefinition("Module", KnownCorLibs.SystemRuntime_v9_0_0_0);
+            var context = new RuntimeContext(DotNetRuntimeInfo.NetCoreApp(10, 0));
+            var module = new ModuleDefinition("Module", context.TargetRuntime);
+
             var factory = module.CorLibTypeFactory;
 
             var method = new MethodDefinition("Method", MethodAttributes.Static, MethodSignature.CreateStatic(factory.Void))
             {
                 IsRuntimeAsync = true
             };
-            method.VerifyMetadata();
+            module.GetOrCreateModuleType().Methods.Add(method);
+            method.VerifyMetadata(module.RuntimeContext);
 
             method.IsSynchronized = true;
-            Assert.Throws<AggregateException>(() => method.VerifyMetadata());
+            Assert.Throws<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
             method.IsSynchronized = false;
 
             method.Signature.Attributes |= CallingConventionAttributes.VarArg;
-            Assert.Throws<AggregateException>(() => method.VerifyMetadata());
+            Assert.Throws<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
             method.Signature.Attributes &= ~CallingConventionAttributes.VarArg;
 
             method.Signature.ReturnType = factory.Int32.MakeByReferenceType();
-            Assert.Throws<AggregateException>(() => method.VerifyMetadata());
+            Assert.Throws<AggregateException>(() => method.VerifyMetadata(module.RuntimeContext));
 
-            method.Signature.ReturnType = factory.CorLibScope.CreateTypeReference("System", "Span`1").MakeGenericInstanceType(factory.Int32);
-            Assert.Throws<AggregateException>(() => method.VerifyMetadata());
+            method.Signature.ReturnType = factory.CorLibScope
+                .CreateTypeReference("System", "Span`1")
+                .MakeGenericInstanceType(isValueType: true, factory.Int32);
+
+            Assert.Throws<AggregateException>(() => method.VerifyMetadata(context));
         }
 
         [Fact]

@@ -24,28 +24,19 @@ namespace AsmResolver.DotNet
         }
 
         /// <summary>
-        /// Gets a value indicating whether instances of this type are passed on by value or by reference.
+        /// Determines whether the type is considered a value type or reference type by the runtime.
         /// </summary>
-        bool IsValueType
-        {
-            get;
-        }
+        /// <param name="context">The runtime context that is assumed.</param>
+        /// <returns><c>true</c> when the type is considered a value type, <c>false</c> when it is a reference type, <c>null</c> when unknown.</returns>
+        bool? TryGetIsValueType(RuntimeContext? context);
 
         /// <summary>
-        /// Resolves the reference to a type definition.
+        /// Attempts to resolve the type reference to its definition, assuming the provided module as resolution context.
         /// </summary>
-        /// <returns>The resolved type definition, or <c>null</c> if the type could not be resolved.</returns>
-        /// <remarks>
-        /// This method assumes the context module as the resolution context.
-        /// </remarks>
-        new TypeDefinition? Resolve();
-
-        /// <summary>
-        /// Resolves the reference to a method definition, assuming the provided module as resolution context.
-        /// </summary>
-        /// <param name="context">The module to assume as resolution context.</param>
-        /// <returns>The resolved method definition, or <c>null</c> if the method could not be resolved.</returns>
-        new TypeDefinition? Resolve(ModuleDefinition context);
+        /// <param name="context">The context to assume when resolving the type.</param>
+        /// <param name="definition">The resolved type definition, or <c>null</c> if the type could not be resolved.</param>
+        /// <returns>A value describing the success or failure status of the type resolution.</returns>
+        ResolutionStatus Resolve(RuntimeContext? context, out TypeDefinition? definition);
 
         /// <summary>
         /// Transforms the type descriptor to an instance of a <see cref="ITypeDefOrRef"/>, which can be referenced by
@@ -55,10 +46,14 @@ namespace AsmResolver.DotNet
         ITypeDefOrRef ToTypeDefOrRef();
 
         /// <summary>
-        /// Transforms the type descriptor to an instance of a <see cref="TypeSignature"/>, which can be used in
-        /// blob signatures.
+        /// Converts the type in a type signature.
         /// </summary>
-        /// <returns>The constructed type signature instance.</returns>
-        TypeSignature ToTypeSignature();
+        /// <param name="context">The runtime context to assume when creating the signature.</param>
+        /// <returns>The new type signature.</returns>
+        /// <remarks>
+        /// When this type is a signature, gets the underlying type signature instance.
+        /// Otherwise, a new signature will be instantiated.
+        /// </remarks>
+        TypeSignature ToTypeSignature(RuntimeContext? context);
     }
 }

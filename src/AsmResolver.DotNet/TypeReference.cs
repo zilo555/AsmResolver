@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using AsmResolver.Collections;
@@ -106,9 +107,6 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public bool IsValueType => Resolve()?.IsValueType ?? false;
-
-        /// <inheritdoc />
         public ModuleDefinition? ContextModule
         {
             // Note: We cannot make this a computed property that returns `Scope.ContextModule`, because a TypeRef's
@@ -139,10 +137,15 @@ namespace AsmResolver.DotNet
             }
         }
 
+        /// <inheritdoc />
+        public bool? TryGetIsValueType(RuntimeContext? context) => this.TryResolve(context, out var definition)
+            ? definition.IsValueType
+            : null;
+
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
         /// <inheritdoc />
-        public TypeSignature ToTypeSignature() => ToTypeSignature(IsValueType);
+        public TypeSignature ToTypeSignature(RuntimeContext? context) => ToTypeSignature(this.GetIsValueType(context));
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType)
@@ -166,14 +169,23 @@ namespace AsmResolver.DotNet
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
         /// <inheritdoc />
-        public TypeDefinition? Resolve() => ContextModule is { } context ? Resolve(context) : null;
+        public ResolutionStatus Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        {
+            if (context is null)
+            {
+                definition = null;
+                return ResolutionStatus.MissingRuntimeContext;
+            }
 
-        /// <inheritdoc />
-        public TypeDefinition? Resolve(ModuleDefinition context) => context.MetadataResolver.ResolveType(this);
+            return context.ResolveType(this, ContextModule, out definition);
+        }
 
-        IMemberDefinition? IMemberDescriptor.Resolve() => Resolve();
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => Resolve(context);
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            var result = Resolve(context, out var type);
+            definition = type;
+            return result;
+        }
 
         /// <summary>
         /// Obtains the name of the type reference.

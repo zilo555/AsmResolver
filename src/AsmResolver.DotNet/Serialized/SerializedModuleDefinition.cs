@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using AsmResolver.DotNet.Collections;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE;
@@ -9,6 +8,7 @@ using AsmResolver.PE.Debug;
 using AsmResolver.PE.DotNet;
 using AsmResolver.PE.DotNet.Metadata;
 using AsmResolver.PE.DotNet.Metadata.Tables;
+using AsmResolver.PE.Platforms;
 using AsmResolver.PE.Win32Resources;
 
 namespace AsmResolver.DotNet.Serialized
@@ -38,16 +38,15 @@ namespace AsmResolver.DotNet.Serialized
             if (metadata is null)
                 throw new BadImageFormatException("Input PE image does not contain a .NET metadata directory.");
 
-            var tablesStream = metadata.GetStream<TablesStream>();
+            var streams = metadata.GetImpliedStreamSelection();
+
+            var tablesStream = streams.TablesStream;
             if (tablesStream is null)
                 throw new BadImageFormatException(".NET metadata directory does not define a tables stream.");
 
             var moduleTable = tablesStream.GetTable<ModuleDefinitionRow>(TableIndex.Module);
             if (!moduleTable.TryGetByRid(1, out _row))
                 throw new BadImageFormatException("Module definition table does not contain any rows.");
-
-            // Store parameters in fields.
-            ReaderContext = new ModuleReaderContext(peImage, this, readerParameters);
 
             // Copy over PE header fields.
             FilePath = peImage.FilePath;
@@ -62,43 +61,19 @@ namespace AsmResolver.DotNet.Serialized
             Generation = _row.Generation;
             Attributes = peImage.DotNetDirectory!.Flags;
 
+            // If we cannot determine the target runtime the image was compiled against, assume .netfx 4.0 since it's
+            // the most common case for standalone binaries.
+            OriginalTargetRuntime = TargetRuntimeProber.TryGetLikelyTargetRuntime(peImage, out var originalTargetRuntime)
+                ? originalTargetRuntime
+                : DotNetRuntimeInfo.NetFramework(4, 0);
+
             // Initialize member factory.
+            ReaderContext = new ModuleReaderContext(peImage, this, readerParameters);
             _memberFactory = new CachedSerializedMemberFactory(ReaderContext);
 
             // Find assembly definition and corlib assembly.
             Assembly = FindParentAssembly();
             CorLibTypeFactory = CreateCorLibTypeFactory();
-            OriginalTargetRuntime = DetectTargetRuntime();
-
-            // Initialize metadata resolution engines.
-            if (readerParameters.RuntimeContext is { } runtimeContext)
-            {
-                RuntimeContext = runtimeContext;
-            }
-            else
-            {
-                RuntimeContext = new RuntimeContext(OriginalTargetRuntime, readerParameters);
-
-                if (RuntimeContext.AssemblyResolver is AssemblyResolverBase resolver)
-                {
-                    // Add current file's directory as a search directory (if present).
-                    if (!string.IsNullOrEmpty(peImage.FilePath)
-                        && Path.GetDirectoryName(peImage.FilePath) is { } directory
-                        && !resolver.SearchDirectories.Contains(directory))
-                    {
-                        resolver.SearchDirectories.Add(directory);
-                    }
-
-                    // Add current working directory as a search directory (if present).
-                    if (!string.IsNullOrEmpty(readerParameters.WorkingDirectory)
-                        && !resolver.SearchDirectories.Contains(readerParameters.WorkingDirectory!))
-                    {
-                        resolver.SearchDirectories.Add(readerParameters.WorkingDirectory!);
-                    }
-                }
-            }
-
-            MetadataResolver = new DefaultMetadataResolver(RuntimeContext.AssemblyResolver, this);
 
             // Prepare lazy RID lists.
             _fieldLists = new LazyRidListRelation<TypeDefinitionRow>(metadata, TableIndex.Field, TableIndex.TypeDef,
@@ -148,7 +123,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         public override bool TryLookupString(MetadataToken token, [NotNullWhen(true)] out string? value)
         {
-            if (ReaderContext.UserStringsStream is not { } userStringsStream)
+            if (ReaderContext.Streams.UserStringsStream is not { } userStringsStream)
             {
                 value = null;
                 return false;
@@ -160,12 +135,12 @@ namespace AsmResolver.DotNet.Serialized
 
         /// <inheritdoc />
         public override IndexEncoder GetIndexEncoder(CodedIndex codedIndex) =>
-            ReaderContext.TablesStream.GetIndexEncoder(codedIndex);
+            ReaderContext.Streams.TablesStream!.GetIndexEncoder(codedIndex);
 
         /// <inheritdoc />
         public override IEnumerable<IMetadataMember> EnumerateTableMembers(TableIndex tableIndex)
         {
-            var table = ReaderContext.TablesStream.GetTable(tableIndex);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(tableIndex);
 
             for (uint rid = 1; rid <= table.Count; rid++)
             {
@@ -175,24 +150,24 @@ namespace AsmResolver.DotNet.Serialized
         }
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => ReaderContext.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => ReaderContext.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
-        protected override Guid GetMvid() => ReaderContext.GuidStream?.GetGuidByIndex(_row.Mvid) ?? Guid.Empty;
+        protected override Guid GetMvid() => ReaderContext.Streams.GuidStream?.GetGuidByIndex(_row.Mvid) ?? Guid.Empty;
 
         /// <inheritdoc />
-        protected override Guid GetEncId() => ReaderContext.GuidStream?.GetGuidByIndex(_row.EncId) ?? Guid.Empty;
+        protected override Guid GetEncId() => ReaderContext.Streams.GuidStream?.GetGuidByIndex(_row.EncId) ?? Guid.Empty;
 
         /// <inheritdoc />
-        protected override Guid GetEncBaseId() => ReaderContext.GuidStream?.GetGuidByIndex(_row.EncBaseId) ?? Guid.Empty;
+        protected override Guid GetEncBaseId() => ReaderContext.Streams.GuidStream?.GetGuidByIndex(_row.EncBaseId) ?? Guid.Empty;
 
         /// <inheritdoc />
         protected override IList<TypeDefinition> GetTopLevelTypes()
         {
             EnsureTypeDefinitionTreeInitialized();
 
-            var typeDefTable = ReaderContext.TablesStream.GetTable<TypeDefinitionRow>(TableIndex.TypeDef);
-            int nestedTypeCount = ReaderContext.TablesStream.GetTable(TableIndex.NestedClass).Count;
+            var typeDefTable = ReaderContext.Streams.TablesStream!.GetTable<TypeDefinitionRow>(TableIndex.TypeDef);
+            int nestedTypeCount = ReaderContext.Streams.TablesStream.GetTable(TableIndex.NestedClass).Count;
 
             var types = new MemberCollection<ITypeOwner, TypeDefinition>(this,
                 typeDefTable.Count - nestedTypeCount);
@@ -213,7 +188,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<AssemblyReference> GetAssemblyReferences()
         {
-            var table = ReaderContext.TablesStream.GetTable<AssemblyReferenceRow>(TableIndex.AssemblyRef);
+            var table = ReaderContext.Streams.TablesStream!.GetTable<AssemblyReferenceRow>(TableIndex.AssemblyRef);
 
             var result = new MemberCollection<ModuleDefinition, AssemblyReference>(this, table.Count);
 
@@ -230,7 +205,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<ModuleReference> GetModuleReferences()
         {
-            var table = ReaderContext.TablesStream.GetTable(TableIndex.ModuleRef);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(TableIndex.ModuleRef);
 
             var result = new MemberCollection<ModuleDefinition, ModuleReference>(this, table.Count);
 
@@ -247,7 +222,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<FileReference> GetFileReferences()
         {
-            var table = ReaderContext.TablesStream.GetTable(TableIndex.File);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(TableIndex.File);
 
             var result = new MemberCollection<ModuleDefinition, FileReference>(this, table.Count);
 
@@ -264,7 +239,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<ManifestResource> GetResources()
         {
-            var table = ReaderContext.TablesStream.GetTable(TableIndex.ManifestResource);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(TableIndex.ManifestResource);
 
             var result = new MemberCollection<ModuleDefinition, ManifestResource>(this, table.Count);
 
@@ -281,7 +256,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IList<ExportedType> GetExportedTypes()
         {
-            var table = ReaderContext.TablesStream.GetTable(TableIndex.ExportedType);
+            var table = ReaderContext.Streams.TablesStream!.GetTable(TableIndex.ExportedType);
 
             var result = new MemberCollection<ModuleDefinition, ExportedType>(this, table.Count);
 
@@ -326,7 +301,7 @@ namespace AsmResolver.DotNet.Serialized
 
         private AssemblyDefinition? FindParentAssembly()
         {
-            var assemblyTable = ReaderContext.TablesStream.GetTable<AssemblyDefinitionRow>(TableIndex.Assembly);
+            var assemblyTable = ReaderContext.Streams.TablesStream!.GetTable<AssemblyDefinitionRow>(TableIndex.Assembly);
 
             if (assemblyTable.Count > 0)
             {
@@ -334,7 +309,8 @@ namespace AsmResolver.DotNet.Serialized
                     ReaderContext,
                     new MetadataToken(TableIndex.Assembly, 1),
                     assemblyTable[0],
-                    this);
+                    this
+                );
             }
 
             return null;

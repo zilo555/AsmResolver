@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
@@ -185,11 +187,42 @@ namespace AsmResolver.DotNet
         }
 
         /// <summary>
-        /// Gets a value indicating whether the assembly descriptor references a Common Object Runtime standard library.
+        /// Determines whether the assembly descriptor references a Common Object Runtime standard library,
+        /// according to the provided host runtime.
         /// </summary>
-        public abstract bool IsCorLib
+        /// <param name="contextRuntime">The runtime to assume the host is running as.</param>
+        /// <returns><c>true</c> if it is considered a corlib according to the provided runtime, <c>false</c> otherwise.</returns>
+        public bool IsCorLib(in DotNetRuntimeInfo contextRuntime)
         {
-            get;
+            return IsReferenceCorLib(contextRuntime) || IsImplementationCorLib(contextRuntime);
+        }
+
+        /// <summary>
+        /// Determines whether the assembly descriptor references a Common Object Runtime standard reference (facade)
+        /// library, according to the provided host runtime.
+        /// </summary>
+        /// <param name="contextRuntime">The runtime to assume the host is running as.</param>
+        /// <returns><c>true</c> if it is considered a facade corlib according to the provided runtime, <c>false</c> otherwise.</returns>
+        public bool IsReferenceCorLib(in DotNetRuntimeInfo contextRuntime)
+        {
+            if (contextRuntime.IsNetFramework)
+                return Name?.Value is "mscorlib" or "netstandard";
+            return Name?.Value is "mscorlib" or "System.Runtime"  or "netstandard";
+        }
+
+        /// <summary>
+        /// Determines whether the assembly descriptor references a Common Object Runtime standard implementation
+        /// library, according to the provided host runtime.
+        /// </summary>
+        /// <param name="contextRuntime">The runtime to assume the host is running as.</param>
+        /// <returns><c>true</c> if it is considered a implementation corlib according to the provided runtime, <c>false</c> otherwise.</returns>
+        public bool IsImplementationCorLib(in DotNetRuntimeInfo contextRuntime)
+        {
+            if (contextRuntime.IsNetFramework)
+                return Name == "mscorlib";
+            if (contextRuntime.IsNetCoreApp)
+                return Name == "System.Private.CoreLib";
+            return false;
         }
 
         /// <summary>
@@ -259,10 +292,43 @@ namespace AsmResolver.DotNet
         }
 
         /// <summary>
-        /// Resolves the reference to the assembly to an assembly definition.
+        /// Resolves the assembly reference to its definition.
         /// </summary>
-        /// <returns>The assembly definition, or <c>null</c> if the resolution failed.</returns>
-        public abstract AssemblyDefinition? Resolve();
+        /// <returns>The assembly definition.</returns>
+        public AssemblyDefinition Resolve(RuntimeContext? context)
+        {
+            var status = Resolve(context, out var assembly);
+            return status == ResolutionStatus.Success ? assembly! : ThrowStatusError(this, status);
+
+            [DoesNotReturn]
+            static AssemblyDefinition ThrowStatusError(AssemblyDescriptor assembly, ResolutionStatus status) => status switch
+            {
+                ResolutionStatus.MissingRuntimeContext => throw new ArgumentNullException(nameof(context), "The assembly reference requires a runtime context to be resolved"),
+                ResolutionStatus.InvalidReference => throw new ArgumentException($"The assembly reference is invalid"),
+                ResolutionStatus.AssemblyNotFound => throw new FileNotFoundException($"Could not find the file containing the assembly {assembly.SafeToString()}."),
+                ResolutionStatus.AssemblyBadImage => throw new BadImageFormatException($"The assembly {assembly.SafeToString()} is in an invalid format."),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        /// <summary>
+        /// Attempts to resolve the assembly reference to its definition.
+        /// </summary>
+        /// <param name="context">The context to assume when resolving the assembly.</param>
+        /// <param name="assembly">The resolved assembly, or <c>null</c> if resolution failed.</param>
+        /// <returns><c>true</c> if the resolution succeeded, <c>false</c> otherwise.</returns>
+        public bool TryResolve(RuntimeContext? context, [NotNullWhen(true)] out AssemblyDefinition? assembly)
+        {
+            return Resolve(context, out assembly) == ResolutionStatus.Success;
+        }
+
+        /// <summary>
+        /// Attempts to resolve the assembly reference to its definition.
+        /// </summary>
+        /// <param name="context">The context to assume when resolving the assembly.</param>
+        /// <param name="assembly">The resolved assembly, or <c>null</c> if resolution failed.</param>
+        /// <returns>A value describing the success or failure status of the assembly resolution.</returns>
+        public abstract ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly);
 
         /// <summary>
         /// Constructs a new assembly reference based on the descriptor.

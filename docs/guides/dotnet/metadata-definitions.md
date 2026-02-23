@@ -1,4 +1,6 @@
-# The Member Tree
+# Metadata Definitions
+
+AsmResolver represents definitions in a DOM-like tree model.
 
 ## Assemblies and Modules
 
@@ -41,7 +43,7 @@ var cctor = module.GetModuleConstructor();
 Types form logical units or data type defined in a module, and are
 represented by the `TypeDefinition` class.
 
-### Inspecting Types in a Module
+### Inspecting types in a module
 
 Types defined in a module are exposed through the `ModuleDefinition.TopLevelTypes`
 property. A top level types is any non-nested type. Nested types
@@ -82,7 +84,7 @@ foreach (var type in module.GetAllTypes())
     Console.WriteLine(type.FullName);
 ```
 
-### Creating New Types
+### Creating new types
 
 New types can be created by calling one of its constructors:
 
@@ -109,7 +111,7 @@ var newType = new TypeDefinition(
     TypeAttributes.Public,
     module.CorLibTypeFactory.CorLibScope
         .CreateTypeReference("System", "ValueType")
-        .ImportWith(module.DefaultImporter));
+);
 ```
 
 Interfaces in a .NET module do not have a base type, and as such, creating
@@ -141,7 +143,7 @@ Fields comprise all the data a type stores, and form the internal structure
 of a class or value type. They are represented using the `FieldDefinition`
 class.
 
-### Inspecting Fields in a Type
+### Inspecting fields in a type
 
 The `TypeDefinition` class exposes a collection of fields that the type
 defines:
@@ -182,7 +184,7 @@ Refer to [Reading and Writing File Segments](../core/segments.md) for more
 information on how to use `ISegment`s.
 
 
-### Creating New Fields
+### Creating new fields
 
 Creating and adding new fields can be done by using one of its constructors.
 
@@ -204,6 +206,7 @@ type.Fields.Add(field);
 Most properties in `FieldDefinition` are mutable, allowing you to configure
 however you want your new field to be.
 
+See also [Metadata Signatures](metadata-signatures.md) for more information on type and method signatures.
 
 ## Methods
 
@@ -211,7 +214,7 @@ Methods are functions defined in a type, and provide a way to define
 operations that can be applied to a type. They are represented using
 the `MethodDefinition` class.
 
-### Inspecting Methods in a Type
+### Inspecting methods in a type
 
 The `TypeDefinition` class exposes a collection of methods that the type
 defines:
@@ -277,7 +280,7 @@ For more information on CIL method bodies, refer to
 [CIL Method Bodies](managed-method-bodies.md).
 
 
-### Creating New Methods
+### Creating new methods
 
 Creating new methods can be done either through one of its constructors,
 taking a name, attributes, and a method signature.
@@ -297,8 +300,7 @@ var method = new MethodDefinition(
     ));
 ```
 
-Similarly, for instance methods, use the `MethodSignature.CreateInstance`
-to create the signature:
+Similarly, for instance methods, use the `MethodSignature.CreateInstance` to create the signature:
 
 ``` csharp
 ModuleDefinition module = ...;
@@ -311,6 +313,13 @@ var method = new MethodDefinition(
         module.CorLibTypeFactory.String // Parameter 2
     ));
 ```
+
+See also [Metadata Signatures](metadata-signatures.md) for more information on type and method signatures.
+
+> [!WARNING]
+> Ensure that you use the right method signature factory method for the right method.
+> By default, AsmResolver will verify this on construction time, which can be disabled by specifying `verify: false` in the constructor of `MethodDefinition`.
+> Creating an instance signature for a static method or vice versa will also cause the CLR to reject the final binary.
 
 AsmResolver provides helper methods to create special methods such as
 constructors that automatically set the right attributes and initialize
@@ -405,6 +414,7 @@ and`CanAccessDefinition` methods:
 
 ```csharp
 var module = ModuleDefinition.FromFile(...);
+var context = module.RuntimeContext;
 
 var class1 = module.TopLevelTypes.First(t => t.Name == "Class1");
 var field = class1.Fields.First(f => f.Name == "_field");
@@ -412,8 +422,8 @@ var method = class1.Methods.First(m => m.Name == "Method");
 
 var class2 = module.TopLevelTypes.First(t => t.Name == "Class2");
 
-Console.WriteLine(field.IsAccessibleFromType(class1)); // True
-Console.WriteLine(field.IsAccessibleFromType(class2)); // False
-Console.WriteLine(method.CanAccessDefinition(field)); // True
-Console.WriteLine(class2.CanAccessDefinition(field)); // False
+Console.WriteLine(field.IsAccessibleFromType(class1, context)); // True
+Console.WriteLine(field.IsAccessibleFromType(class2, context)); // False
+Console.WriteLine(method.CanAccessDefinition(field, context)); // True
+Console.WriteLine(class2.CanAccessDefinition(field, context)); // False
 ```

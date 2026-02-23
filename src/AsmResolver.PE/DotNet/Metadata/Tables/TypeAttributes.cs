@@ -123,6 +123,11 @@ namespace AsmResolver.PE.DotNet.Metadata.Tables
         CustomFormatClass = 0x00030000,
 
         /// <summary>
+        /// The type is a Windows Runtime type.
+        /// </summary>
+        WindowsRuntime = 0x0004000,
+
+        /// <summary>
         /// Provides a bitmask for obtaining flag related to string format.
         /// </summary>
         StringFormatMask = 0x00030000,

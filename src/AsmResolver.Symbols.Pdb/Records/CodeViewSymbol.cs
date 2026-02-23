@@ -68,6 +68,9 @@ public abstract class CodeViewSymbol : ICodeViewSymbol
             Thunk32 => new SerializedThunkSymbol(context, dataReader),
             Udt => new SerializedUserDefinedTypeSymbol(context, dataReader),
             UNamespace => new SerializedUsingNamespaceSymbol(dataReader),
+            GThread32 => new SerializedThreadStorageSymbol(context, dataReader, true),
+            LThread32 => new SerializedThreadStorageSymbol(context, dataReader, false),
+            Trampoline => new SerializedTrampolineSymbol(dataReader),
             _ => new UnknownSymbol(type, dataReader.ReadToEnd())
         };
     }

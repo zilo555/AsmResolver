@@ -12,11 +12,11 @@ using Xunit;
 
 namespace AsmResolver.PE.Tests.Builder;
 
-public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixture>
+public class TemplatedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixture>
 {
     private readonly TemporaryDirectoryFixture _fixture;
 
-    public UnmanagedPEFileBuilderTest(TemporaryDirectoryFixture fixture)
+    public TemplatedPEFileBuilderTest(TemporaryDirectoryFixture fixture)
     {
         _fixture = fixture;
     }
@@ -40,7 +40,7 @@ public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixtur
             TestReaderParameters
         );
 
-        var file = image.ToPEFile(new UnmanagedPEFileBuilder());
+        var file = image.ToPEFile(new TemplatedPEFileBuilder());
 
         _fixture.GetRunner<NativePERunner>().RebuildAndRun(
             file,
@@ -68,7 +68,7 @@ public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixtur
             TestReaderParameters
         );
 
-        var file = image.ToPEFile(new UnmanagedPEFileBuilder
+        var file = image.ToPEFile(new TemplatedPEFileBuilder
         {
             TrampolineImports = true
         });
@@ -97,7 +97,7 @@ public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixtur
             TestReaderParameters
         );
 
-        var file = image.ToPEFile(new UnmanagedPEFileBuilder
+        var file = image.ToPEFile(new TemplatedPEFileBuilder
         {
             TrampolineImports = true,
             ImportedSymbolClassifier = new DelegatedSymbolClassifier(x => x.Name switch
@@ -144,7 +144,7 @@ public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixtur
         }
 
         // Build with trampolines.
-        var file = image.ToPEFile(new UnmanagedPEFileBuilder
+        var file = image.ToPEFile(new TemplatedPEFileBuilder
         {
             TrampolineImports = true
         });
@@ -173,7 +173,7 @@ public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixtur
             TestReaderParameters
         );
 
-        var file = image.ToPEFile(new UnmanagedPEFileBuilder());
+        var file = image.ToPEFile(new TemplatedPEFileBuilder());
 
         _fixture.GetRunner<NativePERunner>().RebuildAndRun(
             file,
@@ -191,7 +191,7 @@ public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixtur
         var image = PEImage.FromBytes(Properties.Resources.MixedModeCallIntoNative, TestReaderParameters);
 
         // Rebuild
-        var file = image.ToPEFile(new UnmanagedPEFileBuilder
+        var file = image.ToPEFile(new TemplatedPEFileBuilder
         {
             TrampolineVTableFixups = true
         });
@@ -221,7 +221,7 @@ public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixtur
         }
 
         // Rebuild
-        var file = image.ToPEFile(new UnmanagedPEFileBuilder
+        var file = image.ToPEFile(new TemplatedPEFileBuilder
         {
             TrampolineVTableFixups = true
         });
@@ -246,7 +246,7 @@ public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixtur
             name, new DataSegment(data)
         ));
 
-        var file = image.ToPEFile(new UnmanagedPEFileBuilder());
+        var file = image.ToPEFile(new TemplatedPEFileBuilder());
         using var stream = new MemoryStream();
         file.Write(stream);
 
@@ -273,12 +273,49 @@ public class UnmanagedPEFileBuilderTest : IClassFixture<TemporaryDirectoryFixtur
         var image = PEImage.FromBytes(Properties.Resources.SimpleDll_Exports, TestReaderParameters);
         image.Exports!.Entries.Add(new ExportedSymbol(new VirtualAddress(0x13371337), "MySymbol"));
 
-        var file = image.ToPEFile(new UnmanagedPEFileBuilder());
+        var file = image.ToPEFile(new TemplatedPEFileBuilder());
         using var stream = new MemoryStream();
         file.Write(stream);
 
         var newImage = PEImage.FromStream(stream, TestReaderParameters);
         Assert.NotNull(newImage.Exports);
         Assert.Equal(image.Exports.Entries.Select(x => x.Name), newImage.Exports.Entries.Select(x => x.Name));
+    }
+
+    [Fact]
+    public void RoundTripTlsShouldPreserveContents()
+    {
+        // https://github.com/Washi1337/AsmResolver/issues/706
+
+        var image = PEImage.FromBytes(Properties.Resources.TlsTest_x64, TestReaderParameters);
+        Assert.NotNull(image.TlsDirectory);
+
+        var file = image.ToPEFile(new TemplatedPEFileBuilder());
+        var runner = _fixture.GetRunner<PERunner>();
+        string path = runner.Rebuild(file, "TlsTest.exe");
+
+        var newImage = PEImage.FromFile(path, TestReaderParameters);
+        Assert.NotNull(newImage.TlsDirectory);
+        Assert.Equal(
+            image.TlsDirectory.TemplateData?.ToArray(),
+            newImage.TlsDirectory.TemplateData?.ToArray()
+        );
+        Assert.Equal(
+            image.TlsDirectory.CallbackFunctions.Select(x => x.Rva),
+            newImage.TlsDirectory.CallbackFunctions.Select(x => x.Rva)
+        );
+        Assert.Equal(
+            image.Relocations.Select(x => x.Location.Rva),
+            newImage.Relocations.Select(x => x.Location.Rva)
+        );
+
+        string output = runner.RunAndCaptureOutput(path, ["1"]);
+        Assert.Contains("TLS callback 1 (Reason: 1)", output);
+        Assert.Contains("TLS callback 1 (Reason: 2)", output);
+        Assert.Contains("_threadLocalInt = 305419896", output);
+        Assert.Contains("_threadLocalInt = 305419897", output);
+        Assert.Contains("_threadLocalArray = Hello World!", output);
+        Assert.Contains("TLS callback 1 (Reason: 3)", output);
+        Assert.Contains("Done", output);
     }
 }

@@ -38,7 +38,7 @@ namespace AsmResolver.DotNet.Tests.Builder.TokenPreservation
 
         private static EventDefinition CreateDummyEventToType(TypeDefinition dummyType, ITypeDefOrRef eventHandlerTypeRef, string name)
         {
-            var eventHandlerTypeSig = eventHandlerTypeRef.ToTypeSignature();
+            var eventHandlerTypeSig = eventHandlerTypeRef.ToTypeSignature(isValueType: false);
 
             // Define new event.
             var @event = new EventDefinition(name, 0, eventHandlerTypeRef);

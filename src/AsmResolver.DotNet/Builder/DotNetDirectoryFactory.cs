@@ -315,11 +315,11 @@ namespace AsmResolver.DotNet.Builder
             var readerContext = serializedModule.ReaderContext;
             var streamIndices = new (int Index, IMetadataStream? Stream)[]
             {
-                (readerContext.TablesStreamIndex, GetStreamOrNull<TablesStream>()),
-                (readerContext.BlobStreamIndex, GetStreamOrNull<BlobStream>()),
-                (readerContext.GuidStreamIndex, GetStreamOrNull<GuidStream>()),
-                (readerContext.StringsStreamIndex, GetStreamOrNull<StringsStream>()),
-                (readerContext.UserStringsStreamIndex, GetStreamOrNull<UserStringsStream>()),
+                (readerContext.Streams.TablesStreamIndex, GetStreamOrNull<TablesStream>()),
+                (readerContext.Streams.BlobStreamIndex, GetStreamOrNull<BlobStream>()),
+                (readerContext.Streams.GuidStreamIndex, GetStreamOrNull<GuidStream>()),
+                (readerContext.Streams.StringsStreamIndex, GetStreamOrNull<StringsStream>()),
+                (readerContext.Streams.UserStringsStreamIndex, GetStreamOrNull<UserStringsStream>()),
             };
 
             if ((MetadataBuilderFlags & MetadataBuilderFlags.PreserveUnknownStreams) != 0)

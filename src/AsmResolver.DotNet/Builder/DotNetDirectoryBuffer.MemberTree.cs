@@ -178,7 +178,8 @@ namespace AsmResolver.DotNet.Builder
                 var row = new FieldDefinitionRow(
                     field.Attributes,
                     Metadata.StringsStream.GetStringIndex(field.Name),
-                    Metadata.BlobStream.GetBlobIndex(this, field.Signature, ErrorListener, field));
+                    SerializeBlobSignature(field.Signature, field)
+                );
 
                 var token = table.Add(row);
                 _tokenMapping.Register(field, token);
@@ -206,8 +207,9 @@ namespace AsmResolver.DotNet.Builder
                     method.ImplAttributes,
                     method.Attributes,
                     Metadata.StringsStream.GetStringIndex(method.Name),
-                    Metadata.BlobStream.GetBlobIndex(this, method.Signature, ErrorListener, method),
-                    0);
+                    SerializeBlobSignature(method.Signature, method),
+                    0
+                );
 
                 var token = table.Add(row);
                 _tokenMapping.Register(method, token);
@@ -217,7 +219,7 @@ namespace AsmResolver.DotNet.Builder
                     VTableFixups.MapTokenToExport(method.ExportInfo.Value, token);
 
                 if (validateSignatures)
-                    method.VerifyMetadata(ErrorListener);
+                    method.VerifyMetadata(Module.RuntimeContext, ErrorListener);
             }
         }
 
@@ -258,7 +260,8 @@ namespace AsmResolver.DotNet.Builder
                 var row = new PropertyDefinitionRow(
                     property.Attributes,
                     Metadata.StringsStream.GetStringIndex(property.Name),
-                    Metadata.BlobStream.GetBlobIndex(this, property.Signature, ErrorListener, property));
+                    SerializeBlobSignature(property.Signature, property)
+                );
 
                 var token = table.Add(row);
                 _tokenMapping.Register(property, token);
@@ -638,7 +641,7 @@ namespace AsmResolver.DotNet.Builder
 
         private MetadataToken AddExportedType(ExportedType exportedType)
         {
-            var table = Metadata.TablesStream.GetTable<ExportedTypeRow>(TableIndex.ExportedType);
+            var table = Metadata.TablesStream.GetDistinctTable<ExportedTypeRow>(TableIndex.ExportedType);
 
             var row = new ExportedTypeRow(
                 exportedType.Attributes,
@@ -648,9 +651,12 @@ namespace AsmResolver.DotNet.Builder
                 AddImplementation(exportedType.Implementation, exportedType)
             );
 
-            var token = table.Add(row);
-            _tokenMapping.Register(exportedType, token);
-            AddCustomAttributes(token, exportedType);
+            if (table.TryAdd(row, false, out var token))
+            {
+                _tokenMapping.Register(exportedType, token);
+                AddCustomAttributes(token, exportedType);
+            }
+
             return token;
         }
 
@@ -662,16 +668,20 @@ namespace AsmResolver.DotNet.Builder
 
         private MetadataToken AddFileReference(FileReference fileReference)
         {
-            var table = Metadata.TablesStream.GetTable<FileReferenceRow>(TableIndex.File);
+            var table = Metadata.TablesStream.GetDistinctTable<FileReferenceRow>(TableIndex.File);
 
             var row = new FileReferenceRow(
                 fileReference.Attributes,
                 Metadata.StringsStream.GetStringIndex(fileReference.Name),
-                Metadata.BlobStream.GetBlobIndex(fileReference.HashValue));
+                Metadata.BlobStream.GetBlobIndex(fileReference.HashValue)
+            );
 
-            var token = table.Add(row);
-            _tokenMapping.Register(fileReference, token);
-            AddCustomAttributes(token, fileReference);
+            if (table.TryAdd(row, false, out var token))
+            {
+                _tokenMapping.Register(fileReference, token);
+                AddCustomAttributes(token, fileReference);
+            }
+
             return token;
         }
     }

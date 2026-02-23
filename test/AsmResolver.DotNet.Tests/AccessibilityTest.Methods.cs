@@ -26,7 +26,7 @@ public partial class AccessibilityTest
         var type = AddTopLevelType(module, "Type1", TypeAttributes.Public);
         var method = AddMethod(type, "Method1", attributes);
 
-        Assert.True(method.IsAccessibleFromType(type));
+        Assert.True(method.IsAccessibleFromType(type, module.RuntimeContext));
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module, "Type2", TypeAttributes.Public);
         var method = AddMethod(type2, "Method1", MethodAttributes.Public);
 
-        Assert.True(method.IsAccessibleFromType(type1));
+        Assert.True(method.IsAccessibleFromType(type1, module.RuntimeContext));
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module, "Type2", TypeAttributes.Public);
         var method = AddMethod(type2, "Method1", MethodAttributes.Assembly);
 
-        Assert.True(method.IsAccessibleFromType(type1));
+        Assert.True(method.IsAccessibleFromType(type1, module.RuntimeContext));
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module2, "Type2", TypeAttributes.Public);
         var method = AddMethod(type2, "Method1", MethodAttributes.Assembly);
 
-        Assert.False(method.IsAccessibleFromType(type1));
+        Assert.False(method.IsAccessibleFromType(type1, module1.RuntimeContext));
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module, "Type2", TypeAttributes.Public);
         var method = AddMethod(type2, "Method1", MethodAttributes.Private);
 
-        Assert.False(method.IsAccessibleFromType(type1));
+        Assert.False(method.IsAccessibleFromType(type1, module.RuntimeContext));
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public partial class AccessibilityTest
         var type2 = AddTopLevelType(module2, "Type2", TypeAttributes.NotPublic);
         var method = AddMethod(type2, "Method1", MethodAttributes.Public);
 
-        Assert.False(method.IsAccessibleFromType(type1));
+        Assert.False(method.IsAccessibleFromType(type1, module1.RuntimeContext));
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public partial class AccessibilityTest
         var method = AddMethod(type1, "Method1", MethodAttributes.Family);
         var type2 = AddTopLevelType(module, "Type2", TypeAttributes.Public, type1);
 
-        Assert.True(method.IsAccessibleFromType(type2));
+        Assert.True(method.IsAccessibleFromType(type2, module.RuntimeContext));
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public partial class AccessibilityTest
         var method = AddMethod(type1, "Method1", MethodAttributes.Family);
         var type2 = AddTopLevelType(module, "Type2", TypeAttributes.Public);
 
-        Assert.False(method.IsAccessibleFromType(type2));
+        Assert.False(method.IsAccessibleFromType(type2, module.RuntimeContext));
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public partial class AccessibilityTest
         var type4 = AddTopLevelType(module, "Type4", TypeAttributes.Public, type3);
         var type5 = AddTopLevelType(module, "Type5", TypeAttributes.Public, type4);
 
-        Assert.True(method.IsAccessibleFromType(type5));
+        Assert.True(method.IsAccessibleFromType(type5, module.RuntimeContext));
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public partial class AccessibilityTest
         var type2 = AddNestedType(type1, "Type2", TypeAttributes.NestedPrivate);
         var method = AddMethod(type2, "Method1", MethodAttributes.Private);
 
-        Assert.False(method.IsAccessibleFromType(type1));
+        Assert.False(method.IsAccessibleFromType(type1, module.RuntimeContext));
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public partial class AccessibilityTest
         var method = AddMethod(type1, "Method1", MethodAttributes.Private);
         var type2 = AddNestedType(type1, "Type2", TypeAttributes.NestedPrivate);
 
-        Assert.True(method.IsAccessibleFromType(type2));
+        Assert.True(method.IsAccessibleFromType(type2, module.RuntimeContext));
     }
 
 }

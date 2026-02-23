@@ -125,8 +125,7 @@ namespace AsmResolver.PE.Tls
             result.Add(new BaseRelocation(type, this.ToReference(3 * pointerSize)));
 
             // All callbacks are also VAs, so we need relocations for them as well.
-            for (int i = 0; i < CallbackFunctions.Count; i++)
-                result.Add(new BaseRelocation(type, CallbackFunctions.ToReference(i * pointerSize)));
+            result.AddRange(CallbackFunctions.CreateBaseRelocations());
 
             return result;
         }

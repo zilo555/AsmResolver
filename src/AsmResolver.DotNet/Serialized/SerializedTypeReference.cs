@@ -34,10 +34,10 @@ namespace AsmResolver.DotNet.Serialized
             : CustomAttributes.Count > 0;
 
         /// <inheritdoc />
-        protected override Utf8String? GetNamespace() => _context.StringsStream?.GetStringByIndex(_row.Namespace);
+        protected override Utf8String? GetNamespace() => _context.Streams.StringsStream?.GetStringByIndex(_row.Namespace);
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
         protected override IResolutionScope? GetScope()
@@ -45,7 +45,7 @@ namespace AsmResolver.DotNet.Serialized
             if (_row.ResolutionScope == 0)
                 return null;
 
-            var tablesStream = _context.TablesStream;
+            var tablesStream = _context.Streams.TablesStream!;
             var decoder = tablesStream.GetIndexEncoder(CodedIndex.ResolutionScope);
             var token = decoder.DecodeIndex(_row.ResolutionScope);
 

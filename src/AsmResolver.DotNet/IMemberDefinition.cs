@@ -17,7 +17,8 @@ namespace AsmResolver.DotNet
         /// Determines whether the member can be accessed from the scope that is determined by the provided type.
         /// </summary>
         /// <param name="type">The type defining the scope.</param>
+        /// <param name="context">The runtime context to consider when traversing metadata references.</param>
         /// <returns>True if the scope of the provided type can access the member, false otherwise.</returns>
-        bool IsAccessibleFromType(TypeDefinition type);
+        bool IsAccessibleFromType(TypeDefinition type, RuntimeContext? context);
     }
 }

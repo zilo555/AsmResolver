@@ -93,11 +93,18 @@ namespace AsmResolver.DotNet
             }
         }
 
+        /// <inheritdoc />
+        public bool? TryGetIsValueType(RuntimeContext? context) => Signature?.IsValueType;
+
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
-        /// <inheritdoc />
-        public TypeSignature ToTypeSignature() =>
-            Signature ?? throw new ArgumentException("Signature embedded into the type specification is null.");
+        /// <summary>
+        /// Gets the underlying type signature.
+        /// </summary>
+        /// <returns>The type signature.</returns>
+        public TypeSignature ToTypeSignature() => Signature ?? throw new ArgumentException("Signature embedded into the type specification is null.");
+
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => ToTypeSignature();
 
         /// <inheritdoc />
         public TypeSignature ToTypeSignature(bool isValueType) => ToTypeSignature();
@@ -115,15 +122,24 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
-        /// <inheritdoc />
-        public TypeDefinition? Resolve() => ContextModule is { } context ? Resolve(context) : null;
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            var result = Resolve(context, out var type);
+            definition = type;
+            return result;
+        }
 
         /// <inheritdoc />
-        public TypeDefinition? Resolve(ModuleDefinition context) => ContextModule?.MetadataResolver.ResolveType(this);
+        public ResolutionStatus Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        {
+            if (Signature is null)
+            {
+                definition = null;
+                return ResolutionStatus.InvalidReference;
+            }
 
-        IMemberDefinition? IMemberDescriptor.Resolve() => Resolve();
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => Resolve(context);
+            return ((ITypeDescriptor) Signature).Resolve(context, out definition);
+        }
 
         /// <summary>
         /// Obtains the signature the type specification is referencing.

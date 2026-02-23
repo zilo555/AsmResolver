@@ -38,7 +38,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override IMemberRefParent? GetParent()
         {
-            var encoder =  _context.TablesStream
+            var encoder =  _context.Streams.TablesStream!
                 .GetIndexEncoder(CodedIndex.MemberRefParent);
 
             var parentToken = encoder.DecodeIndex(_row.Parent);
@@ -49,12 +49,12 @@ namespace AsmResolver.DotNet.Serialized
         }
 
         /// <inheritdoc />
-        protected override Utf8String? GetName() => _context.StringsStream?.GetStringByIndex(_row.Name);
+        protected override Utf8String? GetName() => _context.Streams.StringsStream?.GetStringByIndex(_row.Name);
 
         /// <inheritdoc />
         protected override CallingConventionSignature? GetSignature()
         {
-            if (_context.BlobStream is not { } blobStream
+            if (_context.Streams.BlobStream is not { } blobStream
                 || !blobStream.TryGetBlobReaderByIndex(_row.Signature, out var reader))
             {
                 return _context.BadImageAndReturn<CallingConventionSignature>(

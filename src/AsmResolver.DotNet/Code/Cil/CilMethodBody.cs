@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Threading;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.PE.DotNet.Cil;
@@ -13,7 +14,7 @@ namespace AsmResolver.DotNet.Code.Cil
     public class CilMethodBody : MethodBody
     {
         private CilInstructionCollection? _instructions;
-        private IList<CilExceptionHandler>? _exceptionHandlers;
+        private List<CilExceptionHandler>? _exceptionHandlers;
 
         /// <summary>
         /// Gets a value indicating whether the method body has been fully decoded.
@@ -138,6 +139,17 @@ namespace AsmResolver.DotNet.Code.Cil
         }
 
         /// <summary>
+        /// Gets or sets a value indicating whether a .NET assembly builder should automatically sort exception handlers
+        /// as described by ECMA-335 I.12.4.2.5.
+        /// </summary>
+        public bool SortExceptionHandlersOnBuild
+        {
+            get => (BuildFlags & CilMethodBodyBuildFlags.SortExceptionHandlers) == CilMethodBodyBuildFlags.SortExceptionHandlers;
+            set => BuildFlags = (BuildFlags & ~CilMethodBodyBuildFlags.SortExceptionHandlers)
+                | (value ? CilMethodBodyBuildFlags.SortExceptionHandlers : 0);
+        }
+
+        /// <summary>
         /// Creates a CIL method body from a raw CIL method body.
         /// </summary>
         /// <param name="context">The reader context.</param>
@@ -226,6 +238,33 @@ namespace AsmResolver.DotNet.Code.Cil
             if (calculateOffsets)
                 Instructions.CalculateOffsets();
             return new CilMaxStackCalculator(this).Compute();
+        }
+
+        /// <summary>
+        /// Sorts the exception handlers of this method body by their nesting according to ECMA-335 I.12.4.2.5.
+        /// </summary>
+        public void SortExceptionHandlers() => SortExceptionHandlers(true);
+
+        /// <summary>
+        /// Sorts the exception handlers of this method body by their nesting according to ECMA-335 I.12.4.2.5.
+        /// </summary>
+        /// <param name="calculateOffsets">Determines whether offsets should be calculated beforehand.</param>
+        public void SortExceptionHandlers(bool calculateOffsets)
+        {
+            EnsureIsInitialized();
+            if (calculateOffsets)
+                Instructions.CalculateOffsets();
+            if (_exceptionHandlers.Count is 0 or 1)
+                return;
+
+            // I would've liked to just do List<T>.Sort here, but it is unstable, and this needs stability
+            var sorted = _exceptionHandlers
+                .OrderByDescending(eh => (uint) (eh.TryStart?.Offset ?? 0))
+                .ThenBy(eh => (uint) (eh.TryEnd?.Offset ?? 0))
+                .ToArray();
+
+            _exceptionHandlers.Clear();
+            _exceptionHandlers.AddRange(sorted);
         }
     }
 }

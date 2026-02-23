@@ -107,7 +107,8 @@ namespace AsmResolver.DotNet.Tests.Builder
             module.GetOrCreateModuleType().Fields.Add(new FieldDefinition(
                 "MyField",
                 FieldAttributes.Public | FieldAttributes.Static,
-                reference.ToTypeSignature()));
+                reference.ToTypeSignature(isValueType: false)
+            ));
 
             // Rebuild.
             var builder = new ManagedPEImageBuilder();
@@ -118,7 +119,7 @@ namespace AsmResolver.DotNet.Tests.Builder
             Assert.NotEqual(0u, newToken.Rid);
 
             // Assert token resolves to the same type reference.
-            var newModule = ModuleDefinition.FromImage(result.ConstructedImage, TestReaderParameters);
+            var newModule = ModuleDefinition.FromImage(result.ConstructedImage!, TestReaderParameters);
             var newReference = (TypeReference) newModule.LookupMember(newToken);
             Assert.Equal(reference.Namespace, newReference.Namespace);
             Assert.Equal(reference.Name, newReference.Name);

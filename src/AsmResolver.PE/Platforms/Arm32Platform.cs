@@ -19,6 +19,13 @@ public class Arm32Platform : Platform
         get;
     } = new();
 
+    /// <summary>
+    /// Instantiates an ARM32 platform.
+    /// </summary>
+    protected Arm32Platform()
+    {
+    }
+
     /// <inheritdoc />
     public override MachineType TargetMachine => MachineType.ArmNt;
 

@@ -610,9 +610,12 @@ namespace AsmResolver.DotNet.Tests
         [Fact]
         public void CorLibTypeDefinitionToSignatureShouldResultInCorLibTypeSignature()
         {
-            var module = new ModuleDefinition("Test");
-            var type = module.CorLibTypeFactory.Object.Resolve()!;
+            var context = new RuntimeContext(DotNetRuntimeInfo.NetFramework(4, 0));
+            var module = new ModuleDefinition("Test", context.TargetRuntime);
+
+            var type = module.CorLibTypeFactory.Object.Resolve(context);
             var signature = type.ToTypeSignature();
+
             var corlibType = Assert.IsAssignableFrom<CorLibTypeSignature>(signature);
             Assert.Equal(ElementType.Object, corlibType.ElementType);
         }
@@ -656,7 +659,9 @@ namespace AsmResolver.DotNet.Tests
         public void ReadIsByRefLike()
         {
             var resolver = new DotNetCoreAssemblyResolver(new Version(8, 0));
-            var corLib = resolver.Resolve(KnownCorLibs.SystemPrivateCoreLib_v8_0_0_0)!;
+            var status = resolver.Resolve(KnownCorLibs.SystemPrivateCoreLib_v8_0_0_0, null, out var corLib);
+
+            Assert.Equal(ResolutionStatus.Success, status);
 
             var intType = corLib.ManifestModule!.TopLevelTypes.First(t => t.Name == "Int32");
             var spanType = corLib.ManifestModule.TopLevelTypes.First(t => t.Name == "Span`1");

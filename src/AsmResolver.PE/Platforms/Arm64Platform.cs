@@ -19,6 +19,13 @@ public class Arm64Platform : Platform
         get;
     } = new();
 
+    /// <summary>
+    /// Instantiates an ARM64 platform.
+    /// </summary>
+    protected Arm64Platform()
+    {
+    }
+
     /// <inheritdoc />
     public override MachineType TargetMachine => MachineType.Arm64;
 

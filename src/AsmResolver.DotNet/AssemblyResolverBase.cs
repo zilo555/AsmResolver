@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using AsmResolver.DotNet.Serialized;
-using AsmResolver.DotNet.Signatures;
 using AsmResolver.IO;
 using AsmResolver.Shims;
 
@@ -15,19 +12,7 @@ namespace AsmResolver.DotNet
     /// </summary>
     public abstract class AssemblyResolverBase : IAssemblyResolver
     {
-        private static readonly string[] BinaryFileExtensions = {".dll", ".exe"};
-        private static readonly SignatureComparer Comparer = new(SignatureComparisonFlags.AcceptNewerVersions);
-
-        private readonly ConcurrentDictionary<AssemblyDescriptor, AssemblyDefinition> _cache = new(SignatureComparer.Default);
-
-        /// <summary>
-        /// Initializes the base of an assembly resolver.
-        /// </summary>
-        /// <param name="fileService">The service to use for reading files from the disk.</param>
-        protected AssemblyResolverBase(IFileService fileService)
-        {
-            ReaderParameters = new ModuleReaderParameters(fileService);
-        }
+        private static readonly string[] BinaryFileExtensions = [".dll", ".exe"];
 
         /// <summary>
         /// Initializes the base of an assembly resolver.
@@ -61,80 +46,27 @@ namespace AsmResolver.DotNet
         } = new List<string>();
 
         /// <inheritdoc />
-        public AssemblyDefinition? Resolve(AssemblyDescriptor assembly)
+        public ResolutionStatus Resolve(AssemblyDescriptor assembly, ModuleDefinition? originModule, out AssemblyDefinition? result)
         {
-            AssemblyDefinition? result;
-
-            while (!_cache.TryGetValue(assembly, out result))
-            {
-                var candidate = ResolveImpl(assembly);
-                if (candidate is null)
-                    break;
-
-                _cache.TryAdd(assembly, candidate);
-            }
-
-            return result;
-        }
-
-        /// <inheritdoc />
-        public void AddToCache(AssemblyDescriptor descriptor, AssemblyDefinition definition)
-        {
-            if (_cache.ContainsKey(descriptor))
-                throw new ArgumentException($"The cache already contains an entry of assembly {descriptor.FullName}.", nameof(descriptor));
-
-            if (!Comparer.Equals(descriptor, definition))
-                throw new ArgumentException("Assembly descriptor and definition do not refer to the same assembly.");
-
-            _cache.TryAdd(descriptor, definition);
-        }
-
-        /// <inheritdoc />
-        public bool RemoveFromCache(AssemblyDescriptor descriptor) => _cache.TryRemove(descriptor, out _);
-
-        /// <inheritdoc />
-        public bool HasCached(AssemblyDescriptor descriptor) => _cache.ContainsKey(descriptor);
-
-        /// <inheritdoc />
-        public void ClearCache() => _cache.Clear();
-
-        /// <summary>
-        /// Resolves a new unseen reference to an assembly.
-        /// </summary>
-        /// <param name="assembly">The assembly to resolve.</param>
-        /// <returns>The resolved assembly, or <c>null</c> if the resolution failed.</returns>
-        /// <remarks>
-        /// This method should not implement caching of resolved assemblies. The caller of this method already implements
-        /// this.
-        /// </remarks>
-        protected virtual AssemblyDefinition? ResolveImpl(AssemblyDescriptor assembly)
-        {
-            // Prefer assemblies in the current directory, in case .NET libraries are shipped with the application.
-            string? path = ProbeSearchDirectories(assembly);
-
+            // Find path to assembly.
+            string? path = ProbeAssemblyFilePath(assembly, originModule);
             if (string.IsNullOrEmpty(path))
             {
-                // If failed, probe the runtime installation directories.
-                if (assembly.GetPublicKeyToken() is not null)
-                    path = ProbeRuntimeDirectories(assembly);
-
-                // If still no suitable file was found, abort.
-                if (string.IsNullOrEmpty(path))
-                    return null;
+                result = null;
+                return ResolutionStatus.AssemblyNotFound;
             }
 
             // Attempt to load the file.
-            AssemblyDefinition? assemblyDef = null;
             try
             {
-                assemblyDef = LoadAssemblyFromFile(path!);
+                result = LoadAssemblyFromFile(path!);
+                return ResolutionStatus.Success;
             }
             catch
             {
-                // ignore any errors.
+                result = null;
+                return ResolutionStatus.AssemblyBadImage;
             }
-
-            return assemblyDef;
         }
 
         /// <summary>
@@ -144,16 +76,45 @@ namespace AsmResolver.DotNet
         /// <returns>The assembly.</returns>
         protected virtual AssemblyDefinition LoadAssemblyFromFile(string path)
         {
-            return AssemblyDefinition.FromFile(FileService.OpenFile(path), ReaderParameters);
+            return AssemblyDefinition.FromFile(
+                FileService.OpenFile(path),
+                readerParameters: ReaderParameters,
+                createRuntimeContext: false
+            );
         }
+
+        /// <summary>
+        /// Attempts to find the file location of the provided assembly descriptor on the disk.
+        /// </summary>
+        /// <param name="assembly">The assembly to locate.</param>
+        /// <param name="originModule">The module to assume the assembly was referenced in.</param>
+        /// <returns>The path to the assembly, or <c>null</c> if none was found.</returns>
+        public abstract string? ProbeAssemblyFilePath(AssemblyDescriptor assembly, ModuleDefinition? originModule);
 
         /// <summary>
         /// Probes all search directories in <see cref="SearchDirectories"/> for the provided assembly.
         /// </summary>
         /// <param name="assembly">The assembly descriptor to search.</param>
+        /// <param name="originModule">The module to assume the assembly was referenced in.</param>
         /// <returns>The path to the assembly, or <c>null</c> if none was found.</returns>
-        protected string? ProbeSearchDirectories(AssemblyDescriptor assembly)
+        protected string? ProbeSearchDirectories(AssemblyDescriptor assembly, ModuleDefinition? originModule)
         {
+            // Try directory of module as a search path.
+            if (originModule is {FilePath: { } filePath}
+                && Path.GetDirectoryName(filePath) is { } moduleDirectory
+                && ProbeDirectory(assembly, moduleDirectory) is { } moduleDirectoryPath)
+            {
+                return moduleDirectoryPath;
+            }
+
+            // Try working directory as specified in reader parameters.
+            if (ReaderParameters.WorkingDirectory is { } workingDirectory
+                && ProbeDirectory(assembly, workingDirectory) is { } workingDirectoryPath)
+            {
+                return workingDirectoryPath;
+            }
+
+            // Probe other custom search paths.
             for (int i = 0; i < SearchDirectories.Count; i++)
             {
                 string? path = ProbeDirectory(assembly, SearchDirectories[i]);
@@ -163,13 +124,6 @@ namespace AsmResolver.DotNet
 
             return null;
         }
-
-        /// <summary>
-        /// Probes all known runtime directories for the provided assembly.
-        /// </summary>
-        /// <param name="assembly">The assembly descriptor to search.</param>
-        /// <returns>The path to the assembly, or <c>null</c> if none was found.</returns>
-        protected abstract string? ProbeRuntimeDirectories(AssemblyDescriptor assembly);
 
         /// <summary>
         /// Probes a directory for the provided assembly.
@@ -189,7 +143,7 @@ namespace AsmResolver.DotNet
             {
                 path = PathShim.Combine(directory, assembly.Culture!, assembly.Name);
                 string? result = ProbeFileFromFilePathWithoutExtension(path)
-                                 ?? ProbeFileFromFilePathWithoutExtension(Path.Combine(path, assembly.Name));
+                    ?? ProbeFileFromFilePathWithoutExtension(Path.Combine(path, assembly.Name));
                 if (result is not null)
                     return result;
             }

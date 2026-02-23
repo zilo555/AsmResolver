@@ -48,7 +48,7 @@ namespace AsmResolver.DotNet.Serialized
         /// <inheritdoc />
         protected override ITypeDefOrRef? GetInterface()
         {
-            var token = _context.TablesStream
+            var token = _context.Streams.TablesStream!
                 .GetIndexEncoder(CodedIndex.TypeDefOrRef)
                 .DecodeIndex(_row.Interface);
 

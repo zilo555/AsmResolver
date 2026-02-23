@@ -1,4 +1,5 @@
 ﻿using System;
+using AsmResolver.DotNet.Builder.Metadata;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 
@@ -28,7 +29,8 @@ namespace AsmResolver.DotNet.Builder
             var row = new CustomAttributeRow(
                 encoder.EncodeToken(ownerToken),
                 AddCustomAttributeType(attribute.Constructor, attribute),
-                Metadata.BlobStream.GetBlobIndex(this, attribute.Signature, ErrorListener, attribute));
+                SerializeBlobSignature(attribute.Signature, attribute)
+            );
 
             table.Add(attribute, row);
         }
@@ -43,7 +45,9 @@ namespace AsmResolver.DotNet.Builder
                 TableIndex.AssemblyRef => AddAssemblyReference(scope as AssemblyReference, allowDuplicates, preserveRid, diagnosticSource),
                 TableIndex.TypeRef => AddTypeReference(scope as TypeReference, allowDuplicates, preserveRid),
                 TableIndex.ModuleRef => AddModuleReference(scope as ModuleReference, allowDuplicates, preserveRid, diagnosticSource),
-                TableIndex.Module => new MetadataToken(TableIndex.Module, 1),
+                TableIndex.Module when scope.ContextModule == Module => new MetadataToken(TableIndex.Module, 1),
+                TableIndex.Module when scope.GetAssembly() is { } assembly => AddAssemblyReference(assembly.ToAssemblyReference(), false, false, diagnosticSource),
+                TableIndex.Module => ErrorListener.RegisterExceptionAndReturnDefault<MetadataToken>(new MemberNotImportedException(scope, diagnosticSource)),
                 _ => throw new ArgumentOutOfRangeException(nameof(scope))
             };
 
@@ -136,7 +140,8 @@ namespace AsmResolver.DotNet.Builder
             var row = new ConstantRow(
                 constant.Type,
                 encoder.EncodeToken(ownerToken),
-                Metadata.BlobStream.GetBlobIndex(this, constant.Value, ErrorListener, constant));
+                SerializeBlobSignature(constant.Value, constant)
+            );
 
             table.Add(constant, row);
         }
@@ -190,7 +195,8 @@ namespace AsmResolver.DotNet.Builder
                 var row = new SecurityDeclarationRow(
                     declaration.Action,
                     encoder.EncodeToken(ownerToken),
-                    Metadata.BlobStream.GetBlobIndex(this, declaration.PermissionSet, ErrorListener, declaration));
+                    SerializeBlobSignature(declaration.PermissionSet, declaration)
+                );
                 table.Add(declaration, row);
             }
         }
@@ -205,7 +211,9 @@ namespace AsmResolver.DotNet.Builder
 
             var row = new FieldMarshalRow(
                 encoder.EncodeToken(ownerToken),
-                Metadata.BlobStream.GetBlobIndex(this, owner.MarshalDescriptor, ErrorListener, owner));
+                SerializeBlobSignature(owner.MarshalDescriptor, owner)
+            );
+
             table.Add(owner, row);
         }
 

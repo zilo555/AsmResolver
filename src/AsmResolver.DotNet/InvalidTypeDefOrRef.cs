@@ -45,8 +45,6 @@ namespace AsmResolver.DotNet
 
         IResolutionScope? ITypeDescriptor.Scope => null;
 
-        bool ITypeDescriptor.IsValueType => false;
-
         ITypeDescriptor? IMemberDescriptor.DeclaringType => null;
 
         ITypeDefOrRef? ITypeDefOrRef.DeclaringType => null;
@@ -79,25 +77,37 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module) => false;
 
+        bool? ITypeDescriptor.TryGetIsValueType(RuntimeContext? context) => null;
+
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            definition = null;
+            return ResolutionStatus.InvalidReference;
+        }
+
+        ResolutionStatus ITypeDescriptor.Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        {
+            definition = null;
+            return ResolutionStatus.InvalidReference;
+        }
+
         /// <inheritdoc />
         ITypeDefOrRef ITypeDefOrRef.ImportWith(ReferenceImporter importer) => throw new InvalidOperationException();
 
         /// <inheritdoc />
         IImportable IImportable.ImportWith(ReferenceImporter importer) => throw new InvalidOperationException();
 
-        IMemberDefinition? IMemberDescriptor.Resolve() => null;
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => null;
-
-        TypeDefinition? ITypeDescriptor.Resolve() => null;
-
-        TypeDefinition? ITypeDescriptor.Resolve(ModuleDefinition context) => null;
-
         ITypeDefOrRef ITypeDescriptor.ToTypeDefOrRef() => this;
 
-        TypeSignature ITypeDescriptor.ToTypeSignature() => throw new InvalidOperationException();
+        /// <summary>
+        /// Wraps the type reference in a signature.
+        /// </summary>
+        /// <returns>The new type signature.</returns>
+        public TypeSignature ToTypeSignature() => new TypeDefOrRefSignature(this, false);
 
-        TypeSignature ITypeDefOrRef.ToTypeSignature(bool isValueType) => throw new InvalidOperationException();
+        TypeSignature ITypeDescriptor.ToTypeSignature(RuntimeContext? context) => ToTypeSignature();
+
+        TypeSignature ITypeDefOrRef.ToTypeSignature(bool isValueType) => ToTypeSignature();
 
         /// <inheritdoc />
         public override string ToString() =>  ((IFullNameProvider) this).Name!;

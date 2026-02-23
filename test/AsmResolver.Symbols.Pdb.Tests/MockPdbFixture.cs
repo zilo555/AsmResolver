@@ -13,4 +13,14 @@ public class MockPdbFixture
     {
         get;
     } = PdbImage.FromBytes(Properties.Resources.MyTestApplication, ReaderParameters);
+
+    public PdbImage ThreadLocalPdb
+    {
+        get;
+    } = PdbImage.FromBytes(Properties.Resources.ThreadLocalPdb, ReaderParameters);
+
+    public PdbImage TrampolinePdb
+    {
+        get;
+    } = PdbImage.FromBytes(Properties.Resources.TrampolinePdb, ReaderParameters);
 }

@@ -140,23 +140,6 @@ namespace AsmResolver.DotNet
         }
 
         /// <inheritdoc />
-        public IMemberDefinition? Resolve() => ContextModule is { } context ? Resolve(context) : null;
-
-        /// <summary>
-        /// Resolves the reference to a member definition.
-        /// </summary>
-        /// <returns>The resolved member definition, or <c>null</c> if the member could not be resolved.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Occurs when the member reference has an invalid signature.</exception>
-        public IMemberDefinition? Resolve(ModuleDefinition context)
-        {
-            if (IsMethod)
-                return ((IMethodDescriptor) this).Resolve(context);
-            if (IsField)
-                return ((IFieldDescriptor) this).Resolve(context);
-            throw new ArgumentOutOfRangeException();
-        }
-
-        /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
         {
             // the parent will check that their ContextModule is correct for us
@@ -177,26 +160,91 @@ namespace AsmResolver.DotNet
         /// <inheritdoc />
         IImportable IImportable.ImportWith(ReferenceImporter importer) => ImportWith(importer);
 
-        FieldDefinition? IFieldDescriptor.Resolve() => ContextModule is { } context
-            ? ((IFieldDescriptor) this).Resolve(context)
-            : null;
-
-        FieldDefinition? IFieldDescriptor.Resolve(ModuleDefinition context)
+        /// <summary>
+        /// Resolves the reference to a member definition.
+        /// </summary>
+        /// <returns>The resolved member definition.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Occurs when the member reference has an invalid signature.</exception>
+        public IMemberDefinition Resolve(RuntimeContext? context)
         {
-            return IsField
-                ? context.MetadataResolver.ResolveField(this)
-                : throw new InvalidOperationException("Member reference must reference a field.");
+            if (IsMethod)
+                return ((IMethodDescriptor) this).Resolve(context);
+            if (IsField)
+                return ((IFieldDescriptor) this).Resolve(context);
+
+            throw new ArgumentOutOfRangeException();
         }
 
-        MethodDefinition? IMethodDescriptor.Resolve() => ContextModule is { } context
-            ? ((IMethodDescriptor) this).Resolve(context)
-            : null;
-
-        MethodDefinition? IMethodDescriptor.Resolve(ModuleDefinition context)
+        /// <summary>
+        /// Attempts to resolve the member descriptor to its definition in the provided context.
+        /// </summary>
+        /// <param name="context">The context to assume when resolving the member.</param>
+        /// <param name="definition">The resolved member definition, or <c>null</c> if resolution failed.</param>
+        /// <returns><c>true</c> if the resolution was successful, <c>false</c> otherwise.</returns>
+        public bool TryResolve(RuntimeContext? context, out IMemberDefinition? definition)
         {
-            return IsMethod
-                ? context.MetadataResolver.ResolveMethod(this)
-                : throw new InvalidOperationException("Member reference must reference a method.");
+            if (IsMethod && ((IMethodDescriptor) this).TryResolve(context, out var method))
+                definition = method;
+            else if (IsField && ((IFieldDescriptor) this).TryResolve(context, out var field))
+                definition = field;
+            else
+                definition = null;
+
+            return definition is not null;
+        }
+
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            if (IsMethod)
+            {
+                var status = ((IMethodDescriptor) this).Resolve(context, out var method);
+                definition = method;
+                return status;
+            }
+
+            if (IsField)
+            {
+                var status = ((IFieldDescriptor) this).Resolve(context, out var field);
+                definition = field;
+                return status;
+            }
+
+            definition = null;
+            return ResolutionStatus.InvalidReference;
+        }
+
+        ResolutionStatus IFieldDescriptor.Resolve(RuntimeContext? context, out FieldDefinition? definition)
+        {
+            if (!IsField)
+            {
+                definition = null;
+                return ResolutionStatus.InvalidReference;
+            }
+
+            if (context is null)
+            {
+                definition = null;
+                return ResolutionStatus.MissingRuntimeContext;
+            }
+
+            return context.ResolveField(this, ContextModule, out definition);
+        }
+
+        ResolutionStatus IMethodDescriptor.Resolve(RuntimeContext? context, out MethodDefinition? definition)
+        {
+            if (!IsMethod)
+            {
+                definition = null;
+                return ResolutionStatus.InvalidReference;
+            }
+
+            if (context is null)
+            {
+                definition = null;
+                return ResolutionStatus.MissingRuntimeContext;
+            }
+
+            return context.ResolveMethod(this, ContextModule, out definition);
         }
 
         /// <summary>

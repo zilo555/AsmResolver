@@ -16,7 +16,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <summary>
         /// The header value of every custom attribute signature.
         /// </summary>
-        protected const ushort CustomAttributeSignaturePrologue = 0x0001;
+        protected internal const ushort CustomAttributeSignaturePrologue = 0x0001;
 
         private List<CustomAttributeArgument>? _fixedArguments;
         private List<CustomAttributeNamedArgument>? _namedArguments;

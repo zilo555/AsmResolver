@@ -200,7 +200,7 @@ All references to methods defined in the
 `System.Runtime.CompilerServices` namespace will then be mapped to the
 appropriate method definitions if they exist in the target module.
 
-See [Common Caveats using the Importer](importing.md#common-caveats-using-the-importer)
+See [Common Caveats using the Importer](metadata-references.md#common-caveats-using-the-importer)
 for more information on reference importing and its caveats.
 
 ## Post-processing of cloned members

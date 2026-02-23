@@ -20,8 +20,13 @@ namespace AsmResolver.DotNet.Code.Cil
         ComputeMaxStack = 2,
 
         /// <summary>
+        /// Indicates that exception handlers should be sorted as described by ECMA-335 I.12.4.2.5
+        /// </summary>
+        SortExceptionHandlers = 4,
+
+        /// <summary>
         /// Indicates the body should be subject to full validation before building.
         /// </summary>
-        FullValidation = ComputeMaxStack | VerifyLabels
+        FullValidation = ComputeMaxStack | VerifyLabels | SortExceptionHandlers,
     }
 }

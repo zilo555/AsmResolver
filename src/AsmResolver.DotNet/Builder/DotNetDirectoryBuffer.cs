@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using AsmResolver.DotNet.Builder.Metadata;
 using AsmResolver.DotNet.Builder.Resources;
 using AsmResolver.DotNet.Builder.VTableFixups;
 using AsmResolver.DotNet.Code;
 using AsmResolver.DotNet.Code.Native;
+using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using AsmResolver.PE.Platforms;
@@ -127,6 +127,11 @@ namespace AsmResolver.DotNet.Builder
         private bool IsInSameModule([NotNullWhen(true)] IModuleProvider? member)
         {
             return member is not null && member.ContextModule == Module;
+        }
+
+        private uint SerializeBlobSignature(BlobSignature? signature, object? diagnosticSource)
+        {
+            return Metadata.BlobStream.GetBlobIndex(Module, this, signature, ErrorListener, diagnosticSource);
         }
 
         /// <summary>
@@ -285,15 +290,17 @@ namespace AsmResolver.DotNet.Builder
             if (constraint is null)
                 return;
 
-            var table = Metadata.TablesStream.GetTable<GenericParameterConstraintRow>(TableIndex.GenericParamConstraint);
+            var table = Metadata.TablesStream.GetDistinctTable<GenericParameterConstraintRow>(TableIndex.GenericParamConstraint);
 
             var row = new GenericParameterConstraintRow(
                 ownerToken.Rid,
                 GetTypeDefOrRefIndex(constraint.Constraint, constraint));
 
-            var token = table.Add(row);
-            _tokenMapping.Register(constraint, token);
-            AddCustomAttributes(token, constraint);
+            if (table.TryAdd(row, false, out var token))
+            {
+                _tokenMapping.Register(constraint, token);
+                AddCustomAttributes(token, constraint);
+            }
         }
 
         private void AddClassLayout(MetadataToken ownerToken, ClassLayout? layout)

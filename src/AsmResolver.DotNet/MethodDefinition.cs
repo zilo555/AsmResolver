@@ -831,11 +831,26 @@ namespace AsmResolver.DotNet
         /// </remarks>
         public static MethodDefinition CreateConstructor(ModuleDefinition module, params TypeSignature[] parameterTypes)
         {
+            return CreateConstructor(module.CorLibTypeFactory, parameterTypes);
+        }
+
+        /// <summary>
+        /// Creates a new public constructor for a type that is executed when its declaring type is loaded by the CLR.
+        /// </summary>
+        /// <param name="corLibTypeFactory">The <see cref="CorLibTypeFactory"/> instance to use to resolve fundamental type signatures.</param>
+        /// <param name="parameterTypes">An ordered list of types the parameters of the constructor should have.</param>
+        /// <returns>The constructor.</returns>
+        /// <remarks>
+        /// The resulting method's body will consist of a single <c>ret</c> instruction, and does not contain a call to
+        /// any of the declaring type's base classes. For an idiomatic .NET binary, this should be added.
+        /// </remarks>
+        public static MethodDefinition CreateConstructor(CorLibTypeFactory corLibTypeFactory, params TypeSignature[] parameterTypes)
+        {
             var ctor = new MethodDefinition(".ctor",
                 MethodAttributes.Public
                 | MethodAttributes.SpecialName
                 | MethodAttributes.RuntimeSpecialName,
-                MethodSignature.CreateInstance(module.CorLibTypeFactory.Void, parameterTypes));
+                MethodSignature.CreateInstance(corLibTypeFactory.Void, parameterTypes));
 
             for (int i = 0; i < parameterTypes.Length; i++)
                 ctor.ParameterDefinitions.Add(new ParameterDefinition(null));
@@ -846,13 +861,17 @@ namespace AsmResolver.DotNet
             return ctor;
         }
 
-        MethodDefinition IMethodDescriptor.Resolve() => this;
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
-        MethodDefinition IMethodDescriptor.Resolve(ModuleDefinition context) => this;
-
-        IMemberDefinition IMemberDescriptor.Resolve() => this;
-
-        IMemberDefinition IMemberDescriptor.Resolve(ModuleDefinition context) => this;
+        ResolutionStatus IMethodDescriptor.Resolve(RuntimeContext? context, out MethodDefinition? definition)
+        {
+            definition = this;
+            return ResolutionStatus.Success;
+        }
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
@@ -874,23 +893,24 @@ namespace AsmResolver.DotNet
         /// Determines whether the provided definition can be accessed by the method.
         /// </summary>
         /// <param name="definition">The definition to access.</param>
+        /// <param name="context">The runtime context to consider when traversing metadata references.</param>
         /// <returns><c>true</c> if this method can access <paramref name="definition"/>, <c>false</c> otherwise.</returns>
-        public bool CanAccessDefinition(IMemberDefinition definition)
+        public bool CanAccessDefinition(IMemberDefinition definition, RuntimeContext? context)
         {
             if (definition is TypeDefinition type)
-                return IsAccessibleFromType(type);
+                return IsAccessibleFromType(type, context);
 
             if (definition.DeclaringType is { } declaringType)
-                return IsAccessibleFromType(declaringType);
+                return IsAccessibleFromType(declaringType, context);
 
             return false;
         }
 
         /// <inheritdoc />
-        public bool IsAccessibleFromType(TypeDefinition type)
+        public bool IsAccessibleFromType(TypeDefinition type, RuntimeContext? context)
         {
             // The method is only accessible if its declaring type is accessible.
-            if (DeclaringType is not { } declaringType || !declaringType.IsAccessibleFromType(type))
+            if (DeclaringType is not { } declaringType || !declaringType.IsAccessibleFromType(type, context))
                 return false;
 
             // Public methods are always accessible.
@@ -914,9 +934,9 @@ namespace AsmResolver.DotNet
 
             // Family (protected in C#) methods are accessible by any base type.
             if ((IsFamily || IsFamilyOrAssembly || IsFamilyAndAssembly)
-                && type.BaseType?.Resolve() is { } baseType)
+                && type.BaseType?.TryResolve(context, out var baseType) is true)
             {
-                return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType);
+                return (!IsFamilyAndAssembly || isInSameAssembly) && IsAccessibleFromType(baseType, context);
             }
 
             return false;
@@ -1038,53 +1058,76 @@ namespace AsmResolver.DotNet
         /// Occurs when the method contains invalid or inconsistent metadata.
         /// The inner exceptions stored in this aggregation are all individual diagnostics found.
         /// </exception>
-        public void VerifyMetadata() => VerifyMetadata(ThrowErrorListener.Instance);
+        public void VerifyMetadata(RuntimeContext? context) => VerifyMetadata(context, ThrowErrorListener.Instance);
 
-        private sealed class IsByRefLikeVisitor : ITypeSignatureVisitor<MethodDefinition, bool>
+        private sealed class IsByRefLikeVisitor : ITypeSignatureVisitor<IsByRefLikeVisitor.IsByRefQuery, bool>
         {
             public static IsByRefLikeVisitor Instance { get; } = new();
 
             private IsByRefLikeVisitor() { }
 
-            public bool VisitArrayType(ArrayTypeSignature signature, MethodDefinition state) => false;
+            internal struct IsByRefQuery(RuntimeContext? runtimeContext, MethodDefinition method)
+            {
+                public RuntimeContext? RuntimeContext
+                {
+                    get;
+                } = runtimeContext;
 
-            public bool VisitBoxedType(BoxedTypeSignature signature, MethodDefinition state) => false;
+                public MethodDefinition Method
+                {
+                    get;
+                } = method;
+            }
 
-            public bool VisitByReferenceType(ByReferenceTypeSignature signature, MethodDefinition state) => true;
+            public bool VisitArrayType(ArrayTypeSignature signature, IsByRefQuery state) => false;
 
-            public bool VisitCorLibType(CorLibTypeSignature signature, MethodDefinition state) => false;
+            public bool VisitBoxedType(BoxedTypeSignature signature, IsByRefQuery state) => false;
 
-            public bool VisitCustomModifierType(CustomModifierTypeSignature signature, MethodDefinition state) => signature.BaseType.AcceptVisitor(this, state);
+            public bool VisitByReferenceType(ByReferenceTypeSignature signature, IsByRefQuery state) => true;
 
-            public bool VisitGenericInstanceType(GenericInstanceTypeSignature signature, MethodDefinition state) => signature.GenericType.Resolve()?.IsByRefLike ?? false;
+            public bool VisitCorLibType(CorLibTypeSignature signature, IsByRefQuery state) => false;
 
-            public bool VisitGenericParameter(GenericParameterSignature signature, MethodDefinition state)
+            public bool VisitCustomModifierType(CustomModifierTypeSignature signature, IsByRefQuery state)
+                => signature.BaseType.AcceptVisitor(this, state);
+
+            public bool VisitGenericInstanceType(GenericInstanceTypeSignature signature, IsByRefQuery state)
+            {
+                return signature.GenericType.TryResolve(state.RuntimeContext, out var definition)
+                    && definition.IsByRefLike;
+            }
+
+            public bool VisitGenericParameter(GenericParameterSignature signature, IsByRefQuery state)
             {
                 var parameter = signature.ParameterType == GenericParameterType.Type
-                    ? state.DeclaringType!.GenericParameters[signature.Index]
-                    : state.GenericParameters[signature.Index];
+                    ? state.Method.DeclaringType!.GenericParameters[signature.Index]
+                    : state.Method.GenericParameters[signature.Index];
 
                 return parameter.HasAllowByRefLike;
             }
 
-            public bool VisitPinnedType(PinnedTypeSignature signature, MethodDefinition state) => signature.BaseType.AcceptVisitor(this, state);
+            public bool VisitPinnedType(PinnedTypeSignature signature, IsByRefQuery state) => signature.BaseType.AcceptVisitor(this, state);
 
-            public bool VisitPointerType(PointerTypeSignature signature, MethodDefinition state) => false;
+            public bool VisitPointerType(PointerTypeSignature signature, IsByRefQuery state) => false;
 
-            public bool VisitSentinelType(SentinelTypeSignature signature, MethodDefinition state) => false;
+            public bool VisitSentinelType(SentinelTypeSignature signature, IsByRefQuery state) => false;
 
-            public bool VisitSzArrayType(SzArrayTypeSignature signature, MethodDefinition state) => false;
+            public bool VisitSzArrayType(SzArrayTypeSignature signature, IsByRefQuery state) => false;
 
-            public bool VisitTypeDefOrRef(TypeDefOrRefSignature signature, MethodDefinition state) => signature.Type.Resolve()?.IsByRefLike ?? false;
+            public bool VisitTypeDefOrRef(TypeDefOrRefSignature signature, IsByRefQuery state)
+            {
+                return signature.Type.TryResolve(state.Method.DeclaringModule?.RuntimeContext, out var definition)
+                    && definition.IsByRefLike;
+            }
 
-            public bool VisitFunctionPointerType(FunctionPointerTypeSignature signature, MethodDefinition state) => false;
+            public bool VisitFunctionPointerType(FunctionPointerTypeSignature signature, IsByRefQuery state) => false;
         }
 
         /// <summary>
         /// Asserts whether the method's metadata is consistent with its signature.
         /// </summary>
+        /// <param name="context">The context to consider when traversing metadata references.</param>
         /// <param name="listener">The object to report the diagnostics to.</param>
-        public void VerifyMetadata(IErrorListener listener)
+        public void VerifyMetadata(RuntimeContext? context, IErrorListener listener)
         {
             DiagnosticBag? bag = null;
             DiagnosticBag GetBag() => bag ??= new DiagnosticBag();
@@ -1126,7 +1169,7 @@ namespace AsmResolver.DotNet
                         GetBag().MetadataBuilder("Method cannot be both Async and Synchronized.");
                     }
 
-                    if (Signature.ReturnType.AcceptVisitor(IsByRefLikeVisitor.Instance, this))
+                    if (Signature.ReturnType.AcceptVisitor(IsByRefLikeVisitor.Instance, new IsByRefLikeVisitor.IsByRefQuery(context, this)))
                     {
                         GetBag().MetadataBuilder("Method is Async but has a byref or byref-like return type.");
                     }

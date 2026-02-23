@@ -51,9 +51,6 @@ namespace AsmResolver.DotNet
             (AssemblyReference) importer.ImportScope(ToAssemblyReference());
 
         /// <inheritdoc />
-        public override bool IsCorLib => Name is not null && KnownCorLibs.KnownCorLibNames.Contains(Name);
-
-        /// <inheritdoc />
         public ModuleDefinition? ContextModule
         {
             get;
@@ -63,6 +60,15 @@ namespace AsmResolver.DotNet
         public override byte[]? GetPublicKeyToken() => _assemblyName.GetPublicKeyToken();
 
         /// <inheritdoc />
-        public override AssemblyDefinition? Resolve() => ContextModule?.MetadataResolver.AssemblyResolver.Resolve(this);
+        public override ResolutionStatus Resolve(RuntimeContext? context, out AssemblyDefinition? assembly)
+        {
+            if (context is null)
+            {
+                assembly = null;
+                return ResolutionStatus.MissingRuntimeContext;
+            }
+
+            return context.ResolveAssembly(this, ContextModule, out assembly);
+        }
     }
 }

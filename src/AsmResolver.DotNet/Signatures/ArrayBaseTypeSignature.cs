@@ -34,9 +34,9 @@ namespace AsmResolver.DotNet.Signatures
         public abstract IEnumerable<ArrayDimension> GetDimensions();
 
         /// <inheritdoc />
-        protected override bool IsDirectlyCompatibleWith(TypeSignature other, SignatureComparer comparer)
+        protected override bool IsDirectlyCompatibleWith(TypeSignature other, RuntimeContext? context, SignatureComparer comparer)
         {
-            if (base.IsDirectlyCompatibleWith(other, comparer))
+            if (base.IsDirectlyCompatibleWith(other, context, comparer))
                 return true;
 
             TypeSignature? elementType = null;
@@ -56,11 +56,11 @@ namespace AsmResolver.DotNet.Signatures
             if (elementType is null)
                 return false;
 
-            var v = BaseType.GetUnderlyingType();
-            var w = elementType.GetUnderlyingType();
+            var v = BaseType.GetUnderlyingType(context);
+            var w = elementType.GetUnderlyingType(context);
 
-            return comparer.Equals(v.GetReducedType(), w.GetReducedType())
-                   || v.IsCompatibleWith(w, comparer);
+            return comparer.Equals(v.GetReducedType(context), w.GetReducedType(context))
+                   || v.IsCompatibleWith(w, context, comparer);
         }
     }
 }

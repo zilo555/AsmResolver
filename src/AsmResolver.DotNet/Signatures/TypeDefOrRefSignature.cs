@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using AsmResolver.PE.DotNet.Metadata.Tables;
@@ -16,8 +17,9 @@ namespace AsmResolver.DotNet.Signatures
         /// Creates a new type signature referencing a type in a type metadata table.
         /// </summary>
         /// <param name="type">The type to reference.</param>
-        public TypeDefOrRefSignature(ITypeDefOrRef type)
-            : this(type, type.IsValueType)
+        ///<param name="context">The runtime context that is assumed when creating the type signature.</param>
+        public TypeDefOrRefSignature(ITypeDefOrRef type, RuntimeContext? context)
+            : this(type, type.GetIsValueType(context))
         {
         }
 
@@ -35,15 +37,7 @@ namespace AsmResolver.DotNet.Signatures
         /// <summary>
         /// Gets the metadata type that is referenced by this signature.
         /// </summary>
-        public ITypeDefOrRef Type
-        {
-            get => _type;
-            set
-            {
-                _type = value;
-                _isValueType = value.IsValueType;
-            }
-        }
+        public ITypeDefOrRef Type => _type;
 
         /// <inheritdoc />
         public override ElementType ElementType => IsValueType ? ElementType.ValueType : ElementType.Class;
@@ -63,6 +57,27 @@ namespace AsmResolver.DotNet.Signatures
         /// <inheritdoc />
         public override bool IsValueType => _isValueType;
 
+        /// <summary>
+        /// Updates the underlying type and value type tag.
+        /// </summary>
+        /// <param name="type">The new type.</param>
+        /// <param name="context">The runtime context to assume when updating the type.</param>
+        public void SetUnderlyingType(ITypeDefOrRef type, RuntimeContext? context)
+        {
+            SetUnderlyingType(type, type.GetIsValueType(context));
+        }
+
+        /// <summary>
+        /// Updates the underlying type and value type tag.
+        /// </summary>
+        /// <param name="type">The new type.</param>
+        /// <param name="isValueType">Indicates the type is a value type or not.</param>
+        public void SetUnderlyingType(ITypeDefOrRef type, bool isValueType)
+        {
+            _type = type;
+            _isValueType = isValueType;
+        }
+
         /// <inheritdoc />
         public override bool IsImportedInModule(ModuleDefinition module) => Type.IsImportedInModule(module);
 
@@ -73,30 +88,27 @@ namespace AsmResolver.DotNet.Signatures
         public override ITypeDefOrRef GetUnderlyingTypeDefOrRef() => Type;
 
         /// <inheritdoc />
-        public override TypeSignature GetUnderlyingType()
+        public override TypeSignature GetUnderlyingType(RuntimeContext? context)
         {
-            var type = Type.Resolve();
-
-            if (type is {IsEnum: true})
+            if (Type.TryResolve(context, out var type) && type is {IsEnum: true})
                 return type.GetEnumUnderlyingType() ?? this;
 
             return this;
         }
 
         /// <inheritdoc />
-        public override TypeSignature GetReducedType()
+        public override TypeSignature GetReducedType(RuntimeContext? context)
         {
-            var underlyingType = GetUnderlyingType();
+            var underlyingType = GetUnderlyingType(context);
             return !ReferenceEquals(underlyingType, this)
-                ? underlyingType.GetReducedType()
+                ? underlyingType.GetReducedType(context)
                 : this;
         }
 
         /// <inheritdoc />
-        public override TypeSignature? GetDirectBaseClass()
+        public override TypeSignature? GetDirectBaseClass(RuntimeContext? context)
         {
-            var type = Type.Resolve();
-            if (type is null)
+            if (!Type.TryResolve(context, out var type))
                 return null;
 
             // Interfaces have System.Object as direct base class.
@@ -106,10 +118,9 @@ namespace AsmResolver.DotNet.Signatures
         }
 
         /// <inheritdoc />
-        public override IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces()
+        public override IEnumerable<TypeSignature> GetDirectlyImplementedInterfaces(RuntimeContext? context)
         {
-            var type = Type.Resolve();
-            if (type is null)
+            if (!Type.TryResolve(context, out var type))
                 return Enumerable.Empty<TypeSignature>();
 
             return type.Interfaces.Select(i => i.Interface!.ToTypeSignature(false));

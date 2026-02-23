@@ -22,10 +22,10 @@ In the remainder of this article, the different types of built-in PE file builde
 
 Currently, AsmResolver provides two default implementations:
 
-| Builder                  | Main Purpose                                                                      |
-|--------------------------|-----------------------------------------------------------------------------------|
-| `ManagedPEFileBuilder`   | Construct new fully managed .NET PE files from scratch.                           |
-| `UnmanagedPEFileBuilder` | Construct PE files based on an existing unmanaged or mixed-mode PE file template. |
+| Builder                  | Main Purpose                                                                                                      |
+|--------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `ManagedPEFileBuilder`   | Constructs new fully managed .NET PE files from scratch. Optimizes for size.                                      |
+| `TemplatedPEFileBuilder` | Constructs new PE files based on an existing template PE file. Useful for maximum preservation of file structure. |
 
 
 In the remainder of this section, the different features and limitations of the PE file builders are explained.
@@ -50,7 +50,7 @@ When building .NET PE files, it is recommended to use `ManagedPEFileBuilder` whe
 In short, use the `ManagedPEFileBuilder` when you are dealing with the following situation:
 - Your input binary is a typical .NET binary targeting .NET Framework, .NET Core or .NET 5+.
 - Your input binary only has methods implemented in CIL or single contiguous blocks of (native) code.
-- You do not care about raw offsets of headers and data directories.
+- You do not care about preserving raw offsets of headers and data directories.
 - You want a file optimized for size.
 
 
@@ -79,27 +79,27 @@ The `ManagedPEFileBuilder` creates files with at most four PE sections, dependin
   Any code or data segment not explicitly defined in a header or for which their size could not be determined is stripped from the binary.
 
 
-### Unmanaged or Mixed Mode PE Files
+### Building PE Files based on a Template
 
-To build fully native/unmanaged PE files or mixed-mode PE files containing both managed and unmanaged code, it is possible to use the `UnmanagedPEFileBuilder` class:
+When reassembling PE files that require as much of their structure to be preserved, use the `TemplatedPEFileBuilder` class:
 
 ```csharp
-var builder = new UnmanagedPEFileBuilder();
+var builder = new TemplatedPEFileBuilder();
 ```
 
 #### When to use
 
 This builder bases its final PE layout on a template PE file, and aims to preserve as much of the original structure of this file.
 
-In short, use the `UnmanagedPEFileBuilder` when you are dealing with the following situation:
-- The input binary is fully unmanaged or contains unmanaged code or sections that needs to be preserved.
-- You care about raw offsets of headers and data directories.
+In short, use the `TemplatedPEFileBuilder` when you are dealing with the following situation:
+- The input binary is fully unmanaged or contains unmanaged code or sections (e.g., mixed mode assemblies) that needs to be preserved.
+- You care about preserving raw offsets of headers and data directories.
 - You do not mind a file that may get larger in size.
 
 
 #### Specifying a Base File
 
-By default, the `UnmanagedPEFileBuilder` uses `PEImage::PEFile` as base template, which is set for images read from the disk or input stream.
+By default, the `TemplatedPEFileBuilder` uses `PEImage::PEFile` as base template, which is set for images read from the disk or input stream.
 To override this behavior, it is possible to manually set the template PE file.
 
 ```csharp
@@ -109,10 +109,10 @@ builder.BaseFile = PEFile.FromFile(@"C:\path\to\file.exe");
 
 #### Rebuilding Import and VTable Fixup Directories
 
-Many unmanaged or mixed-mode binaries that use an Import Address Table (IAT) or .NET's VTable Fixups directory, reference individual entries within these tables by hardcoded virtual addresses.
+Many unmanaged or mixed-mode PEs that use an Import Address Table (IAT) or .NET's VTable Fixups directory, reference individual entries within these tables by hardcoded virtual addresses.
 Therefore, when modifying these tables, the original entries in these tables need to be trampolined such that code referencing the original tables remains functioning.
 
-By default, for performance and file-size reasons, the `UnmanagedPEFileBuilder` does not rebuild the IAT directory.
+By default, for performance and file-size reasons, the `TemplatedPEFileBuilder` does not rebuild the IAT directory.
 AsmResolver can be instructed to rebuild and trampoline these tables by setting the appropriate flag:
 
 ```csharp
@@ -143,7 +143,7 @@ builder.ImportedSymbolClassifier = new DelegatedSymbolClassifier(x => x.Name swi
 
 #### Final PE File Layout
 
-The `UnmanagedPEFileBuilder` will clone all original sections of the template PE file, and try to byte-patch the changes that were made.
+The `TemplatedPEFileBuilder` will clone all original sections of the template PE file, and try to byte-patch the changes that were made.
 If a particular segment or data directory does not longer fit in its original place, the builder will add auxiliary PE sections and put the segments in there. 
 
 At most five auxiliary sections will be added:
@@ -174,7 +174,7 @@ At most five auxiliary sections will be added:
 
 ## Creating your own PE Builder
 
-For more specific use-cases where more control on the final PE file layout is required, it is possible to create a custom PE file builder, by extending from the `PEFileBuilder` class:
+For more specific use-cases where more control on the final PE file layout is required, it is possible to create a custom PE file builder, by implementing the `IPEFileBuilder` interface, or extending the `PEFileBuilder` base class:
 
 ```csharp
 public class MyPEFileBuilder : PEFileBuilder
@@ -196,12 +196,10 @@ public class MyPEFileBuilder : PEFileBuilder
 }
 ```
 
-The `PEFileBuilder` implements a skeleton for a pipeline involving three steps:
+The `PEFileBuilder` base class implements a skeleton for a pipeline involving three steps:
 - Constructing the new data directories.
 - Composing the final sections of the new file.
 - Updating the PE file headers to reflect the changes.
-
-In the remainder of this section, we will discuss these in more details.
 
 
 ### Populating Data Directory Buffers
@@ -214,9 +212,12 @@ By default, the `PEFileBuilder` base class automatically populates buffers for t
 - Win32 Resources
 - Base Relocations
 
-These buffers can be found in the `PEFileBuilderContext` that is accompanied with the current build of the PE image.
+These buffers can be found in the `PEFileBuilderContext` that is associcated with the current build of the PE image.
 
-If the construction of these data directories is to be customized, the appropriate methods can be overridden. 
+> [!WARNING]
+> The `PEFileBuilder` base class does not create .NET directory buffers by default.
+
+To customize the construction, the appropriate methods can be overridden. 
 Below is an example of adding an additional entry to the imports directory of a PE:
 
 ```csharp

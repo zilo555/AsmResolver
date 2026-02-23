@@ -140,18 +140,29 @@ namespace AsmResolver.DotNet
             }
         }
 
-        /// <inheritdoc />
-        public bool IsValueType => Resolve()?.IsValueType ?? false;
+        ResolutionStatus IMemberDescriptor.Resolve(RuntimeContext? context, out IMemberDefinition? definition)
+        {
+            var status = Resolve(context, out var type);
+            definition = type;
+            return status;
+        }
 
         /// <inheritdoc />
-        public TypeDefinition? Resolve() => ContextModule is { } context ? Resolve(context) : null;
+        public ResolutionStatus Resolve(RuntimeContext? context, out TypeDefinition? definition)
+        {
+            if (context is null)
+            {
+                definition = null;
+                return ResolutionStatus.MissingRuntimeContext;
+            }
+
+            return context.ResolveType(this, ContextModule, out definition);
+        }
 
         /// <inheritdoc />
-        public TypeDefinition? Resolve(ModuleDefinition context) => context.MetadataResolver.ResolveType(this);
-
-        IMemberDefinition? IMemberDescriptor.Resolve() => Resolve();
-
-        IMemberDefinition? IMemberDescriptor.Resolve(ModuleDefinition context) => Resolve(context);
+        public bool? TryGetIsValueType(RuntimeContext? context) => this.TryResolve(context, out var definition)
+            ? definition.IsValueType
+            : null;
 
         /// <inheritdoc />
         public bool IsImportedInModule(ModuleDefinition module)
@@ -173,7 +184,14 @@ namespace AsmResolver.DotNet
         public ITypeDefOrRef ToTypeDefOrRef() => new TypeReference(ContextModule, Scope, Namespace, Name);
 
         /// <inheritdoc />
-        public TypeSignature ToTypeSignature() => new TypeDefOrRefSignature(ToTypeDefOrRef());
+        public TypeSignature ToTypeSignature(RuntimeContext? context) => new TypeDefOrRefSignature(ToTypeDefOrRef(), context);
+
+        /// <summary>
+        /// Wraps the type reference in a signature, forcing the value of <see cref="TypeSignature.IsValueType"/> to be a specific value.
+        /// </summary>
+        /// <param name="isValueType">Indicates whether the signature should be considered a value type or not.</param>
+        /// <returns>The new type signature.</returns>
+        public TypeSignature ToTypeSignature(bool isValueType) => new TypeDefOrRefSignature(ToTypeDefOrRef(), isValueType);
 
         /// <summary>
         /// Obtains the namespace of the exported type.
@@ -214,5 +232,14 @@ namespace AsmResolver.DotNet
 
         /// <inheritdoc />
         public override string ToString() => FullName;
+
+        /// <summary>
+        /// Determines whether a type matches a namespace and name pair.
+        /// </summary>
+        /// <param name="ns">The namespace.</param>
+        /// <param name="name">The name.</param>
+        /// <returns><c>true</c> if the name and the namespace of the type matches the provided values,
+        /// <c>false</c> otherwise.</returns>
+        public bool IsTypeOfUtf8(Utf8String? ns, Utf8String? name) => Name == name && Namespace == ns;
     }
 }

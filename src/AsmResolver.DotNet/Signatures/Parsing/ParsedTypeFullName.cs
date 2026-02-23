@@ -26,12 +26,12 @@ internal sealed class ParsedTypeFullName(TypeName name)
             for (int i = 0; i < first.TypeArguments.Count; i++)
                 arguments[i] = first.TypeArguments[i].ToTypeSignature(contextModule);
 
-            signature = baseTypeDefOrRef.MakeGenericInstanceType(arguments);
+            signature = baseTypeDefOrRef.MakeGenericInstanceType(contextModule.RuntimeContext, arguments);
             startIndex++;
         }
         else
         {
-            signature = baseTypeDefOrRef.ToTypeSignature();
+            signature = baseTypeDefOrRef.ToTypeSignature(baseTypeDefOrRef.TryGetIsValueType(contextModule.RuntimeContext) ?? false);
         }
 
         // Go over all type annotations and annotate the type signature accordingly.

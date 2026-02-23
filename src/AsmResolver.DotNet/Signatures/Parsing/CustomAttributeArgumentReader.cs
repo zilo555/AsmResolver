@@ -126,10 +126,8 @@ namespace AsmResolver.DotNet.Signatures.Parsing
                     // Value is an enum, resolve it and get underlying type.
                     // If that fails, most enums are int32s, assume that is the case in an attempt to recover.
 
-                    var enumTypeDef = module.MetadataResolver.ResolveType(valueType);
-
                     TypeSignature? underlyingType = null;
-                    if (enumTypeDef is {IsEnum: true})
+                    if (valueType.TryResolve(module.RuntimeContext, out var enumTypeDef) && enumTypeDef.IsEnum)
                         underlyingType = enumTypeDef.GetEnumUnderlyingType();
 
                     if (underlyingType is null)

@@ -330,7 +330,7 @@ namespace AsmResolver.DotNet.Tests
         public void ImportNonImportedTypeDefOrRefShouldResultInNewInstance()
         {
             var signature = new TypeReference(null, _module.CorLibTypeFactory.CorLibScope, "System.IO", "Stream")
-                .ToTypeSignature();
+                .ToTypeSignature(false);
 
             var imported = _importer.ImportTypeSignature(signature);
 
@@ -343,7 +343,7 @@ namespace AsmResolver.DotNet.Tests
         public void ImportTypeSpecWithNonImportedBaseTypeShouldResultInNewInstance()
         {
             var signature = new TypeReference(null, _module.CorLibTypeFactory.CorLibScope, "System.IO", "Stream")
-                .ToTypeSignature()
+                .ToTypeSignature(false)
                 .MakeSzArrayType();
 
             var imported = _importer.ImportTypeSignature(signature);
@@ -357,7 +357,7 @@ namespace AsmResolver.DotNet.Tests
         public void ImportFullyImportedTypeDefOrRefShouldResultInSameInstance()
         {
             var signature = new TypeReference(_module, _module.CorLibTypeFactory.CorLibScope, "System.IO", "Stream")
-                .ToTypeSignature();
+                .ToTypeSignature(false);
 
             var imported = _importer.ImportTypeSignature(signature);
             Assert.Same(signature, imported);
@@ -367,7 +367,7 @@ namespace AsmResolver.DotNet.Tests
         public void ImportFullyImportedTypeSpecShouldResultInSameInstance()
         {
             var signature = new TypeReference(_module, _module.CorLibTypeFactory.CorLibScope, "System.IO", "Stream")
-                .ToTypeSignature()
+                .ToTypeSignature(false)
                 .MakeSzArrayType();
 
             var imported = _importer.ImportTypeSignature(signature);
@@ -384,8 +384,11 @@ namespace AsmResolver.DotNet.Tests
             _module.TopLevelTypes.Add(genericType);
 
             var instance = genericType.MakeGenericInstanceType(
+                isValueType: false,
                 new TypeDefOrRefSignature(
-                    new TypeReference(null, _module.CorLibTypeFactory.CorLibScope, "System.IO", "Stream"), false)
+                    new TypeReference(null, _module.CorLibTypeFactory.CorLibScope, "System.IO", "Stream"),
+                    false
+                )
             );
 
             var imported = _importer.ImportTypeSignature(instance);
@@ -406,8 +409,11 @@ namespace AsmResolver.DotNet.Tests
             _module.TopLevelTypes.Add(genericType);
 
             var instance = genericType.MakeGenericInstanceType(
+                isValueType: false,
                 new TypeDefOrRefSignature(
-                    new TypeReference(_module, _module.CorLibTypeFactory.CorLibScope, "System.IO", "Stream"), false)
+                    new TypeReference(_module, _module.CorLibTypeFactory.CorLibScope, "System.IO", "Stream"),
+                    false
+                )
             );
 
             var imported = _importer.ImportTypeSignature(instance);
@@ -420,7 +426,7 @@ namespace AsmResolver.DotNet.Tests
         public void ImportCustomModifierTypeWithNonImportedModifierTypeShouldResultInNewInstance()
         {
             var signature = new TypeReference(_module, _dummyAssembly, "SomeNamespace", "SomeType")
-                .ToTypeSignature()
+                .ToTypeSignature(false)
                 .MakeModifierType(new TypeReference(_dummyAssembly, "SomeNamespace", "SomeModifierType"), true);
 
             var imported = _importer.ImportTypeSignature(signature);
@@ -436,7 +442,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var assembly = _importer.ImportScope(_dummyAssembly);
             var signature = new TypeReference(_module, assembly, "SomeNamespace", "SomeType")
-                .ToTypeSignature()
+                .ToTypeSignature(false)
                 .MakeModifierType(new TypeReference(_module, assembly, "SomeNamespace", "SomeModifierType"), true);
 
             var imported = _importer.ImportTypeSignature(signature);
@@ -451,7 +457,7 @@ namespace AsmResolver.DotNet.Tests
             var signature = MethodSignature
                 .CreateStatic(
                     _module.CorLibTypeFactory.Void,
-                    new TypeReference(_dummyAssembly, "SomeNamespace", "SomeType").ToTypeSignature())
+                    new TypeReference(_dummyAssembly, "SomeNamespace", "SomeType").ToTypeSignature(false))
                 .MakeFunctionPointerType();
 
             var imported = _importer.ImportTypeSignature(signature);
@@ -468,7 +474,7 @@ namespace AsmResolver.DotNet.Tests
         {
             var signature = MethodSignature
                 .CreateStatic(
-                    new TypeReference(_dummyAssembly, "SomeNamespace", "SomeType").ToTypeSignature(),
+                    new TypeReference(_dummyAssembly, "SomeNamespace", "SomeType").ToTypeSignature(false),
                     _module.CorLibTypeFactory.Int32)
                 .MakeFunctionPointerType();
 
@@ -488,7 +494,7 @@ namespace AsmResolver.DotNet.Tests
             var signature = MethodSignature
                 .CreateStatic(
                     _module.CorLibTypeFactory.Void,
-                    new TypeReference(_module, assembly, "SomeNamespace", "SomeType").ToTypeSignature())
+                    new TypeReference(_module, assembly, "SomeNamespace", "SomeType").ToTypeSignature(false))
                 .MakeFunctionPointerType();
 
             var imported = _importer.ImportTypeSignature(signature);
@@ -512,9 +518,8 @@ namespace AsmResolver.DotNet.Tests
 
             var importer = new ReferenceImporter(module);
             var imported = importer.ImportField(fieldInfo);
-            var resolved = imported.Resolve();
+            var resolved = imported.Resolve(module.RuntimeContext);
 
-            Assert.NotNull(resolved);
             Assert.Equal(field, Assert.IsAssignableFrom<IFieldDescriptor>(resolved), Comparer);
         }
 
@@ -572,7 +577,7 @@ namespace AsmResolver.DotNet.Tests
         public void ImportComplexFunctionPointerFromReflectedFieldType()
         {
             var fieldType = typeof(DelegatePointerHolder).GetField("Complex")!.GetModifiedFieldType();
-            var imported = Assert.IsAssignableFrom<FunctionPointerTypeSignature>(_importer.ImportType(fieldType).ToTypeSignature());
+            var imported = Assert.IsAssignableFrom<FunctionPointerTypeSignature>(_importer.ImportType(fieldType).ToTypeSignature(false));
             Assert.Equal(CallingConventionAttributes.Unmanaged, imported.Signature.CallingConvention);
             var firstModifier = Assert.IsAssignableFrom<CustomModifierTypeSignature>(imported.Signature.ReturnType);
             Assert.True(firstModifier.ModifierType is
@@ -592,7 +597,7 @@ namespace AsmResolver.DotNet.Tests
         public void ImportSimpleFunctionPointerFromReflectedFieldType()
         {
             var fieldType = typeof(DelegatePointerHolder).GetField("StdcallOnly")!.GetModifiedFieldType();
-            var imported = Assert.IsAssignableFrom<FunctionPointerTypeSignature>(_importer.ImportType(fieldType).ToTypeSignature());
+            var imported = Assert.IsAssignableFrom<FunctionPointerTypeSignature>(_importer.ImportType(fieldType).ToTypeSignature(false));
             Assert.Equal(CallingConventionAttributes.StdCall, imported.Signature.CallingConvention);
         }
 
@@ -600,7 +605,7 @@ namespace AsmResolver.DotNet.Tests
         public void ImportModoptOnlyFunctionPointerFromReflectedFieldType()
         {
             var fieldType = typeof(DelegatePointerHolder).GetField("GcOnly")!.GetModifiedFieldType();
-            var imported = Assert.IsAssignableFrom<FunctionPointerTypeSignature>(_importer.ImportType(fieldType).ToTypeSignature());
+            var imported = Assert.IsAssignableFrom<FunctionPointerTypeSignature>(_importer.ImportType(fieldType).ToTypeSignature(false));
             Assert.Equal(CallingConventionAttributes.Unmanaged, imported.Signature.CallingConvention);
             var firstModifier = Assert.IsAssignableFrom<CustomModifierTypeSignature>(imported.Signature.ReturnType);
             Assert.Equal("System.Runtime.CompilerServices.CallConvSuppressGCTransition", firstModifier.ModifierType.FullName);
@@ -609,7 +614,7 @@ namespace AsmResolver.DotNet.Tests
         [Fact]
         public void ImportFunctionPointerFromTypeof()
         {
-            var imported = Assert.IsAssignableFrom<FunctionPointerTypeSignature>(_importer.ImportType(typeof(delegate*<int, uint>)).ToTypeSignature());
+            var imported = Assert.IsAssignableFrom<FunctionPointerTypeSignature>(_importer.ImportType(typeof(delegate*<int, uint>)).ToTypeSignature(false));
             Assert.Collection(imported.Signature.ParameterTypes, t => Assert.Same(_module.CorLibTypeFactory.Int32, t));
             Assert.Same(imported.Signature.ReturnType, _module.CorLibTypeFactory.UInt32);
         }

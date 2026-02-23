@@ -19,21 +19,40 @@ namespace AsmResolver
         IEquatable<byte[]>,
         IComparable<Utf8String>,
         IEnumerable<char>
+#if NET6_0_OR_GREATER
+        , ISpanFormattable
+#endif
+#if NET8_0_OR_GREATER
+        , IUtf8SpanFormattable
+#endif
     {
         /// <summary>
         /// Represents the empty UTF-8 string.
         /// </summary>
-        public static readonly Utf8String Empty = new(ArrayShim.Empty<byte>());
+        public static readonly Utf8String Empty = CreateUnsafe(ArrayShim.Empty<byte>());
 
         private readonly byte[] _data;
         private string? _cachedString;
+
+        private Utf8String(byte[] data, bool copy)
+        {
+            if (copy)
+            {
+                _data = new byte[data.Length];
+                Buffer.BlockCopy(data, 0, _data, 0, data.Length);
+            }
+            else
+            {
+                _data = data;
+            }
+        }
 
         /// <summary>
         /// Creates a new UTF-8 string from the provided raw data.
         /// </summary>
         /// <param name="data">The raw UTF-8 data.</param>
         public Utf8String(byte[] data)
-            : this(data, 0, data.Length)
+            : this(data, copy: true)
         {
         }
 
@@ -68,7 +87,7 @@ namespace AsmResolver
         {
             // Copy data to enforce immutability.
             _data = new byte[count];
-            Buffer.BlockCopy(data, index, _data,0, count);
+            Buffer.BlockCopy(data, index, _data, 0, count);
         }
 
         /// <summary>
@@ -173,9 +192,20 @@ namespace AsmResolver
         public byte[] GetBytesUnsafe() => _data;
 
         /// <summary>
+        /// Creates a Utf8String given an underlying byte array.
+        /// </summary>
+        /// <param name="data">The underlying array to use in the Utf8String.</param>
+        /// /// <remarks>
+        /// This method should only be used if performance is critical. Modifying the given array
+        /// <strong>will</strong> change the internal state of the string.
+        /// </remarks>
+        /// <returns>The created Utf8String.</returns>
+        public static Utf8String CreateUnsafe(byte[] data) => new(data, copy: false);
+
+        /// <summary>
         /// Produces a new string that is the concatenation of the current string and the provided string.
         /// </summary>
-        /// <param name="other">The other string to append..</param>
+        /// <param name="other">The other string to append.</param>
         /// <returns>The new string.</returns>
         public Utf8String Concat(Utf8String? other) => !IsNullOrEmpty(other)
             ? Concat(other._data)
@@ -203,7 +233,7 @@ namespace AsmResolver
             byte[] result = new byte[_data.Length + other.Length];
             Buffer.BlockCopy(_data, 0, result, 0, _data.Length);
             Buffer.BlockCopy(other, 0, result, _data.Length, other.Length);
-            return result;
+            return CreateUnsafe(result);
         }
 
         /// <summary>
@@ -360,6 +390,43 @@ namespace AsmResolver
 
         /// <inheritdoc />
         public override string ToString() => Value;
+
+#if NET6_0_OR_GREATER
+        /// <inheritdoc />
+        public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
+        {
+            if (Value.TryCopyTo(destination))
+            {
+                charsWritten = Value.Length;
+                return true;
+
+            }
+
+            charsWritten = 0;
+            return false;
+        }
+
+        /// <inheritdoc />
+        public string ToString(string? format, IFormatProvider? formatProvider)
+        {
+            return ToString();
+        }
+#endif
+
+#if NET8_0_OR_GREATER
+        /// <inheritdoc />
+        public bool TryFormat(Span<byte> utf8Destination, out int bytesWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
+        {
+            if (_data.AsSpan().TryCopyTo(utf8Destination))
+            {
+                bytesWritten = _data.Length;
+                return true;
+            }
+
+            bytesWritten = 0;
+            return false;
+        }
+#endif
 
         /// <summary>
         /// Converts a <see cref="Utf8String"/> into a <see cref="System.String"/>.

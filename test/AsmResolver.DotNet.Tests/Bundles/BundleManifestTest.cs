@@ -103,7 +103,7 @@ namespace AsmResolver.DotNet.Tests.Bundles
         {
             var manifest = BundleManifest.FromBytes(Properties.Resources.HelloWorld_SingleFile_V1);
             Assert.Equal(
-                new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(3, 1)),
+                DotNetRuntimeInfo.NetCoreApp(3, 1),
                 manifest.GetTargetRuntime()
             );
         }
@@ -113,7 +113,7 @@ namespace AsmResolver.DotNet.Tests.Bundles
         {
             var manifest = BundleManifest.FromBytes(Properties.Resources.HelloWorld_SingleFile_V2);
             Assert.Equal(
-                new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(5, 0)),
+                DotNetRuntimeInfo.NetCoreApp(5, 0),
                 manifest.GetTargetRuntime()
             );
         }
@@ -123,7 +123,7 @@ namespace AsmResolver.DotNet.Tests.Bundles
         {
             var manifest = BundleManifest.FromBytes(Properties.Resources.HelloWorld_SingleFile_V6);
             Assert.Equal(
-                new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(6, 0)),
+                DotNetRuntimeInfo.NetCoreApp(6, 0),
                 manifest.GetTargetRuntime()
             );
         }
@@ -133,7 +133,7 @@ namespace AsmResolver.DotNet.Tests.Bundles
         {
             var manifest = BundleManifest.FromBytes(Properties.Resources.HelloWorld_SingleFile_V6_WithDependency);
             Assert.Equal(
-                new DotNetRuntimeInfo(DotNetRuntimeInfo.NetCoreApp, new Version(8, 0)),
+                DotNetRuntimeInfo.NetCoreApp(8, 0),
                 manifest.GetTargetRuntime()
             );
         }
@@ -416,12 +416,8 @@ namespace AsmResolver.DotNet.Tests.Bundles
             var manifest = BundleManifest.FromBytes(Properties.Resources.HelloWorld_SingleFile_V6_WithDependency);
             var context = new RuntimeContext(manifest);
 
-            var module = ModuleDefinition.FromBytes(
-                manifest.Files.First(x => x.RelativePath == "MainApp.dll").GetData(),
-                new ModuleReaderParameters(context));
-
-            var resolved = module.AssemblyReferences.First(x => x.Name == "Library").Resolve();
-            Assert.NotNull(resolved);
+            var assembly = context.LoadAssembly(manifest.Files.First(x => x.RelativePath == "MainApp.dll").GetData());
+            _ = assembly.ManifestModule!.AssemblyReferences.First(x => x.Name == "Library").Resolve(context);
         }
     }
 }

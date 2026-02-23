@@ -1,6 +1,3 @@
-// TlsTest.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
 #include <Windows.h>
 #include <time.h>
@@ -13,8 +10,7 @@ VOID WINAPI tls_callback1(
     DWORD Reason,
     PVOID Reserved)
 {
-    if (Reason == DLL_PROCESS_ATTACH)
-        std::cout << "TLS callback 1" << std::endl;
+    printf("[%d]: TLS callback 1 (Reason: %d)\n", GetCurrentThreadId(), Reason);
 }
 
 #ifdef _WIN64
@@ -43,17 +39,29 @@ PIMAGE_TLS_CALLBACK tls_callback_end = NULL;
 
 DWORD WINAPI thread_main(LPVOID arg)
 {
-    std::cout << '[' << GetCurrentThreadId() << "]: int = " << _threadLocalInt << std::endl;
+    int threadId = GetCurrentThreadId();
+    printf("[%d]: _threadLocalInt = %d\n", threadId, _threadLocalInt);
     _threadLocalInt++;
-    std::cout << '[' << GetCurrentThreadId() << "]: str = " << _threadLocalArray << std::endl;
-    return 0;
+    printf("[%d]: _threadLocalInt = %d\n", threadId, _threadLocalInt);
+    printf("[%d]: _threadLocalArray = %s\n", threadId, _threadLocalArray);
+    return (DWORD) arg;
 }
 
-int main()
+int main(int argc, char** argv)
 {
-    for (int i = 0; i < 5; i++) {
-        CreateThread(NULL, NULL, thread_main, NULL, 0, NULL);
+    int threadCount = 1;
+
+    if (argc == 2) {
+        threadCount = atoi(argv[1]);
     }
 
-    system("pause");
+    auto* handles = new HANDLE[threadCount];
+    for (int i = 0; i < threadCount; i++) {
+        handles[i] = CreateThread(NULL, NULL, thread_main, (LPVOID) i, 0, NULL);
+    }
+
+    WaitForMultipleObjects(threadCount, handles, TRUE, INFINITE);
+
+    printf("[%d]: Done\n", GetCurrentThreadId());
+    delete[] handles;
 }
